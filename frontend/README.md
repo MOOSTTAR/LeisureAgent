@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LeisureAgent 前端
 
-## Getting Started
+基于 Next.js 16 + shadcn/ui 构建的移动端优先聊天式 AI Agent 交互界面。
 
-First, run the development server:
+## 技术栈
+
+| 层 | 选型 |
+| --- | --- |
+| 框架 | Next.js 16 (App Router) |
+| UI | shadcn/ui + Tailwind CSS v3 |
+| AI | Vercel AI SDK v6 + @ai-sdk/openai |
+| 动画 | Framer Motion |
+| 状态 | React Context + useReducer |
+
+## 核心模块
+
+| 目录 | 说明 |
+| --- | --- |
+| `components/chat/` | 聊天面板、消息气泡、输入框、欢迎页 |
+| `components/plan/` | 方案时间线、活动卡片、摘要面板 |
+| `components/booking/` | 预订卡片、配送卡片、状态标签 |
+| `components/ui/` | shadcn/ui 基础组件 |
+| `lib/agent/` | Agent 核心逻辑（Planner + Tools + Mock） |
+| `lib/store/` | 状态管理（Context + Reducer） |
+| `app/api/chat/` | SSE 流式对话接口 |
+
+## 快速开始
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+浏览器打开 `http://localhost:3000`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+复制 `.env.local.example` 为 `.env.local` 并填写：
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+OPENAI_API_KEY=your-api-key
+OPENAI_BASE_URL=https://api.openai.com/v1  # 可选，自定义 API 地址
+OPENAI_MODEL=gpt-4o-mini                      # 可选
+```

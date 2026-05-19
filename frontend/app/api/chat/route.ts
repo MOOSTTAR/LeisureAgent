@@ -1,14 +1,19 @@
 import { streamText, stepCountIs } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { plannerTools } from "@/lib/agent/planner";
 import { SYSTEM_PROMPT } from "@/lib/agent/prompts";
+
+const provider = createOpenAI({
+  baseURL: process.env.OPENAI_BASE_URL || "https://api.deepseek.com",
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
     const result = streamText({
-      model: openai(process.env.OPENAI_MODEL || "gpt-4o-mini"),
+      model: provider.chat(process.env.OPENAI_MODEL || "deepseek-v4-flash"),
       system: SYSTEM_PROMPT,
       messages,
       tools: plannerTools,

@@ -25,7 +25,7 @@ export function ActivityCard({ activity, booking, onBook, index }: Props) {
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.3 }}
+      transition={{ delay: index * 0.1, type: "spring", stiffness: 100, damping: 18 }}
     >
       <Card className={`border-l-4 ${COLOR_MAP[activity.type]} shadow-sm`}>
         <CardContent className="p-4 space-y-2">

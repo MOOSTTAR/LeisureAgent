@@ -76,15 +76,12 @@ def _sse(event: str, data: str) -> bytes:
 
 # ── 健康检查 ──
 
-
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
 
 # ── SSE 聊天端点 ──
-
-
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     return StreamingResponse(
@@ -98,8 +95,6 @@ async def chat_stream(request: ChatRequest):
 
 
 # ── 同步聊天端点（非流式） ──
-
-
 @app.post("/chat")
 async def chat(request: ChatRequest):
     initial_state: AgentState = {

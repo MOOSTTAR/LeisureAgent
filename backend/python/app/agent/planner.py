@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from app.agent.state import AgentState
 from app.models.schemas import (
     ActivityPlan,
+    ActivityType,
+    Location,
     PlanStep,
     UserIntent,
 )
@@ -26,6 +30,7 @@ def parse_intent(state: AgentState) -> dict:
     )
 
     return {"intent": intent, "current_step": "search"}
+
 
 
 def create_plan(state: AgentState) -> dict:
@@ -84,10 +89,10 @@ def _extract_companion(text: str) -> str:
     return "自己"
 
 
-def _extract_location(text: str) -> str:
+def _extract_location(text: str) -> Location:
     if "近" in text or "附近" in text or "离家" in text:
-        return "nearby"
-    return "any"
+        return Location.NEARBY
+    return Location.ANY
 
 
 def _extract_budget(text: str) -> str:
@@ -96,20 +101,20 @@ def _extract_budget(text: str) -> str:
     return ""
 
 
-def _infer_type(category: str) -> str:
+def _infer_type(category: str) -> ActivityType:
     mapping = {
-        "公园": "outdoor",
-        "博物馆": "indoor",
-        "电影院": "entertainment",
-        "火锅": "dining",
-        "西北菜": "dining",
-        "中式": "dining",
-        "饮品": "shopping",
+        "公园": ActivityType.OUTDOOR,
+        "博物馆": ActivityType.INDOOR,
+        "电影院": ActivityType.ENTERTAINMENT,
+        "火锅": ActivityType.DINING,
+        "西北菜": ActivityType.DINING,
+        "中式": ActivityType.DINING,
+        "饮品": ActivityType.SHOPPING,
     }
-    return mapping.get(category, "entertainment")
+    return mapping.get(category, ActivityType.ENTERTAINMENT)
 
 
-def _generate_summary(steps: list[PlanStep], intent: UserIntent | None) -> str:
+def _generate_summary(steps: list[PlanStep], intent: Optional[UserIntent]) -> str:
     companion = f"和{intent.companion}" if intent and intent.companion else ""
     names = " → ".join(s.name for s in steps)
     return f"{companion} {names}，预计 {sum(s.duration_minutes for s in steps)} 分钟，约 {sum(s.estimated_cost for s in steps)} 元"

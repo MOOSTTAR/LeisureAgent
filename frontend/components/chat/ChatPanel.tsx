@@ -87,7 +87,7 @@ export function ChatPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-border/40 shrink-0">
         <div>
           <h2 className="text-sm font-semibold">LeisureAgent</h2>
           <p className="text-xs text-muted-foreground">周末活动智能规划</p>

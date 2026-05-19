@@ -68,9 +68,11 @@ export function PlanPanel() {
           />
 
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-background shadow-2xl
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[2rem] bg-background
+                       shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.08)]
                        h-[75vh] max-h-[700px]
-                       md:top-0 md:bottom-0 md:left-auto md:w-[420px] md:rounded-none md:h-full"
+                       md:top-0 md:bottom-0 md:left-auto md:w-[420px] md:rounded-none md:h-full
+                       md:shadow-[-8px_0_30px_-15px_rgba(0,0,0,0.06)] md:border-l md:border-border/30"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}

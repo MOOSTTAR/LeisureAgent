@@ -49,7 +49,7 @@ export function WelcomeScreen({ onSuggestionClick }: Props) {
         {suggestions.map((text, i) => (
           <motion.button
             key={i}
-            className="px-4 py-3 text-sm text-left rounded-xl border bg-card hover:bg-accent transition-colors"
+            className="px-4 py-3 text-sm text-left rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 + i * 0.1, type: "spring", stiffness: 120, damping: 18 }}

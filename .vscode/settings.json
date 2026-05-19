@@ -1,0 +1,6 @@
+{
+  "python.analysis.extraPaths": [
+    "./backend/python"
+  ],
+  "python.analysis.typeCheckingMode": "basic"
+}

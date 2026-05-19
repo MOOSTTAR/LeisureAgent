@@ -102,39 +102,45 @@ LeisureAgent - 本地场景短时活动规划与执行 Agent，接受自然语�
 | 部署     | Vercel / 本地 Docker                |
 
 ### 后端
-| 层           | 选型                          |
-|--------------|-------------------------------|
-| 框架         | Python FastAPI                |
-| Agent 框架   | LangChain + LangGraph         |
-| 运行时       | Uvicorn                       |
-| API 通信     | REST + SSE (Server-Sent Events) |
-| 部署         | Docker / Docker Compose       |
+| 层           | 选型                                  |
+|--------------|---------------------------------------|
+| 智能体层     | Python + FastAPI + LangChain/LangGraph |
+| 业务服务层   | Java 17 + Spring Boot 3.x             |
+| 运行时       | Uvicorn (Python) / JAR (Java)         |
+| API 通信     | 前端↔Agent: SSE / Agent↔Service: REST |
+| 部署         | Docker Compose                        |
 
 ## 项目结构
 
 ```text
 LeisureAgent/
-├── backend/                    # Python 后端（FastAPI + LangChain + LangGraph）
-│   ├── app/
-│   │   ├── main.py            # FastAPI 入口，SSE streaming 端点
-│   │   ├── agent/
-│   │   │   ├── planner.py     # LangGraph Planning 策略
-│   │   │   ├── state.py       # Agent State 定义
-│   │   │   └── graph.py       # LangGraph 编排（节点、边、条件分支）
-│   │   ├── tools/
-│   │   │   ├── search.py      # 搜索餐厅/活动（调用第三方 API）
-│   │   │   ├── booking.py     # 预订/下单工具
-│   │   │   └── delivery.py    # 配送服务工具
-│   │   ├── models/
-│   │   │   └── schemas.py     # Pydantic 请求/响应模型
-│   │   └── mock/
-│   │       └── data.py        # Mock API 数据
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── tests/
-│       ├── test_planner.py
-│       └── test_tools.py
-├── frontend/                   # Next.js 前端
+├── backend/
+│   ├── java/                    # 工程化后端 — Java + SpringBoot
+│   │   ├── src/
+│   │   │   └── main/
+│   │   │       ├── java/        # 业务逻辑、第三方 API 封装、数据持久化
+│   │   │       └── resources/   # 配置文件
+│   │   ├── pom.xml / build.gradle
+│   │   └── Dockerfile
+│   └── python/                  # 智能体层 — Python + LangGraph
+│       ├── app/
+│       │   ├── main.py         # FastAPI 入口，SSE streaming 端点
+│       │   ├── agent/
+│       │   │   ├── planner.py  # LangGraph Planning 策略
+│       │   │   ├── state.py    # Agent State 定义
+│       │   │   └── graph.py    # LangGraph 编排（节点、边、条件分支）
+│       │   ├── tools/
+│       │   │   ├── search.py   # 搜索餐厅/活动
+│       │   │   ├── booking.py  # 预订/下单工具
+│       │   │   └── delivery.py # 配送服务工具
+│       │   ├── models/
+│       │   │   └── schemas.py  # Pydantic 请求/响应模型
+│       │   └── mock/
+│       │       └── data.py     # Mock API 数据
+│       ├── requirements.txt
+│       ├── Dockerfile
+│       └── tests/
+├── frontend/                    # Next.js 前端
 │   ├── app/
 │   │   ├── page.tsx            # 主页面（聊天界面）
 │   │   └── layout.tsx          # 根布局
@@ -144,24 +150,29 @@ LeisureAgent/
 │   │   ├── booking/            # 预约确认、状态标签
 │   │   └── ui/                 # shadcn/ui 组件
 │   ├── lib/
-│   │   └── api-client.ts       # 后端 API 调用封装（SSE 客户端）
+│   │   └── api-client.ts       # Python Agent SSE 客户端
 │   ├── next.config.js
 │   ├── tailwind.config.ts
 │   └── package.json
-├── docker-compose.yml          # 编排前后端服务
+├── docker-compose.yml           # 编排三个服务
 ├── .claude/
 │   ├── skills/
 │   ├── agents/
 │   └── CLAUDE.md
 └── design/
-    └── design-doc.md           # 设计文档
+    └── design-doc.md
 ```
 
 ## 命令
 
-后端（开发）：
+Java 后端（开发）：
 ```bash
-cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload --port 8000
+cd backend/java && ./gradlew bootRun
+```
+
+Python 智能体层（开发）：
+```bash
+cd backend/python && pip install -r requirements.txt && uvicorn app.main:app --reload --port 8000
 ```
 
 前端（开发）：
@@ -176,34 +187,45 @@ docker-compose up -d
 
 测试：
 ```bash
-cd backend && pytest
+cd backend/java && ./gradlew test
+cd backend/python && pytest
 cd frontend && npm run test
 ```
 
 ## 架构
 
-前后端分离架构：
-- **前端**：Next.js 纯 UI 层，通过 SSE 与后端通信
-- **后端**：FastAPI 提供 REST + SSE 端点，LangChain + LangGraph 编排 Agent
-- **通信流程**：用户输入 → 前端 SSE 连接 → FastAPI → LangGraph Agent（含工具调用）→ Streaming 回复 → 前端实时展示
+三层分离架构：
+
+```text
+用户输入
+  │
+  ▼
+┌─────────────┐     SSE      ┌──────────────────┐    REST    ┌─────────────┐
+│   Frontend   │ ←──────────→ │  Python Agent    │ ←────────→ │  Java       │
+│  (Next.js)   │              │  (LangGraph)     │            │  (Spring)   │
+│  纯 UI 层     │  流式回复    │  规划 + 工具调用   │  业务操作   │  工程化后端  │
+└─────────────┘              └──────────────────┘            └─────────────┘
+```
+
+- **前端**：Next.js 纯展示层，通过 SSE 连接 Python Agent 获取流式回复
+- **Python Agent**：LangGraph 编排智能体，负责 NL 理解、活动规划、工具调用决策，通过 REST 调用 Java 后端执行业务操作
+- **Java 后端**：业务底座，提供搜索/预订/支付等 REST API，对接第三方服务和数据库
 
 ## 关键目录
 
-- `backend/` - Python 后端（FastAPI + LangChain + LangGraph）
-  - `app/agent/` - Agent 核心（Planner + State + Graph 编排）
-  - `app/tools/` - 各种工具调用实现
-  - `app/mock/` - Mock API 数据
-- `frontend/` - Next.js 前端
-  - `components/chat/` - 聊天界面组件
-  - `components/plan/` - 计划展示组件
+- `backend/java/` - Java + SpringBoot 工程化后端（业务逻辑、数据持久化、第三方 API 封装）
+- `backend/python/` - Python + LangGraph 智能体层（Agent 编排、Tools 定义、SSE 端点）
+- `frontend/` - Next.js 前端（聊天界面、计划展示组件）
 - `design/` - 设计文档
 
 ## 开发规范
 
 - 使用中文回复
 - 前端优先使用 shadcn/ui 组件，避免引入额外 UI 库
-- 后端使用 FastAPI + Pydantic 做请求/响应校验
+- Python 端使用 FastAPI + Pydantic 做请求/响应校验
 - Agent 逻辑使用 LangGraph 编排，定义清晰的 State、Node、Edge
+- Java 端使用 Spring Boot 标准分层（Controller → Service → Repository）
+- Python Agent 层通过 REST 调用 Java 业务服务，不直接操作数据库
+- 前端通过 SSE（Server-Sent Events）通信，使用 fetch + ReadableStream 消费
 - Tool 调用链路需包含完整的错误处理和回退逻辑
 - Mock 数据需覆盖正常流程和异常场景
-- 前后端通过 SSE（Server-Sent Events）通信，前端使用 fetch + ReadableStream 消费

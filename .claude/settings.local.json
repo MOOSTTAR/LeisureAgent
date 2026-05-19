@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/d/code/ClaudeCode/LeisureAgent/**)",
+      "Read(//mnt/d/code/ClaudeCode/LeisureAgent/backend/**)"
+    ]
+  }
+}

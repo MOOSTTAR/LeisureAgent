@@ -19,3 +19,11 @@ LeisureAgent - 本地场景短时活动规划与执行 Agent。
 - [编码行为准则](.claude/rules/coding-style.md)
 - [技术栈](.claude/rules/tech-stack.md)
 - [开发规范](.claude/rules/dev-workflow.md)
+
+### Agents
+- [`frontend-dev`](.claude/agents/frontend-dev.md) - 前端开发专用 Agent
+- [`code-analyzer-fix`](.claude/agents/code-analyzer-fix.md) - 代码分析与修复专用 Agent
+
+### Skills
+- [`find-skills`](.claude/skills/find-skills.md) - 技能发现与安装
+- [`skill-creator`](.claude/skills/skill-creator/) - 技能创建与优化

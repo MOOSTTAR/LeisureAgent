@@ -12,7 +12,7 @@ export function Lobby() {
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
-      {/* 顶部导航占位 */}
+      {/* 顶部导航 */}
       <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -23,14 +23,14 @@ export function Lobby() {
         </div>
       </nav>
 
-      {/* 主内容区域 */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-16 md:py-24">
-        {/* 标题区域 - 非对称布局 */}
+      {/* 主内容区域 - flex-1 让页脚推到底部 */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-12">
+        {/* 标题区域 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-16 md:mb-24"
+          className="mb-12"
         >
           <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-slate-900 mb-6">
             周末活动规划
@@ -44,8 +44,8 @@ export function Lobby() {
           </p>
         </motion.div>
 
-        {/* 卡片网格 - 非对称 2 列布局 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+        {/* 卡片网格 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <LobbyCard
             type="ai"
             title="AI 一键规划"

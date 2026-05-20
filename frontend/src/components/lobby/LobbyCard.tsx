@@ -40,7 +40,7 @@ export function LobbyCard({ title, description, icon, onClick }: LobbyCardProps)
         onClick={onClick}
       >
         {/* 内容区域 */}
-        <div className="p-10 md:p-12 h-full flex flex-col">
+        <div className="p-10 md:p-12 flex flex-col">
           {/* 图标区域 */}
           <div className="mb-8">
             <motion.div

@@ -40,7 +40,7 @@ function App() {
   }
 
   return (
-    <div className="h-[100dvh] overflow-hidden">
+    <div className="h-[100dvh]">
       <AnimatePresence mode="wait">
         {currentPage === 'lobby' ? (
           <motion.div

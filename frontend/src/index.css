@@ -8,12 +8,64 @@
 html, body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* 防止横向滚动条 */
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100dvh;
-  overflow: hidden; /* 防止动画导致的短暂滚动条 */
+  overflow: hidden;
+}
+
+/* ====== 主题滚动条（Emerald 翠绿配色） ====== */
+/* Webkit: Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(160 30% 96%);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(160 55% 35% / 0.6);
+  border-radius: 8px;
+  border: 2px solid hsl(160 30% 96%);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(160 55% 28% / 0.8);
+  border-color: hsl(160 30% 96%);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: hsl(160 55% 24%);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(160 55% 35% / 0.6) hsl(160 30% 96%);
+}
+
+/* Dark mode */
+.dark ::-webkit-scrollbar-track {
+  background: hsl(160 10% 12%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(155 65% 55% / 0.5);
+  border-color: hsl(160 10% 12%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(155 65% 55% / 0.7);
+}
+
+.dark * {
+  scrollbar-color: hsl(155 65% 55% / 0.5) hsl(160 10% 12%);
 }

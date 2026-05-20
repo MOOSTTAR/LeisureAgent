@@ -11,7 +11,7 @@ export function Lobby() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50/50">
+    <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
       {/* 顶部导航占位 */}
       <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -24,7 +24,7 @@ export function Lobby() {
       </nav>
 
       {/* 主内容区域 */}
-      <main className="max-w-7xl mx-auto px-6 py-16 md:py-24">
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-16 md:py-24">
         {/* 标题区域 - 非对称布局 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

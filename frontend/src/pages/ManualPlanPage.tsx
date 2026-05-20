@@ -21,7 +21,7 @@ const CATEGORIES = [
 
 export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
   return (
-    <div className="min-h-[100dvh] bg-slate-50/50">
+    <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
       {/* 顶部导航 */}
       <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -43,8 +43,8 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
         </div>
       </nav>
 
-      {/* 主内容区域 */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      {/* 主内容区域 - flex-1 让页脚推到底部 */}
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-12">
         {/* 页面标题 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -90,8 +90,7 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 0.5 }}
-          className="mt-16 text-center"
-        >
+          className="mt-16 text-center">
           <p className="text-sm text-slate-400">
             更多分类即将上线
           </p>

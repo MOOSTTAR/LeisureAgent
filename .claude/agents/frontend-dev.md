@@ -1,6 +1,6 @@
 ---
 name: "frontend-dev"
-description: "Use this agent when the user needs to develop, modify, or review frontend code in the LeisureAgent project. This includes creating new React components, modifying existing UI, implementing features described in natural language, fixing frontend bugs, or refactoring frontend code.\\n\\n<example>\\nContext: The user wants to add a new booking confirmation dialog.\\nuser: \"添加一个预订确认弹窗，用户点击确认后显示成功状态\"\\nassistant: \"I'll use the frontend-dev agent to implement this booking confirmation dialog component.\"\\n<use Agent tool to launch frontend-dev agent>\\n</example>\\n\\n<example>\\nContext: The user needs to fix a styling issue in the chat component.\\nuser: \"聊天消息气泡的间距不对，帮我修复一下\"\\nassistant: \"Let me use the frontend-dev agent to fix the chat message bubble spacing issue.\"\\n<use Agent tool to launch frontend-dev agent>\\n</example>\\n\\n<example>\\nContext: The user wants to create a new timeline component for displaying the activity plan.\\nuser: \"需要一个时间线组件来展示下午的活动安排\"\\nassistant: \"I'll use the frontend-dev agent to create the activity timeline component.\"\\n<use Agent tool to launch frontend-dev agent>\\n</example>"
+description: "前端开发专用 Agent。当用户需要开发、修改、审查前端代码时使用。包括：创建 React 组件、修改 UI、实现功能、修复 Bug、样式调整、添加页面、修改布局等。触发词示例：前端、React、组件、UI、样式、页面、按钮、弹窗、动画、Tailwind、CSS、TypeScript、Vite、Shadcn、Ant Design"
 model: inherit
 color: green
 memory: project

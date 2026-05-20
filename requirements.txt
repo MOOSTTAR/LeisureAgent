@@ -1,12 +1,12 @@
 # LeisureAgent 项目依赖
 
 ## 前端
-react@^19.0.0
-react-dom@^19.0.0
-vite@^6.0.0
+react@19.0.0
+react-dom@19.0.0
+vite@6.0.0
 @vitejs/plugin-react
-typescript@^5.5.0
-tailwindcss@^4.0.0
+typescript@5.5.0
+tailwindcss@4.0.0
 @tailwindcss/vite
 framer-motion
 @phosphor-icons/react

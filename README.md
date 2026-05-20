@@ -14,12 +14,14 @@ Agent 会在几分钟内完成：
 
 ## 技术栈
 
+### 前端
+
 | 层       | 选型                                |
 |----------|-------------------------------------|
-| 框架     | React ^19.0.0                       |
-| 构建工具 | Vite ^6.0.0                         |
-| 语言     | TypeScript ^5.5.0                   |
-| UI 库    | Tailwind CSS ^4.0.0 + Shadcn/ui / Ant Design |
+| 框架     | React 19.0.0                        |
+| 构建工具 | Vite 6.0.0                          |
+| 语言     | TypeScript 5.5.0                    |
+| UI 库    | Tailwind CSS 4.0.0 + Shadcn/ui / Ant Design |
 | 动画     | Framer Motion                       |
 | 图标     | Phosphor Icons                      |
 

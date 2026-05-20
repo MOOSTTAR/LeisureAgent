@@ -6,8 +6,9 @@
 | 切面 | 技术组件 | 推荐版本 | 核心作用 |
 |------|----------|----------|----------|
 | 语言 | Python | 3.12 | AI 编程首选语言，生态最成熟 |
-| Web 框架 | FastAPI | 0.115.0 | 异步高性能 Web 框架，自动生成 Swagger 文档 |
+| Web 框架 | FastAPI | 0.136.1 | 异步高性能 Web 框架，自动生成 Swagger 文档 |
 | 数据校验 | Pydantic | 2.9.0 | 用于 Agent 输入输出的严格数据格式校验 |
+| 测试框架 | Pytest | 9.0.3 | 用于接口测试 |
 
 ### Agent
 | 切面 | 技术组件 | 推荐版本 | 核心作用 |
@@ -50,8 +51,9 @@ uvicorn app.main:app --reload --port 8000
 ## 依赖
 
 - Python 3.12
-- FastAPI ^0.115.0
-- Pydantic ^2.9.0
+- FastAPI 0.136.1
+- Pydantic 2.9.0
 - LangGraph
 - Uvicorn
+- Pytest 9.0.3
 - SQLite（Python 内置）

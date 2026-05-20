@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from app.agent.planner import create_plan, parse_intent
 from app.agent.state import AgentState
@@ -124,7 +127,7 @@ def route_after_search(state: AgentState) -> str:
 # ── 构建图 ──
 
 
-def build_graph() -> StateGraph:
+def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     """构建并返回编译后的 LangGraph"""
     workflow = StateGraph(AgentState)
 
@@ -145,7 +148,7 @@ def build_graph() -> StateGraph:
     workflow.add_edge("create_plan", "book")
     workflow.add_edge("book", "finalize")
     workflow.add_edge("deliver", "finalize")
-    workflow.add_edge("finalize", END)
+    workflow.add_edge("finalize", END  )
 
     return workflow.compile()
 

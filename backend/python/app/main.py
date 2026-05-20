@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from app.agent.graph import graph
 from app.agent.state import AgentState
 from app.models.schemas import ChatRequest
+from app.service.database import init_db
 
 app = FastAPI(title="LeisureAgent", version="0.1.0")
 
@@ -21,6 +22,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup():
+    """应用启动时初始化数据库。"""
+    init_db()
 
 
 async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:

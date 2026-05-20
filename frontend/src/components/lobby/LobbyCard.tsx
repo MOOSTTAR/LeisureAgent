@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Sparkle, SlidersHorizontal, ArrowRight } from '@phosphor-icons/react'
+import { ArrowRight } from '@phosphor-icons/react'
 import { useState } from 'react'
 
 interface LobbyCardProps {
@@ -12,7 +12,7 @@ interface LobbyCardProps {
   onClick?: () => void
 }
 
-export function LobbyCard({ type, title, description, icon, onClick }: LobbyCardProps) {
+export function LobbyCard({ title, description, icon, onClick }: LobbyCardProps) {
   const [isHovered, setIsHovered] = useState(false)
 
   return (
@@ -69,7 +69,7 @@ export function LobbyCard({ type, title, description, icon, onClick }: LobbyCard
               animate={isHovered ? { x: 4 } : { x: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <ArrowRight weight={600} size={20} />
+              <ArrowRight weight="bold" size={20} />
             </motion.div>
           </div>
         </div>

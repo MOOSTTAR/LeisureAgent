@@ -5,6 +5,11 @@ import { LobbyCard } from './LobbyCard'
 import { Sparkle, SlidersHorizontal } from '@phosphor-icons/react'
 
 export function Lobby() {
+  const handleManualPlanClick = () => {
+    // 页面跳转逻辑
+    window.location.hash = '/manual-plan'
+  }
+
   return (
     <div className="min-h-[100dvh] bg-slate-50/50">
       {/* 顶部导航占位 */}
@@ -52,6 +57,7 @@ export function Lobby() {
             title="手动规划"
             description="亲自挑选每个环节，灵活定制活动时间、地点和预算，打造专属的个性化方案。"
             icon={<SlidersHorizontal weight="fill" size={32} />}
+            onClick={handleManualPlanClick}
           />
         </div>
       </main>

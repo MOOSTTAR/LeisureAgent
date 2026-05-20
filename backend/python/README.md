@@ -2,14 +2,22 @@
 
 ## 技术栈
 
+### 后端
 | 切面 | 技术组件 | 推荐版本 | 核心作用 |
 |------|----------|----------|----------|
 | 语言 | Python | 3.12 | AI 编程首选语言，生态最成熟 |
-| Web 框架 | FastAPI | ^0.115.0 | 异步高性能 Web 框架，自动生成 Swagger 文档 |
-| 数据校验 | Pydantic | ^2.9.0 | 用于 Agent 输入输出的严格数据格式校验 |
-| Agent 编排 | LangGraph / LangChain | 最新版 | 构建带状态循环、复杂规划逻辑的 Agent |
-| LLM SDK | OpenAI SDK / DashScope | 根据选型 | 调用底层大语言模型 |
-| 存储 | SQLite | Python 内置 | 零配置轻量级数据库，持久化 Mock 数据和订单状态 |
+| Web 框架 | FastAPI | 0.115.0 | 异步高性能 Web 框架，自动生成 Swagger 文档 |
+| 数据校验 | Pydantic | 2.9.0 | 用于 Agent 输入输出的严格数据格式校验 |
+
+### Agent
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 编排框架 | LangGraph | 最新版 (暂定 1.2) | 构建带状态循环、复杂规划逻辑的 Agent |
+
+### 存储
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 数据库 | SQLite | Python 内置 | 零配置轻量级数据库，持久化 Mock 数据和订单状态 |
 
 ## 职责
 
@@ -44,7 +52,6 @@ uvicorn app.main:app --reload --port 8000
 - Python 3.12
 - FastAPI ^0.115.0
 - Pydantic ^2.9.0
-- LangChain + LangGraph
+- LangGraph
 - Uvicorn
-- OpenAI SDK / DashScope
 - SQLite（Python 内置）

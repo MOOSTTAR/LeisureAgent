@@ -1,0 +1,35 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+*.egg-info/
+.pytest_cache/
+
+# Java
+*.class
+*.log
+target/
+.gradle/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/settings.local.json

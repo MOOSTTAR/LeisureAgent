@@ -16,16 +16,17 @@ Agent 会在几分钟内完成：
 
 | 层       | 选型                                |
 |----------|-------------------------------------|
-| 前端框架 | Next.js 14 (App Router)             |
-| UI 库    | shadcn/ui + Tailwind CSS            |
-| AI 集成  | Vercel AI SDK (ai + @ai-sdk/openai) |
-| 状态管理 | React Context + useReducer          |
+| 框架     | React ^19.0.0                       |
+| 构建工具 | Vite ^6.0.0                         |
+| 语言     | TypeScript ^5.5.0                   |
+| UI 库    | Tailwind CSS ^4.0.0 + Shadcn/ui / Ant Design |
 | 动画     | Framer Motion                       |
-| 地图     | 高德地图 JS API                     |
+| 图标     | Phosphor Icons                      |
+
 ## 项目结构
 
 ```
-├── frontend/    # Next.js 前端（含 Agent 逻辑、API Route）
+├── frontend/    # React + Vite 前端
 ├── design/      # 设计文档
 └── .claude/     # Claude Code 配置
 ```

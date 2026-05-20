@@ -34,3 +34,7 @@ Thumbs.db
 # Claude
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Frontend Build
+frontend/.next/
+frontend/next-env.d.ts

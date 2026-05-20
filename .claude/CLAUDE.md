@@ -92,35 +92,38 @@ LeisureAgent - 本地场景短时活动规划与执行 Agent，接受自然语�
 ## 技术栈
 
 ### 前端
-| 层       | 选型                                |
-|----------|-------------------------------------|
-| 框架     | React ^19.0.0                       |
-| 构建工具 | Vite ^6.0.0                         |
-| 语言     | TypeScript ^5.5.0                   |
-| UI 库    | Tailwind CSS ^4.0.0 + Shadcn/ui / Ant Design |
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 框架 | React | ^19.0.0 | 构建 Web UI 交互界面 |
+| 构建工具 | Vite | ^6.0.0 | 极速的前端构建工具 |
+| 语言 | TypeScript | ^5.5.0 | 类型安全，减少前端 Bug |
+| UI 库 | Tailwind CSS | ^4.0.0 | 快速编写精美、响应式的比赛 UI |
+| 组件库 | Shadcn/ui / Ant Design | 最新版 | 现成的组件库（对话框、卡片、时间轴） |
 
 ### 后端
-| 层           | 选型                                  |
-|--------------|---------------------------------------|
-| 智能体层     | Python + FastAPI + LangChain/LangGraph |
-| 业务服务层   | Java 17 + Spring Boot 3.x             |
-| 运行时       | Uvicorn (Python) / JAR (Java)         |
-| API 通信     | 前端↔Agent: SSE / Agent↔Service: REST |
-| 部署         | Docker Compose                        |
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 语言 | Python | 3.12 | AI 编程首选语言，生态最成熟 |
+| Web 框架 | FastAPI | ^0.115.0 | 异步高性能 Web 框架，自动生成 Swagger 文档 |
+| 数据校验 | Pydantic | ^2.9.0 | 用于 Agent 输入输出的严格数据格式校验 |
+
+### Agent
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 编排框架 | LangGraph / LangChain | 最新版 | 构建带状态循环、复杂规划逻辑的 Agent 最佳选择 |
+| LLM SDK | OpenAI SDK / DashScope | 根据选型 | 调用底层大语言模型（如 GPT-4o 或 Qwen-Max） |
+
+### 存储
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 数据库 | SQLite | Python 内置 | 零配置轻量级数据库，用于持久化 Mock 数据和订单状态 |
 
 ## 项目结构
 
 ```text
 LeisureAgent/
 ├── backend/
-│   ├── java/                    # 工程化后端 — Java + SpringBoot
-│   │   ├── src/
-│   │   │   └── main/
-│   │   │       ├── java/        # 业务逻辑、第三方 API 封装、数据持久化
-│   │   │       └── resources/   # 配置文件
-│   │   ├── pom.xml / build.gradle
-│   │   └── Dockerfile
-│   └── python/                  # 智能体层 — Python + LangGraph
+│   └── python/                  # 后端 — Python + LangGraph + FastAPI
 │       ├── app/
 │       │   ├── main.py         # FastAPI 入口，SSE streaming 端点
 │       │   ├── agent/
@@ -131,6 +134,8 @@ LeisureAgent/
 │       │   │   ├── search.py   # 搜索餐厅/活动
 │       │   │   ├── booking.py  # 预订/下单工具
 │       │   │   └── delivery.py # 配送服务工具
+│       │   ├── service/
+│       │   │   └── api.py      # 业务服务层（第三方 API 封装、数据持久化）
 │       │   ├── models/
 │       │   │   └── schemas.py  # Pydantic 请求/响应模型
 │       │   └── mock/
@@ -148,14 +153,14 @@ LeisureAgent/
 │   │   │   ├── booking/        # 预约确认、状态标签
 │   │   │   └── ui/             # shadcn/ui 或 Ant Design 组件
 │   │   ├── lib/
-│   │   │   └── api-client.ts   # Python Agent SSE 客户端
+│   │   │   └── api-client.ts   # Python 后端 SSE 客户端
 │   │   └── types/
 │   │       └── index.ts        # TypeScript 类型定义
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── tailwind.config.ts
 │   └── package.json
-├── docker-compose.yml           # 编排三个服务
+├── docker-compose.yml           # 编排两个服务
 ├── .claude/
 │   ├── skills/
 │   ├── agents/
@@ -166,12 +171,7 @@ LeisureAgent/
 
 ## 命令
 
-Java 后端（开发）：
-```bash
-cd backend/java && ./gradlew bootRun
-```
-
-Python 智能体层（开发）：
+Python 后端（开发）：
 ```bash
 cd backend/python && pip install -r requirements.txt && uvicorn app.main:app --reload --port 8000
 ```
@@ -188,34 +188,31 @@ docker-compose up -d
 
 测试：
 ```bash
-cd backend/java && ./gradlew test
 cd backend/python && pytest
 cd frontend && npm run test
 ```
 
 ## 架构
 
-三层分离架构：
+两层架构：
 
 ```text
 用户输入
   │
   ▼
-┌─────────────┐     SSE      ┌──────────────────┐    REST    ┌─────────────┐
-│   Frontend   │ ←──────────→ │  Python Agent    │ ←────────→ │  Java       │
-│  (React)     │              │  (LangGraph)     │            │  (Spring)   │
-│  纯 UI 层     │  流式回复    │  规划 + 工具调用   │  业务操作   │  工程化后端  │
-└─────────────┘              └──────────────────┘            └─────────────┘
+┌─────────────┐     SSE      ┌──────────────────┐
+│   Frontend   │ ←──────────→ │  Python Backend  │
+│  (React)     │              │  (LangGraph)     │
+│  纯 UI 层     │  流式回复    │  规划 + 工具调用   │
+└─────────────┘              └──────────────────┘
 ```
 
-- **前端**：React 纯展示层，通过 SSE 连接 Python Agent 获取流式回复
-- **Python Agent**：LangGraph 编排智能体，负责 NL 理解、活动规划、工具调用决策，通过 REST 调用 Java 后端执行业务操作
-- **Java 后端**：业务底座，提供搜索/预订/支付等 REST API，对接第三方服务和数据库
+- **前端**：React 纯展示层，通过 SSE 连接 Python 后端获取流式回复
+- **Python 后端**：FastAPI + LangGraph 编排，负责 NL 理解、活动规划、工具调用、业务逻辑
 
 ## 关键目录
 
-- `backend/java/` - Java + SpringBoot 工程化后端（业务逻辑、数据持久化、第三方 API 封装）
-- `backend/python/` - Python + LangGraph 智能体层（Agent 编排、Tools 定义、SSE 端点）
+- `backend/python/` - Python 后端（LangGraph 智能体编排、FastAPI 服务、业务逻辑、第三方 API 封装、SQLite 数据存储）
 - `frontend/` - React + Vite 前端（聊天界面、计划展示组件）
 - `design/` - 设计文档
 
@@ -224,10 +221,8 @@ cd frontend && npm run test
 - 使用中文回复
 - 前端优先使用 Shadcn/ui 或 Ant Design 组件，避免引入额外 UI 库
 - 使用 TypeScript 编写类型安全的前端代码
-- Python 端使用 FastAPI + Pydantic 做请求/响应校验
+- 后端使用 FastAPI + Pydantic 做请求/响应校验
 - Agent 逻辑使用 LangGraph 编排，定义清晰的 State、Node、Edge
-- Java 端使用 Spring Boot 标准分层（Controller → Service → Repository）
-- Python Agent 层通过 REST 调用 Java 业务服务，不直接操作数据库
 - 前端通过 SSE（Server-Sent Events）通信，使用 fetch + ReadableStream 消费
 - Tool 调用链路需包含完整的错误处理和回退逻辑
 - Mock 数据需覆盖正常流程和异常场景

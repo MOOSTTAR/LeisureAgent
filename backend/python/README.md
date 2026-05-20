@@ -1,4 +1,15 @@
-# backend/python — 智能体层（Python + LangGraph）
+# backend/python — Python 后端（FastAPI + LangGraph）
+
+## 技术栈
+
+| 切面 | 技术组件 | 推荐版本 | 核心作用 |
+|------|----------|----------|----------|
+| 语言 | Python | 3.12 | AI 编程首选语言，生态最成熟 |
+| Web 框架 | FastAPI | ^0.115.0 | 异步高性能 Web 框架，自动生成 Swagger 文档 |
+| 数据校验 | Pydantic | ^2.9.0 | 用于 Agent 输入输出的严格数据格式校验 |
+| Agent 编排 | LangGraph / LangChain | 最新版 | 构建带状态循环、复杂规划逻辑的 Agent |
+| LLM SDK | OpenAI SDK / DashScope | 根据选型 | 调用底层大语言模型 |
+| 存储 | SQLite | Python 内置 | 零配置轻量级数据库，持久化 Mock 数据和订单状态 |
 
 ## 职责
 
@@ -10,14 +21,15 @@
 |------|------|
 | `app/agent/` | LangGraph 编排（State、Node、Graph、Planner） |
 | `app/tools/` | 工具调用定义（搜索、预订、配送） |
+| `app/service/` | 业务服务层（第三方 API 封装、数据持久化） |
+| `app/db/` | SQLite 数据存储（订单状态、Mock 数据持久化） |
 | `app/models/` | Pydantic 请求/响应模型 |
 | `app/mock/` | Mock API 数据 |
 | `app/main.py` | FastAPI 入口，提供 SSE streaming 端点 |
 
 ## 通信方式
 
-- **前端 → Python Agent**：SSE（Server-Sent Events）
-- **Python Agent → Java 后端**：REST/gRPC（调用业务服务）
+- **前端 → Python 后端**：SSE（Server-Sent Events）
 
 ## 快速开始
 
@@ -29,7 +41,10 @@ uvicorn app.main:app --reload --port 8000
 
 ## 依赖
 
-- Python 3.12.8  
-- FastAPI
+- Python 3.12
+- FastAPI ^0.115.0
+- Pydantic ^2.9.0
 - LangChain + LangGraph
 - Uvicorn
+- OpenAI SDK / DashScope
+- SQLite（Python 内置）

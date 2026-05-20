@@ -61,6 +61,15 @@ export function Lobby() {
           />
         </div>
       </main>
+
+      {/* 页脚 */}
+      <footer className="border-t border-slate-200/50 bg-white/50">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <p className="text-sm text-slate-500 text-center">
+            © 2026 美团 AI Hackathon | THEGODOFAGENT · 冀国旭 · 付宇 · 龙轲垒
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -23,7 +23,7 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
       {/* 顶部导航 */}
-      <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm sticky top-0 z-10 shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <motion.button
@@ -44,7 +44,7 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
       </nav>
 
       {/* 主内容区域 - flex-1 让页脚推到底部 */}
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-12">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-12">
         {/* 页面标题 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -98,7 +98,7 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
       </main>
 
       {/* 页脚 */}
-      <footer className="border-t border-slate-200/50 bg-white/50">
+      <footer className="border-t border-slate-200/50 bg-white/50 shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <p className="text-sm text-slate-500 text-center">
             © 2026 美团 AI Hackathon | THEGODOFAGENT · 冀国旭 · 付宇 · 龙轲垒

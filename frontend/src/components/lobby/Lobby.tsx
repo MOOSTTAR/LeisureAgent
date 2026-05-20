@@ -13,7 +13,7 @@ export function Lobby() {
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
       {/* 顶部导航占位 */}
-      <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm">
+      <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-medium tracking-tight text-slate-900">
@@ -24,7 +24,7 @@ export function Lobby() {
       </nav>
 
       {/* 主内容区域 */}
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-16 md:py-24">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-16 md:py-24">
         {/* 标题区域 - 非对称布局 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -63,7 +63,7 @@ export function Lobby() {
       </main>
 
       {/* 页脚 */}
-      <footer className="border-t border-slate-200/50 bg-white/50">
+      <footer className="border-t border-slate-200/50 bg-white/50 shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <p className="text-sm text-slate-500 text-center">
             © 2026 美团 AI Hackathon | THEGODOFAGENT · 冀国旭 · 付宇 · 龙轲垒

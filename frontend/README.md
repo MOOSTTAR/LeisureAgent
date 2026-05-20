@@ -1,44 +1,73 @@
-# LeisureAgent 前端
+# React + TypeScript + Vite
 
-基于 Next.js 16 + shadcn/ui 构建的移动端优先聊天式 AI Agent 交互界面。
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 技术栈
+Currently, two official plugins are available:
 
-| 层 | 选型 |
-| --- | --- |
-| 框架 | Next.js 16 (App Router) |
-| UI | shadcn/ui + Tailwind CSS v3 |
-| AI | Vercel AI SDK v6 + @ai-sdk/openai |
-| 动画 | Framer Motion |
-| 状态 | React Context + useReducer |
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## 核心模块
+## React Compiler
 
-| 目录 | 说明 |
-| --- | --- |
-| `components/chat/` | 聊天面板、消息气泡、输入框、欢迎页 |
-| `components/plan/` | 方案时间线、活动卡片、摘要面板 |
-| `components/booking/` | 预订卡片、配送卡片、状态标签 |
-| `components/ui/` | shadcn/ui 基础组件 |
-| `lib/agent/` | Agent 核心逻辑（Planner + Tools + Mock） |
-| `lib/store/` | 状态管理（Context + Reducer） |
-| `app/api/chat/` | SSE 流式对话接口 |
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 快速开始
+## Expanding the ESLint configuration
 
-```bash
-npm install
-npm run dev
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-浏览器打开 `http://localhost:3000`。
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-## 环境变量
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-复制 `.env.local.example` 为 `.env.local` 并填写：
-
-```bash
-OPENAI_API_KEY=your-api-key
-OPENAI_BASE_URL=https://api.openai.com/v1  # 可选，自定义 API 地址
-OPENAI_MODEL=gpt-4o-mini                      # 可选
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```

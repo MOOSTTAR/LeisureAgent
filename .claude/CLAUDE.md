@@ -94,12 +94,10 @@ LeisureAgent - 本地场景短时活动规划与执行 Agent，接受自然语�
 ### 前端
 | 层       | 选型                                |
 |----------|-------------------------------------|
-| 框架     | Next.js 14 (App Router)             |
-| UI 库    | shadcn/ui + Tailwind CSS            |
-| 状态管理 | React Context + useReducer          |
-| 动画     | Framer Motion                       |
-| 地图     | 高德地图 JS API                     |
-| 部署     | Vercel / 本地 Docker                |
+| 框架     | React ^19.0.0                       |
+| 构建工具 | Vite ^6.0.0                         |
+| 语言     | TypeScript ^5.5.0                   |
+| UI 库    | Tailwind CSS ^4.0.0 + Shadcn/ui / Ant Design |
 
 ### 后端
 | 层           | 选型                                  |
@@ -140,18 +138,21 @@ LeisureAgent/
 │       ├── requirements.txt
 │       ├── Dockerfile
 │       └── tests/
-├── frontend/                    # Next.js 前端
-│   ├── app/
-│   │   ├── page.tsx            # 主页面（聊天界面）
-│   │   └── layout.tsx          # 根布局
-│   ├── components/
-│   │   ├── chat/               # 聊天面板、消息气泡
-│   │   ├── plan/               # 计划时间线、活动卡片
-│   │   ├── booking/            # 预约确认、状态标签
-│   │   └── ui/                 # shadcn/ui 组件
-│   ├── lib/
-│   │   └── api-client.ts       # Python Agent SSE 客户端
-│   ├── next.config.js
+├── frontend/                    # React + Vite 前端
+│   ├── src/
+│   │   ├── App.tsx             # 根组件
+│   │   ├── main.tsx            # 入口文件
+│   │   ├── components/
+│   │   │   ├── chat/           # 聊天面板、消息气泡
+│   │   │   ├── plan/           # 计划时间线、活动卡片
+│   │   │   ├── booking/        # 预约确认、状态标签
+│   │   │   └── ui/             # shadcn/ui 或 Ant Design 组件
+│   │   ├── lib/
+│   │   │   └── api-client.ts   # Python Agent SSE 客户端
+│   │   └── types/
+│   │       └── index.ts        # TypeScript 类型定义
+│   ├── index.html
+│   ├── vite.config.ts
 │   ├── tailwind.config.ts
 │   └── package.json
 ├── docker-compose.yml           # 编排三个服务
@@ -202,12 +203,12 @@ cd frontend && npm run test
   ▼
 ┌─────────────┐     SSE      ┌──────────────────┐    REST    ┌─────────────┐
 │   Frontend   │ ←──────────→ │  Python Agent    │ ←────────→ │  Java       │
-│  (Next.js)   │              │  (LangGraph)     │            │  (Spring)   │
+│  (React)     │              │  (LangGraph)     │            │  (Spring)   │
 │  纯 UI 层     │  流式回复    │  规划 + 工具调用   │  业务操作   │  工程化后端  │
 └─────────────┘              └──────────────────┘            └─────────────┘
 ```
 
-- **前端**：Next.js 纯展示层，通过 SSE 连接 Python Agent 获取流式回复
+- **前端**：React 纯展示层，通过 SSE 连接 Python Agent 获取流式回复
 - **Python Agent**：LangGraph 编排智能体，负责 NL 理解、活动规划、工具调用决策，通过 REST 调用 Java 后端执行业务操作
 - **Java 后端**：业务底座，提供搜索/预订/支付等 REST API，对接第三方服务和数据库
 
@@ -215,13 +216,14 @@ cd frontend && npm run test
 
 - `backend/java/` - Java + SpringBoot 工程化后端（业务逻辑、数据持久化、第三方 API 封装）
 - `backend/python/` - Python + LangGraph 智能体层（Agent 编排、Tools 定义、SSE 端点）
-- `frontend/` - Next.js 前端（聊天界面、计划展示组件）
+- `frontend/` - React + Vite 前端（聊天界面、计划展示组件）
 - `design/` - 设计文档
 
 ## 开发规范
 
 - 使用中文回复
-- 前端优先使用 shadcn/ui 组件，避免引入额外 UI 库
+- 前端优先使用 Shadcn/ui 或 Ant Design 组件，避免引入额外 UI 库
+- 使用 TypeScript 编写类型安全的前端代码
 - Python 端使用 FastAPI + Pydantic 做请求/响应校验
 - Agent 逻辑使用 LangGraph 编排，定义清晰的 State、Node、Edge
 - Java 端使用 Spring Boot 标准分层（Controller → Service → Repository）

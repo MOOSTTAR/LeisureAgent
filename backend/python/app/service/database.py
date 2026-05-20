@@ -43,8 +43,71 @@ def close_db() -> None:
 # ── 表结构 ──
 
 _SCHEMA = """
+
+/* 餐厅详情表（和 location 表关联使用） */
+CREATE TABLE restaurant (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
+    name TEXT NOT NULL, -- 餐厅名字
+    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
+    x INTEGER NOT NULL, -- 坐标系,横坐标 
+    y INTEGER NOT NULL, -- 坐标系，纵坐标
+    cuisine_type TEXT DEFAULT NULL, -- 菜系：中餐/西餐/日料/火锅/烧烤等
+    dining_style INTEGER DEFAULT 0, -- 用餐方式 0堂食 1外卖 2均可
+    tags TEXT DEFAULT NULL, -- 标签，JSON格式：["网红店","亲子餐厅","夜景"]
+    business_hours TEXT DEFAULT NULL, -- 营业时间，如“10:00-22:00”
+    booking_hours TEXT DEFAULT NULL, -- 可以预约的时间，如“10:00-22:00”，不能预约直接填充“不能预约”
+    current_booking_count INTEGER DEFAULT -1, -- 当前预约数
+    max_booking_count INTEGER DEFAULT -1, -- 最大预约数
+    queue_time INTEGER DEFAULT -1, -- -1则不需要排队，大于0则为排队时长
+    indoor_env TEXT DEFAULT NULL -- 室内环境描述
+);
+
+/* 公园信息表 */
+CREATE TABLE park (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
+    name TEXT NOT NULL, -- 公园名字
+    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
+    x INTEGER NOT NULL, -- 坐标系,横坐标 
+    y INTEGER NOT NULL, -- 坐标系，纵坐标
+    crowd_level INTEGER DEFAULT 1, -- 人流量 1稀少 2适中 3拥挤
+);
+
+/* 商场信息表 */
+CREATE TABLE mall (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
+    name TEXT NOT NULL, -- 商场名字
+    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
+    x INTEGER NOT NULL, -- 坐标系,横坐标 
+    y INTEGER NOT NULL, -- 坐标系，纵坐标
+    cinema_has INTEGER DEFAULT 0, -- 是否有影院 0无 1有
+    supermarket_has INTEGER DEFAULT 0, -- 是否有大型超市
+    discount_status INTEGER DEFAULT 0 -- 是否有优惠活动 0无 1有
+);
+
+/* 用户信息表 */
+CREATE TABLE user (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 用户ID
+    username TEXT NOT NULL, -- 登录账号
+    user_psw TEXT NOT NULL, -- 登录密码（加密存储）
+    nickname TEXT DEFAULT '', -- 用户昵称
+    avatar TEXT DEFAULT '/default/abc.png', -- 头像地址
+    phone TEXT DEFAULT NULL, -- 手机号
+    email TEXT DEFAULT NULL, -- 邮箱
+    gender INTEGER DEFAULT 0, -- 性别 0未知 1男 2女
+    age INTEGER DEFAULT NULL, -- 年龄
+    status INTEGER DEFAULT 1, -- 账号状态 0禁用 1正常
+    last_login_time TEXT DEFAULT NULL, -- 最后登录时间
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 修改时间
+
+    -- 内置索引
+    UNIQUE idx_unique_username(username), -- 账号唯一
+    UNIQUE idx_unique_phone(phone), -- 手机号唯一
+    INDEX idx_user_status(status)
+);
+
 CREATE TABLE IF NOT EXISTS items (
-    id          TEXT PRIMARY KEY,
+    id          Integer PRIMARY KEY,
     name        TEXT NOT NULL,
     category    TEXT NOT NULL,
     address     TEXT NOT NULL DEFAULT '',
@@ -181,8 +244,6 @@ def _insert_item(conn: sqlite3.Connection, row: dict) -> None:
 
 
 # ── 初始化入口 ──
-
-
 def init_db() -> None:
     """创建表并写入种子数据（幂等安全，应用启动时调用一次）。"""
     conn = get_connection()

@@ -40,28 +40,32 @@ function App() {
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {currentPage === 'lobby' ? (
-        <motion.div
-          key="lobby"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Lobby />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="manual-plan"
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 50 }}
-          transition={{ duration: 0.3 }}
-        >
-          <ManualPlanPage onBack={handleBack} />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="h-[100dvh] overflow-hidden">
+      <AnimatePresence mode="wait">
+        {currentPage === 'lobby' ? (
+          <motion.div
+            key="lobby"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <Lobby />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="manual-plan"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ManualPlanPage onBack={handleBack} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

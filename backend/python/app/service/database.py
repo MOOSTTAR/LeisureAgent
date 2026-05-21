@@ -62,16 +62,6 @@ CREATE TABLE restaurant (
     indoor_env TEXT DEFAULT NULL -- 室内环境描述
 );
 
-/* 公园信息表 */
-CREATE TABLE park (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
-    name TEXT NOT NULL, -- 公园名字
-    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
-    x INTEGER NOT NULL, -- 坐标系,横坐标 
-    y INTEGER NOT NULL, -- 坐标系，纵坐标
-    crowd_level INTEGER DEFAULT 1, -- 人流量 1稀少 2适中 3拥挤
-);
-
 /* 商场信息表 */
 CREATE TABLE mall (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID

@@ -158,57 +158,6 @@ CREATE TABLE travel_plan_item (
 );
 
 
-CREATE TABLE IF NOT EXISTS items (
-    id          Integer PRIMARY KEY,
-    name        TEXT NOT NULL,
-    category    TEXT NOT NULL,
-    address     TEXT NOT NULL DEFAULT '',
-    rating      REAL NOT NULL DEFAULT 0 CHECK(rating >= 0 AND rating <= 5),
-    avg_cost    REAL NOT NULL DEFAULT 0 CHECK(avg_cost >= 0),
-    available   INTEGER NOT NULL DEFAULT 1,
-    tags        TEXT NOT NULL DEFAULT '[]',
-    item_type   TEXT NOT NULL DEFAULT 'dining'
-        CHECK(item_type IN ('dining', 'activity', 'delivery')),
-    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-);
-
-CREATE TABLE IF NOT EXISTS bookings (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    booking_id   TEXT UNIQUE NOT NULL,
-    item_id      TEXT NOT NULL,
-    item_name    TEXT NOT NULL,
-    time         TEXT NOT NULL DEFAULT '',
-    party_size   INTEGER NOT NULL DEFAULT 1 CHECK(party_size >= 1 AND party_size <= 20),
-    contact_name TEXT NOT NULL DEFAULT '',
-    contact_phone TEXT NOT NULL DEFAULT '',
-    status       TEXT NOT NULL DEFAULT 'confirmed'
-        CHECK(status IN ('confirmed', 'cancelled', 'completed')),
-    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-    FOREIGN KEY (item_id) REFERENCES items(id)
-);
-
-CREATE TABLE IF NOT EXISTS delivery_orders (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id     TEXT UNIQUE NOT NULL,
-    item_id      TEXT NOT NULL,
-    item_name    TEXT NOT NULL,
-    address      TEXT NOT NULL DEFAULT '',
-    quantity     INTEGER NOT NULL DEFAULT 1 CHECK(quantity >= 1),
-    status       TEXT NOT NULL DEFAULT 'pending'
-        CHECK(status IN ('pending', 'delivering', 'completed', 'cancelled')),
-    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-    FOREIGN KEY (item_id) REFERENCES items(id)
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-    id           TEXT PRIMARY KEY,
-    user_input   TEXT NOT NULL DEFAULT '',
-    plan_summary TEXT NOT NULL DEFAULT '',
-    status       TEXT NOT NULL DEFAULT 'active'
-        CHECK(status IN ('active', 'completed', 'expired')),
-    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-);
 """
 
 # ── 基础 CRUD ──

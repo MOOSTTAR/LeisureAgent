@@ -5,14 +5,21 @@ from __future__ import annotations
 import json
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.agent.graph import graph
 from app.agent.state import AgentState
+from app.api.amusement_park_api import router as amusement_park_router
+from app.api.exhibition_hall_api import router as exhibition_hall_router
+from app.api.mall_api import router as mall_router
+from app.api.restaurant_api import router as restaurant_router
+from app.api.scenic_spot_api import router as scenic_spot_router
+from app.api.travel_plan_api import router as travel_plan_router
+from app.api.travel_plan_item_api import router as travel_plan_item_router
+from app.db.database import init_db
 from app.models.schemas import ChatRequest
-from app.service.database import init_db
 
 app = FastAPI(title="LeisureAgent", version="0.1.0")
 
@@ -22,6 +29,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── 注册业务 API 路由 ──
+app.include_router(restaurant_router)
+app.include_router(mall_router)
+app.include_router(amusement_park_router)
+app.include_router(scenic_spot_router)
+app.include_router(exhibition_hall_router)
+app.include_router(travel_plan_router)
+app.include_router(travel_plan_item_router)
 
 
 @app.on_event("startup")

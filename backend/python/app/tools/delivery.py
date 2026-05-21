@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from app.models.schemas import BookingRequest, BookingResult
-from app.mock.data import SUCCESS_BOOKING
+from app.models.schemas import BookingRequest
 
 
 def order_delivery(request: BookingRequest) -> dict:
@@ -12,6 +11,4 @@ def order_delivery(request: BookingRequest) -> dict:
     if not request.item_id:
         return {"success": False, "error": "缺少商品信息"}
 
-    result = SUCCESS_BOOKING.model_dump()
-    result["message"] = f"已下单 {request.item_name}，预计 30 分钟内送达"
-    return result
+    return {"success": True, "booking_id": "DL" + request.item_id, "message": f"已下单 {request.item_name}，预计 30 分钟内送达"}

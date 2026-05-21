@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from app.models.schemas import BookingRequest, BookingResult
-from app.mock.data import SUCCESS_BOOKING
+from app.models.schemas import BookingRequest
 
 
 def create_booking(request: BookingRequest) -> dict:
@@ -13,5 +12,4 @@ def create_booking(request: BookingRequest) -> dict:
     if not request.item_id or not request.time:
         return {"success": False, "error": "缺少必填信息：item_id 或 time"}
 
-    result = SUCCESS_BOOKING.model_dump()
-    return result
+    return {"success": True, "booking_id": "BK" + request.item_id, "message": "预订成功"}

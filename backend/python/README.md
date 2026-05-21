@@ -26,15 +26,16 @@
 
 ## 核心模块
 
-| 模块 | 说明 |
-|------|------|
-| `app/agent/` | LangGraph 编排（State、Node、Graph、Planner） |
-| `app/tools/` | 工具调用定义（搜索、预订、配送） |
-| `app/service/` | 业务服务层（第三方 API 封装、数据持久化） |
-| `app/db/` | SQLite 数据存储（订单状态、Mock 数据持久化） |
-| `app/models/` | Pydantic 请求/响应模型 |
-| `app/mock/` | Mock API 数据 |
-| `app/main.py` | FastAPI 入口，提供 SSE streaming 端点 |
+| 模块               | 说明                                     |
+|------------------|----------------------------------------|
+| `app/agent/`     | LangGraph 编排（State、Node、Graph、Planner） |
+| `app/tools/`     | 工具调用定义（搜索、预订、配送）                       |
+| `app/service/`   | 业务服务层（第三方 API 封装、数据持久化）                |
+| `app/db/`        | SQLite 数据存储（订单状态、Mock 数据持久化）           |
+| `app/models/`    | Pydantic 请求/响应模型                       |
+| `app/mock/`      | Mock API 数据                            |
+| `app/repository` | Repository 数据访问呢层，用于访问SQLite数据库数据      |
+| `app/main.py`    | FastAPI 入口，提供 SSE streaming 端点         |
 
 ## 通信方式
 
@@ -45,7 +46,7 @@
 ```bash
 cd backend/python
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --host localhost --port 8080
 ```
 
 ## 依赖

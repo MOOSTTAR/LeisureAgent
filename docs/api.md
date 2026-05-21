@@ -6,8 +6,6 @@ LeisureAgent 后端 API 接口定义。
 
 | 端点 | 方法 | 描述 |
 |------|------|------|
-| `/api/chat` | POST | 聊天对话，SSE 流式响应 |
-| `/api/health` | GET | 健康检查 |
 | `/api/restaurants` | GET | 获取餐厅列表 |
 | `/api/restaurants/:id` | GET | 获取单个餐厅详情 |
 | `/api/bookings` | POST | 创建预订 |
@@ -32,25 +30,6 @@ LeisureAgent 后端 API 接口定义。
 **状态码说明：**
 - `code = 0`：成功
 - `code != 0`：失败，`msg` 中包含错误信息
-
----
-
-## `/api/health` - 健康检查
-
-**请求：** `GET /api/health`
-
-**响应：**
-
-```json
-{
-  "code": 0,
-  "data": {
-    "status": "healthy",
-    "timestamp": "2026-05-20T12:00:00Z"
-  },
-  "msg": "success"
-}
-```
 
 ---
 
@@ -327,37 +306,6 @@ LeisureAgent 后端 API 接口定义。
   },
   "msg": "success"
 }
-```
-
----
-
-## `/api/chat` - 聊天对话
-
-**请求：** `POST /api/chat`
-
-**请求体：**
-
-```json
-{
-  "message": "用户输入的自然语言消息",
-  "session_id": "可选 - 会话 ID，用于上下文关联"
-}
-```
-
-**响应：** SSE (Server-Sent Events) 流式响应
-
-```text
-event: message
-data: {"type": "text", "content": "AI 回复的文本片段"}
-
-event: message
-data: {"type": "plan", "data": {"activities": [...], "restaurants": [...]}}
-
-event: message
-data: {"type": "booking", "data": {"booking_id": "BKxxx", "status": "confirmed"}}
-
-event: done
-data: {"status": "complete"}
 ```
 
 ---

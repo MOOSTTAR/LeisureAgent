@@ -20,6 +20,12 @@ const CATEGORIES = [
 ]
 
 export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
+  const handleCategoryClick = (categoryId: string) => {
+    if (categoryId === 'food') {
+      window.location.hash = '/manual-plan/restaurant'
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
       {/* 顶部导航 */}
@@ -86,6 +92,7 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
                 stiffness: 100,
                 damping: 20,
               }}
+              onClick={() => handleCategoryClick(category.id)}
             >
               <CategoryCard
                 name={category.name}

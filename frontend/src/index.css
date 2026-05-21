@@ -15,7 +15,8 @@ html, body {
 
 #root {
   min-height: 100dvh;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 /* ====== 主题滚动条（Emerald 翠绿配色） ====== */
@@ -50,6 +51,11 @@ html, body {
 * {
   scrollbar-width: thin;
   scrollbar-color: hsl(160 55% 35% / 0.6) hsl(160 30% 96%);
+}
+
+/* 强制滚动条始终可见 */
+.force-scroll {
+  overflow-y: scroll !important;
 }
 
 /* Dark mode */

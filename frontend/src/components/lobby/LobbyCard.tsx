@@ -31,7 +31,7 @@ export function LobbyCard({ title, description, icon, onClick }: LobbyCardProps)
     >
       {/* 卡片容器 */}
       <motion.div
-        className="relative h-full rounded-[2.5rem] bg-white border border-slate-200/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer"
+        className="relative h-full rounded-[2.5rem] bg-white border border-slate-200/50 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.12)] hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] transition-shadow duration-300 overflow-hidden cursor-pointer"
         whileHover={{
           scale: 1.02,
           transition: { duration: 0.3, type: 'spring', stiffness: 100, damping: 20 },

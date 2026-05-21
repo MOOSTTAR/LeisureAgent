@@ -6,6 +6,7 @@ import { CategoryCard } from '../components/category/CategoryCard'
 
 interface ManualPlanPageProps {
   onBack: () => void
+  onNavigate?: (page: string) => void
 }
 
 // 分类板块数据
@@ -19,7 +20,7 @@ const CATEGORIES = [
   { id: 'sports', name: '运动', icon: '⚽', color: 'red', description: '活力运动' },
 ]
 
-export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
+export function ManualPlanPage({ onBack, onNavigate }: ManualPlanPageProps) {
   const handleCategoryClick = (categoryId: string) => {
     if (categoryId === 'food') {
       window.location.hash = '/manual-plan/restaurant'
@@ -60,6 +61,7 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
               animate={{ opacity: 1, x: 0 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => onNavigate?.('travel-plans')}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700"
             >
               <User weight="bold" size={20} />

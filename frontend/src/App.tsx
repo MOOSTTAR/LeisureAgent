@@ -6,6 +6,7 @@ import { ParkPage } from './pages/ParkPage'
 import { MallPage } from './pages/MallPage'
 import { ExhibitionPage } from './pages/ExhibitionPage'
 import { AmusementParkPage } from './pages/AmusementParkPage'
+import { TravelPlanPage } from './pages/TravelPlanPage'
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import './index.css'
 
@@ -32,7 +33,7 @@ function CursorCircle() {
   )
 }
 
-type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibition' | 'amusement'
+type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibition' | 'amusement' | 'travel-plans'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('lobby')
@@ -53,6 +54,8 @@ function App() {
         setCurrentPage('exhibition')
       } else if (hash === '/manual-plan/amusement') {
         setCurrentPage('amusement')
+      } else if (hash === '/travel-plans') {
+        setCurrentPage('travel-plans')
       } else {
         setCurrentPage('lobby')
       }
@@ -102,6 +105,18 @@ function App() {
     setCurrentPage('manual-plan')
   }
 
+  const handleTravelPlansBack = () => {
+    window.location.hash = '/manual-plan'
+    setCurrentPage('manual-plan')
+  }
+
+  const handleNavigate = (page: string) => {
+    if (page === 'travel-plans') {
+      window.location.hash = '/travel-plans'
+      setCurrentPage('travel-plans')
+    }
+  }
+
   return (
     <div className="h-[100dvh]">
       <CursorCircle />
@@ -125,7 +140,7 @@ function App() {
             transition={{ duration: 0.3 }}
             className="h-full"
           >
-            <ManualPlanPage onBack={handleBack} />
+            <ManualPlanPage onBack={handleBack} onNavigate={handleNavigate} />
           </motion.div>
         ) : currentPage === 'restaurant' ? (
           <motion.div
@@ -181,6 +196,17 @@ function App() {
             className="h-full"
           >
             <MallPage onBack={handleMallBack} />
+          </motion.div>
+        ) : currentPage === 'travel-plans' ? (
+          <motion.div
+            key="travel-plans"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <TravelPlanPage onBack={handleTravelPlansBack} />
           </motion.div>
         ) : null}
       </AnimatePresence>

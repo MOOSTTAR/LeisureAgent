@@ -231,7 +231,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
         <motion.div
           animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
           transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className="overflow-hidden"
+          className={collapsed ? 'overflow-hidden' : ''}
         >
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-pink-100">
             <div className="flex items-center gap-2">

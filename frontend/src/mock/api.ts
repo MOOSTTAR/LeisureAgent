@@ -1947,6 +1947,127 @@ export async function getAmusementParks(params: GetAmusementParksParams): Promis
 
 export { type AmusementPark, type GetAmusementParksParams, type GetAmusementParksResponse }
 
+// ==================== TravelPlan (游玩规划方案) ====================
+
+export interface TravelPlan {
+  id: number
+  plan_title: string
+  plan_desc: string | null
+  travel_days: number
+  travel_type: string | null
+  travel_date: string | null
+  total_cost: number
+  created_at: string
+  updated_at: string
+}
+
+const MOCK_TRAVEL_PLANS: TravelPlan[] = [
+  {
+    id: 1,
+    plan_title: '周末亲子一日游',
+    plan_desc: '带娃逛动物园，中午吃海底捞，下午去游乐场',
+    travel_days: 1,
+    travel_type: '亲子',
+    travel_date: '2026-05-24',
+    total_cost: 800,
+    created_at: '2026-05-20 14:30:00',
+    updated_at: '2026-05-20 14:30:00',
+  },
+  {
+    id: 2,
+    plan_title: '朋友聚会吃饭逛街',
+    plan_desc: '和朋友一起吃烤肉，逛商场看电影',
+    travel_days: 1,
+    travel_type: '聚会',
+    travel_date: '2026-05-25',
+    total_cost: 1200,
+    created_at: '2026-05-21 09:15:00',
+    updated_at: '2026-05-21 09:15:00',
+  },
+  {
+    id: 3,
+    plan_title: '独自散心文化之旅',
+    plan_desc: '上午看展，下午去公园散步，晚上简单吃点',
+    travel_days: 1,
+    travel_type: '单人出行',
+    travel_date: '2026-05-23',
+    total_cost: 350,
+    created_at: '2026-05-19 16:00:00',
+    updated_at: '2026-05-22 08:00:00',
+  },
+  {
+    id: 4,
+    plan_title: '约会浪漫行程',
+    plan_desc: '去环球影城玩一天，晚上吃西餐',
+    travel_days: 1,
+    travel_type: '单人出行',
+    travel_date: '2026-06-01',
+    total_cost: 2000,
+    created_at: '2026-05-18 20:45:00',
+    updated_at: '2026-05-18 20:45:00',
+  },
+  {
+    id: 5,
+    plan_title: '周末放松半日游',
+    plan_desc: '下午去公园散步，顺便逛逛商场',
+    travel_days: 1,
+    travel_type: '单人出行',
+    travel_date: '2026-05-30',
+    total_cost: 200,
+    created_at: '2026-05-22 11:00:00',
+    updated_at: '2026-05-22 11:00:00',
+  },
+]
+
+export interface GetTravelPlansParams {
+  page?: number
+  page_size?: number
+}
+
+export interface GetTravelPlansResponse {
+  code: number
+  data: {
+    list: TravelPlan[]
+    total: number
+    page: number
+    page_size: number
+  }
+  msg: string
+}
+
+export async function getTravelPlans(params: GetTravelPlansParams = {}): Promise<GetTravelPlansResponse> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  const page = params.page || 1
+  const page_size = params.page_size || 5
+  const start = (page - 1) * page_size
+  const end = start + page_size
+  const list = MOCK_TRAVEL_PLANS.slice(start, end)
+
+  return {
+    code: 0,
+    data: {
+      list,
+      total: MOCK_TRAVEL_PLANS.length,
+      page,
+      page_size,
+    },
+    msg: 'success',
+  }
+}
+
+export async function deleteTravelPlan(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  const index = MOCK_TRAVEL_PLANS.findIndex(p => p.id === id)
+  if (index === -1) {
+    return { code: 404, msg: '计划不存在' }
+  }
+
+  MOCK_TRAVEL_PLANS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
+}
+
 export async function getParks(params: GetParksParams): Promise<GetParksResponse> {
   // 模拟网络延迟
   await new Promise(resolve => setTimeout(resolve, 200))

@@ -11,6 +11,8 @@ LeisureAgent 后端 API 接口定义。
 | `/api/malls` | GET | 获取商场列表 |
 | `/api/exhibitions` | GET | 获取展馆展览列表 |
 | `/api/amusement-parks` | GET | 获取游乐园列表 |
+| `/api/travel-plans` | GET | 获取计划列表 |
+| `/api/travel-plans/{id}` | DELETE | 删除计划列表 |
 
 ---
 

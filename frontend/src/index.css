@@ -16,7 +16,7 @@ html, body {
 #root {
   min-height: 100dvh;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 /* ====== 主题滚动条（Emerald 翠绿配色） ====== */
@@ -74,4 +74,17 @@ html, body {
 
 .dark * {
   scrollbar-color: hsl(155 65% 55% / 0.5) hsl(160 10% 12%);
+}
+
+/* 动态渐变箭头动画 */
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.arrow-gradient {
+  background: linear-gradient(135deg, #10b981, #34d399, #059669, #10b981);
+  background-size: 300% 300%;
+  animation: gradient-flow 3s ease infinite;
 }

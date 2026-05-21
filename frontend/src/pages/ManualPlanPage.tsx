@@ -25,6 +25,8 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
       window.location.hash = '/manual-plan/restaurant'
     } else if (categoryId === 'outdoor') {
       window.location.hash = '/manual-plan/park'
+    } else if (categoryId === 'shopping') {
+      window.location.hash = '/manual-plan/mall'
     }
   }
 

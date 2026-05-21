@@ -6,7 +6,6 @@ import { Sparkle, SlidersHorizontal } from '@phosphor-icons/react'
 
 export function Lobby() {
   const handleManualPlanClick = () => {
-    // 页面跳转逻辑
     window.location.hash = '/manual-plan'
   }
 
@@ -21,42 +20,87 @@ export function Lobby() {
         </div>
       </nav>
 
-      {/* 主内容区域 - flex-1 让页脚推到底部 */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-12">
-        {/* 标题区域 */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-12"
-        >
-          <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-slate-900 mb-6">
-            周末活动规划
-            <br />
-            <span className="text-slate-400">从未如此简单</span>
-          </h2>
-          <p className="text-lg text-slate-500 leading-relaxed max-w-[65ch]">
-            告诉 AI 你的需求，或手动定制每个细节。
-            <br />
-            4-6 小时的精彩时光，一键生成完整方案。
-          </p>
-        </motion.div>
+      {/* 主内容区域 */}
+      <main className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-7xl mx-auto w-full px-6">
 
-        {/* 卡片网格 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <LobbyCard
-            type="ai"
-            title="AI 一键规划"
-            description="用自然语言描述你的需求，AI 智能体自动规划完整活动方案，包括餐厅、活动和交通安排。"
-            icon={<Sparkle weight="fill" size={32} />}
+          {/* 标题 */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex items-center gap-5 mb-8"
+          >
+            <motion.img
+              src="/LeisureAgentI.png"
+              alt=""
+              className="h-32 w-auto shrink-0 cursor-pointer"
+              whileHover={{
+                scale: [1, 1.2, 1, 1.15, 1],
+                rotate: [0, -10, 10, -8, 0],
+                transition: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
+              }}
+            />
+            <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-slate-900">
+              周末活动规划
+              <br />
+              <span className="text-slate-400">从未如此简单</span>
+            </h2>
+          </motion.div>
+
+          {/* 分隔横线 */}
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ delay: 0.15, duration: 0.5 }}
+            className="w-[480px] md:w-[600px] h-[1px] bg-slate-300 mb-6"
           />
-          <LobbyCard
-            type="manual"
-            title="手动规划"
-            description="亲自挑选每个环节，灵活定制活动时间、地点和预算，打造专属的个性化方案。"
-            icon={<SlidersHorizontal weight="fill" size={32} />}
-            onClick={handleManualPlanClick}
-          />
+
+          {/* 原文 */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="text-sm text-slate-500 text-center leading-relaxed mb-8"
+          >
+            告诉AI你的需求，或手动定制每个细节。
+            <br />
+            4-6 小时的精彩时光，一键生成完整方案
+          </motion.p>
+
+          {/* 卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
+            {/* AI 列 */}
+            <motion.div
+              className="flex flex-col items-center"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+            >
+              <LobbyCard
+                type="ai"
+                title="AI 一键规划"
+                description="用自然语言描述你的需求，AI 智能体自动规划完整活动方案。"
+                icon={<Sparkle weight="fill" size={32} />}
+              />
+            </motion.div>
+
+            {/* 手动列 */}
+            <motion.div
+              className="flex flex-col items-center"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <LobbyCard
+                type="manual"
+                title="手动规划"
+                description="亲自挑选每个环节，灵活定制活动时间、地点和预算。"
+                icon={<SlidersHorizontal weight="fill" size={32} />}
+                onClick={handleManualPlanClick}
+              />
+            </motion.div>
+          </div>
         </div>
       </main>
 

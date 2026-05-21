@@ -468,7 +468,7 @@ export async function getRestaurants(params: GetRestaurantsParams): Promise<GetR
   }
 }
 
-// ==================== 公园 / Parks ====================
+// ==================== 户外景点 / Scenic Spots ====================
 
 interface Park {
   id: number
@@ -476,12 +476,19 @@ interface Park {
   address: string
   x: number
   y: number
-  crowd_level: number // 1 稀少 2 适中 3 拥挤
+  spot_type: string | null // 山水/古迹/人文/溶洞等
+  business_hours: string | null
+  booking_hours: string | null
+  current_booking_count: number
+  max_booking_count: number
+  crowd_density: number // 1 稀少 2 适中 3 拥挤
 }
 
 interface GetParksParams {
   name?: string
-  crowd_level?: number
+  spot_type?: string
+  crowd_density?: number
+  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
   page_size?: number
@@ -501,27 +508,42 @@ interface GetParksResponse {
 const MOCK_PARKS: Park[] = [
   {
     id: 1,
-    name: '朝阳公园',
-    address: '朝阳区朝阳公园路 1 号',
-    x: 800,
-    y: 600,
-    crowd_level: 2,
-  },
-  {
-    id: 2,
     name: '颐和园',
     address: '海淀区新建宫门路 19 号',
     x: 2000,
     y: 1500,
-    crowd_level: 3,
+    spot_type: '古迹',
+    business_hours: '06:30-18:00',
+    booking_hours: '06:00-17:00',
+    current_booking_count: 120,
+    max_booking_count: 500,
+    crowd_density: 3,
+  },
+  {
+    id: 2,
+    name: '八达岭长城',
+    address: '延庆区G6京藏高速 58 号',
+    x: 8000,
+    y: 6000,
+    spot_type: '古迹',
+    business_hours: '07:30-16:00',
+    booking_hours: '07:00-15:00',
+    current_booking_count: 300,
+    max_booking_count: 1000,
+    crowd_density: 3,
   },
   {
     id: 3,
-    name: '圆明园',
-    address: '海淀区清华西路 28 号',
-    x: 1800,
-    y: 1400,
-    crowd_level: 2,
+    name: '故宫博物院',
+    address: '东城区景山前街 4 号',
+    x: 300,
+    y: 250,
+    spot_type: '古迹',
+    business_hours: '08:30-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 200,
+    max_booking_count: 800,
+    crowd_density: 3,
   },
   {
     id: 4,
@@ -529,15 +551,25 @@ const MOCK_PARKS: Park[] = [
     address: '朝阳区北辰东路 15 号',
     x: 1200,
     y: 1000,
-    crowd_level: 1,
+    spot_type: '山水',
+    business_hours: '06:00-21:00',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    crowd_density: 1,
   },
   {
     id: 5,
-    name: '玉渊潭公园',
-    address: '海淀区西三环中路 10 号',
-    x: 1000,
-    y: 800,
-    crowd_level: 2,
+    name: '香山公园',
+    address: '海淀区香山买卖街 40 号',
+    x: 3000,
+    y: 2200,
+    spot_type: '山水',
+    business_hours: '06:00-18:30',
+    booking_hours: '06:00-17:00',
+    current_booking_count: 50,
+    max_booking_count: 300,
+    crowd_density: 2,
   },
   {
     id: 6,
@@ -545,121 +577,493 @@ const MOCK_PARKS: Park[] = [
     address: '西城区文津街 1 号',
     x: 500,
     y: 400,
-    crowd_level: 3,
+    spot_type: '古迹',
+    business_hours: '06:30-20:00',
+    booking_hours: '06:00-19:00',
+    current_booking_count: 80,
+    max_booking_count: 400,
+    crowd_density: 3,
   },
   {
     id: 7,
-    name: '中山公园',
-    address: '东城区中华路 4 号',
-    x: 400,
-    y: 350,
-    crowd_level: 2,
-  },
-  {
-    id: 8,
-    name: '景山公园',
-    address: '西城区景山前街',
-    x: 450,
-    y: 380,
-    crowd_level: 3,
-  },
-  {
-    id: 9,
     name: '天坛公园',
     address: '东城区天坛内东里 7 号',
     x: 600,
     y: 500,
-    crowd_level: 2,
+    spot_type: '古迹',
+    business_hours: '06:00-21:00',
+    booking_hours: '06:00-20:00',
+    current_booking_count: 90,
+    max_booking_count: 600,
+    crowd_density: 2,
   },
   {
-    id: 10,
-    name: '地坛公园',
-    address: '东城区安定门外大街地坛公园',
-    x: 700,
-    y: 550,
-    crowd_level: 1,
-  },
-  {
-    id: 11,
-    name: '日坛公园',
-    address: '朝阳区朝阳门南大街 14 号',
-    x: 550,
-    y: 420,
-    crowd_level: 1,
-  },
-  {
-    id: 12,
-    name: '月坛公园',
-    address: '西城区月坛北街甲 6 号',
-    x: 900,
-    y: 700,
-    crowd_level: 1,
-  },
-  {
-    id: 13,
-    name: '陶然亭公园',
-    address: '西城区太平街 19 号',
-    x: 350,
-    y: 300,
-    crowd_level: 2,
-  },
-  {
-    id: 14,
-    name: '紫竹院公园',
-    address: '海淀区中关村南大街 33 号',
-    x: 1100,
-    y: 850,
-    crowd_level: 1,
-  },
-  {
-    id: 15,
-    name: '北京动物园',
-    address: '西城区西直门外大街 137 号',
-    x: 950,
-    y: 750,
-    crowd_level: 3,
-  },
-  {
-    id: 16,
-    name: '北京植物园',
-    address: '海淀区香山南路',
-    x: 2500,
-    y: 1800,
-    crowd_level: 2,
-  },
-  {
-    id: 17,
-    name: '八大处公园',
-    address: '石景山区八大处路 3 号',
-    x: 2800,
-    y: 2000,
-    crowd_level: 1,
-  },
-  {
-    id: 18,
-    name: '龙潭公园',
-    address: '东城区龙潭路 8 号',
-    x: 750,
-    y: 600,
-    crowd_level: 1,
-  },
-  {
-    id: 19,
-    name: '红螺寺',
-    address: '怀柔区红螺东路 2 号',
-    x: 5000,
-    y: 4000,
-    crowd_level: 2,
-  },
-  {
-    id: 20,
+    id: 8,
     name: '十渡风景区',
     address: '房山区十渡镇',
     x: 6000,
     y: 5000,
-    crowd_level: 1,
+    spot_type: '山水',
+    business_hours: '08:00-17:00',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    crowd_density: 1,
+  },
+  {
+    id: 9,
+    name: '石花洞',
+    address: '房山区河北镇南车营村',
+    x: 5500,
+    y: 4500,
+    spot_type: '溶洞',
+    business_hours: '08:30-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 30,
+    max_booking_count: 200,
+    crowd_density: 1,
+  },
+  {
+    id: 10,
+    name: '红螺寺',
+    address: '怀柔区红螺东路 2 号',
+    x: 5000,
+    y: 4000,
+    spot_type: '人文',
+    business_hours: '08:00-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 40,
+    max_booking_count: 300,
+    crowd_density: 2,
+  },
+  {
+    id: 11,
+    name: '古北水镇',
+    address: '密云区古北口镇司马台村',
+    x: 10000,
+    y: 8000,
+    spot_type: '人文',
+    business_hours: '09:00-22:00',
+    booking_hours: '09:00-21:00',
+    current_booking_count: 150,
+    max_booking_count: 600,
+    crowd_density: 2,
+  },
+  {
+    id: 12,
+    name: '慕田峪长城',
+    address: '怀柔区渤海镇慕田峪村',
+    x: 7000,
+    y: 5500,
+    spot_type: '古迹',
+    business_hours: '07:30-17:30',
+    booking_hours: '07:00-16:30',
+    current_booking_count: 80,
+    max_booking_count: 500,
+    crowd_density: 2,
+  },
+  {
+    id: 13,
+    name: '玉渊潭公园',
+    address: '海淀区西三环中路 10 号',
+    x: 1000,
+    y: 800,
+    spot_type: '山水',
+    business_hours: '06:00-21:30',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    crowd_density: 2,
+  },
+  {
+    id: 14,
+    name: '北京动物园',
+    address: '西城区西直门外大街 137 号',
+    x: 950,
+    y: 750,
+    spot_type: '人文',
+    business_hours: '07:30-18:00',
+    booking_hours: '07:00-17:00',
+    current_booking_count: 60,
+    max_booking_count: 400,
+    crowd_density: 3,
+  },
+  {
+    id: 15,
+    name: '龙庆峡',
+    address: '延庆区古城村',
+    x: 9000,
+    y: 7000,
+    spot_type: '山水',
+    business_hours: '08:00-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 25,
+    max_booking_count: 200,
+    crowd_density: 1,
+  },
+  {
+    id: 16,
+    name: '潭柘寺',
+    address: '门头沟区潭柘寺镇',
+    x: 4000,
+    y: 3200,
+    spot_type: '人文',
+    business_hours: '08:30-16:30',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 35,
+    max_booking_count: 250,
+    crowd_density: 2,
+  },
+  {
+    id: 17,
+    name: '国家植物园',
+    address: '海淀区香山南路',
+    x: 2500,
+    y: 1800,
+    spot_type: '山水',
+    business_hours: '06:00-20:00',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    crowd_density: 2,
+  },
+  {
+    id: 18,
+    name: '银狐洞',
+    address: '房山区佛子庄乡下英水村',
+    x: 5800,
+    y: 4800,
+    spot_type: '溶洞',
+    business_hours: '08:30-16:30',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 15,
+    max_booking_count: 150,
+    crowd_density: 1,
+  },
+  {
+    id: 19,
+    name: '中山公园',
+    address: '东城区中华路 4 号',
+    x: 400,
+    y: 350,
+    spot_type: '古迹',
+    business_hours: '06:30-20:00',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    crowd_density: 2,
+  },
+  {
+    id: 20,
+    name: '京东大溶洞',
+    address: '平谷区黑豆峪村东侧',
+    x: 7000,
+    y: 5500,
+    spot_type: '溶洞',
+    business_hours: '08:00-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 20,
+    max_booking_count: 180,
+    crowd_density: 1,
   },
 ]
+
+// ==================== 商场 / Malls ====================
+
+interface Mall {
+  id: number
+  name: string
+  address: string
+  x: number
+  y: number
+  cinema_has: number  // 0 无 1 有
+  supermarket_has: number  // 0 无 1 有
+  discount_status: number  // 0 无优惠 1 有优惠
+}
+
+interface GetMallsParams {
+  name?: string
+  cinema_has?: number
+  supermarket_has?: number
+  discount_status?: number
+  distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
+  page?: number
+  page_size?: number
+}
+
+interface GetMallsResponse {
+  code: number
+  data: {
+    list: Mall[]
+    total: number
+    page: number
+    page_size: number
+  }
+  msg: string
+}
+
+const MOCK_MALLS: Mall[] = [
+  {
+    id: 1,
+    name: '朝阳大悦城',
+    address: '朝阳区朝阳北路 101 号',
+    x: 600,
+    y: 450,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 2,
+    name: '西单大悦城',
+    address: '西城区西单北大街 131 号',
+    x: 180,
+    y: 150,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 1,
+  },
+  {
+    id: 3,
+    name: '国贸商城',
+    address: '朝阳区建国门外大街 1 号',
+    x: 400,
+    y: 300,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 0,
+  },
+  {
+    id: 4,
+    name: '三里屯太古里',
+    address: '朝阳区三里屯路 19 号',
+    x: 500,
+    y: 380,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 5,
+    name: '合生汇',
+    address: '朝阳区西大望路 21 号',
+    x: 550,
+    y: 420,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 6,
+    name: '蓝色港湾',
+    address: '朝阳区朝阳公园路 6 号',
+    x: 700,
+    y: 520,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 0,
+  },
+  {
+    id: 7,
+    name: '华熙 LIVE·五棵松',
+    address: '海淀区复兴路 69 号',
+    x: 1500,
+    y: 1100,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 8,
+    name: '荟聚购物中心',
+    address: '大兴区欣宁街 15 号',
+    x: 2800,
+    y: 2200,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 9,
+    name: '龙湖长楹天街',
+    address: '朝阳区朝阳北路 35 号',
+    x: 2000,
+    y: 1500,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 0,
+  },
+  {
+    id: 10,
+    name: '世纪金源购物中心',
+    address: '海淀区远大路 1 号',
+    x: 1600,
+    y: 1200,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 11,
+    name: '东方新天地',
+    address: '东城区东长安街 1 号',
+    x: 300,
+    y: 200,
+    cinema_has: 0,
+    supermarket_has: 0,
+    discount_status: 0,
+  },
+  {
+    id: 12,
+    name: '王府中环',
+    address: '东城区王府井大街 269 号',
+    x: 250,
+    y: 180,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 0,
+  },
+  {
+    id: 13,
+    name: 'APM 王府井',
+    address: '东城区王府井大街 138 号',
+    x: 280,
+    y: 190,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 1,
+  },
+  {
+    id: 14,
+    name: '银座 mall',
+    address: '东城区东二环东中街 1 号',
+    x: 350,
+    y: 260,
+    cinema_has: 0,
+    supermarket_has: 1,
+    discount_status: 0,
+  },
+  {
+    id: 15,
+    name: '新中关购物中心',
+    address: '海淀区中关村大街 19 号',
+    x: 1000,
+    y: 750,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 1,
+  },
+  {
+    id: 16,
+    name: '爱琴海购物公园',
+    address: '朝阳区七圣中街 12 号',
+    x: 800,
+    y: 600,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 17,
+    name: '凯德 mall',
+    address: '西城区西直门外大街 1 号',
+    x: 900,
+    y: 680,
+    cinema_has: 1,
+    supermarket_has: 0,
+    discount_status: 0,
+  },
+  {
+    id: 18,
+    name: '万达广场（通州）',
+    address: '通州区新华西街 58 号',
+    x: 3500,
+    y: 2800,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 1,
+  },
+  {
+    id: 19,
+    name: '京通罗斯福广场',
+    address: '通州区梨园镇九棵树中路 48 号',
+    x: 4000,
+    y: 3200,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 0,
+  },
+  {
+    id: 20,
+    name: '昌平悦荟广场',
+    address: '昌平区南环路 10 号',
+    x: 5000,
+    y: 4000,
+    cinema_has: 1,
+    supermarket_has: 1,
+    discount_status: 0,
+  },
+]
+
+/**
+ * 获取商场列表
+ * GET /api/malls
+ */
+export async function getMalls(params: GetMallsParams): Promise<GetMallsResponse> {
+  // 模拟网络延迟
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  let filtered = [...MOCK_MALLS]
+
+  // 名字搜索
+  if (params.name) {
+    filtered = filtered.filter(r => r.name.includes(params.name!))
+  }
+
+  // 影院筛选
+  if (params.cinema_has !== undefined) {
+    filtered = filtered.filter(r => r.cinema_has === params.cinema_has)
+  }
+
+  // 大型超市筛选
+  if (params.supermarket_has !== undefined) {
+    filtered = filtered.filter(r => r.supermarket_has === params.supermarket_has)
+  }
+
+  // 优惠活动筛选
+  if (params.discount_status !== undefined) {
+    filtered = filtered.filter(r => r.discount_status === params.discount_status)
+  }
+
+  // 距离筛选
+  if (params.distance) {
+    const { min, max } = parseDistance(params.distance)
+    filtered = filtered.filter(r => {
+      const distance = calculateDistance(r.x, r.y)
+      return distance >= min && distance <= max
+    })
+  }
+
+  const total = filtered.length
+
+  // 分页
+  const page = params.page || 1
+  const page_size = params.page_size || 5
+  const start = (page - 1) * page_size
+  const end = start + page_size
+  const list = filtered.slice(start, end)
+
+  return {
+    code: 0,
+    data: {
+      list,
+      total,
+      page,
+      page_size,
+    },
+    msg: 'success',
+  }
+}
 
 /**
  * 获取公园列表
@@ -676,9 +1080,22 @@ export async function getParks(params: GetParksParams): Promise<GetParksResponse
     filtered = filtered.filter(r => r.name.includes(params.name!))
   }
 
+  // 景点类型筛选
+  if (params.spot_type) {
+    filtered = filtered.filter(r => r.spot_type === params.spot_type)
+  }
+
   // 人流量筛选
-  if (params.crowd_level !== undefined) {
-    filtered = filtered.filter(r => r.crowd_level === params.crowd_level)
+  if (params.crowd_density !== undefined) {
+    filtered = filtered.filter(r => r.crowd_density === params.crowd_density)
+  }
+
+  // 是否可预约筛选
+  if (params.can_book !== undefined) {
+    filtered = filtered.filter(r => {
+      const canBook = r.booking_hours !== '不能预约'
+      return canBook === params.can_book
+    })
   }
 
   // 距离筛选

@@ -62,7 +62,7 @@ function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
               {restaurant.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-lg whitespace-nowrap">
+          <span className="shrink-0 ml-2 px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-lg whitespace-nowrap">
             {distanceText}
           </span>
         </div>
@@ -157,14 +157,14 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
         onClick={() => setIsOpen(!isOpen)}
         className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
           isOpen
-            ? 'border-emerald-400 ring-2 ring-emerald-400/20'
-            : 'border-slate-200 hover:border-emerald-300'
+            ? 'border-orange-400 ring-2 ring-orange-400/20'
+            : 'border-slate-200 hover:border-orange-300'
         }`}
       >
         <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
         <CaretDown
           size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-emerald-500' : 'text-slate-400'}`}
+          className={`transition-transform ${isOpen ? 'rotate-180 text-orange-500' : 'text-slate-400'}`}
         />
       </button>
 
@@ -175,7 +175,7 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-emerald-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
+            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-orange-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
           >
             {options.map((option) => (
               <button
@@ -186,7 +186,7 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
                 }}
                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                   value === option.value
-                    ? 'bg-emerald-50 text-emerald-700 font-medium'
+                    ? 'bg-orange-50 text-orange-700 font-medium'
                     : 'text-slate-600 hover:bg-slate-50'
                 } first:rounded-t-xl last:rounded-b-xl`}
               >
@@ -229,7 +229,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   ]
 
   return (
-    <div className="sticky top-[57px] z-10 bg-gradient-to-r from-emerald-50/95 via-white/95 to-emerald-50/95 backdrop-blur-sm border-b border-emerald-100/50 shadow-sm">
+    <div className="sticky top-[57px] z-10 bg-gradient-to-r from-orange-50/95 via-white/95 to-orange-50/95 backdrop-blur-sm border-b border-orange-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
           <div className="relative">
@@ -243,7 +243,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   name: e.target.value || undefined,
                 })
               }
-              className="w-56 px-4 py-2.5 bg-white border-2 border-emerald-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition-all shadow-sm"
+              className="w-56 px-4 py-2.5 bg-white border-2 border-orange-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all shadow-sm"
             />
           </div>
           {hasActiveFilters && (
@@ -251,7 +251,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               onClick={handleReset}
-              className="px-3 py-1.5 text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded-full transition-all font-medium"
+              className="px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-100 rounded-full transition-all font-medium"
             >
               ✕ 重置
             </motion.button>
@@ -260,11 +260,11 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
         <div className="text-center">
           <span className="text-sm text-slate-500">
-            已找到 <span className="text-emerald-600 font-bold text-base">{resultCount}</span> 家餐厅
+            已找到 <span className="text-orange-600 font-bold text-base">{resultCount}</span> 家餐厅
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-emerald-100">
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-orange-100">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">菜系</span>
             <CustomSelect
@@ -440,9 +440,9 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
         {isFetching ? (
           <div className="flex justify-center py-16">
             <div className="flex items-center gap-2 text-slate-500">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               <span className="text-sm ml-2">加载中...</span>
             </div>
           </div>

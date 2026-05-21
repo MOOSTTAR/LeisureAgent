@@ -3,47 +3,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
-import { getParks, type Park } from '../mock/api'
-
-const CrowdDensity = {
-  LOW: 1,      // 稀少
-  MEDIUM: 2,   // 适中
-  HIGH: 3,     // 拥挤
-} as const
-
-type CrowdDensityType = typeof CrowdDensity[keyof typeof CrowdDensity]
-
-const CROWD_DENSITY_LABELS: Record<CrowdDensityType, string> = {
-  [CrowdDensity.LOW]: '稀少',
-  [CrowdDensity.MEDIUM]: '适中',
-  [CrowdDensity.HIGH]: '拥挤',
-}
-
-const CROWD_DENSITY_COLORS: Record<CrowdDensityType, string> = {
-  [CrowdDensity.LOW]: 'bg-green-50 text-green-600',
-  [CrowdDensity.MEDIUM]: 'bg-yellow-50 text-yellow-600',
-  [CrowdDensity.HIGH]: 'bg-red-50 text-red-600',
-}
+import { getMalls, type Mall } from '../mock/api'
 
 interface FilterOptions {
   name?: string
-  spot_type?: string
-  crowd_density?: CrowdDensityType
-  can_book?: boolean
+  cinema_has?: number
+  supermarket_has?: number
+  discount_status?: number
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
-interface ParkCardProps {
-  park: Park
+interface MallCardProps {
+  mall: Mall
   onClick?: () => void
 }
 
-function ParkCard({ park, onClick }: ParkCardProps) {
-  const distance = Math.abs(park.x) + Math.abs(park.y)
+function MallCard({ mall, onClick }: MallCardProps) {
+  const distance = Math.abs(mall.x) + Math.abs(mall.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
-  const densityLabel = CROWD_DENSITY_LABELS[park.crowd_density]
-  const densityColor = CROWD_DENSITY_COLORS[park.crowd_density]
-  const canBook = park.booking_hours !== '不能预约'
 
   return (
     <motion.div
@@ -58,44 +35,39 @@ function ParkCard({ park, onClick }: ParkCardProps) {
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-medium text-slate-900 tracking-tight truncate">
-              {park.name}
+              {mall.name}
             </h3>
             <p className="text-sm text-slate-500 mt-1 truncate">
-              {park.address}
+              {mall.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-lg whitespace-nowrap">
+          <span className="shrink-0 ml-2 px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-lg whitespace-nowrap">
             {distanceText}
           </span>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
-          {park.spot_type && (
-            <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-blue-50 text-blue-600">
-              {park.spot_type}
-            </span>
-          )}
-          <span className={`px-2 py-0.5 text-xs rounded-md whitespace-nowrap ${densityColor}`}>
-            人流：{densityLabel}
+          <span className={`px-2 py-0.5 text-xs rounded-md whitespace-nowrap ${
+            mall.cinema_has ? 'bg-purple-50 text-purple-600' : 'bg-slate-50 text-slate-400'
+          }`}>
+            {mall.cinema_has ? '有影院' : '无影院'}
           </span>
-          {canBook ? (
-            <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-emerald-50 text-emerald-600">
-              可预约（{park.current_booking_count}/{park.max_booking_count}）
-            </span>
-          ) : (
-            <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-slate-50 text-slate-400">
-              无需预约
-            </span>
-          )}
+          <span className={`px-2 py-0.5 text-xs rounded-md whitespace-nowrap ${
+            mall.supermarket_has ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'
+          }`}>
+            {mall.supermarket_has ? '有超市' : '无超市'}
+          </span>
+          <span className={`px-2 py-0.5 text-xs rounded-md whitespace-nowrap ${
+            mall.discount_status ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'
+          }`}>
+            {mall.discount_status ? '有优惠' : '无优惠'}
+          </span>
         </div>
 
-        <div className="flex flex-wrap gap-3 text-xs text-slate-400 pt-2 border-t border-slate-100">
-          {park.business_hours && (
-            <span>营业：{park.business_hours}</span>
-          )}
-          {canBook && park.booking_hours && (
-            <span>可约时段：{park.booking_hours}</span>
-          )}
+        <div className="pt-2 border-t border-slate-100">
+          <p className="text-xs text-slate-400">
+            购物休闲，一站式体验
+          </p>
         </div>
       </div>
     </motion.div>
@@ -141,14 +113,14 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
         onClick={() => setIsOpen(!isOpen)}
         className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
           isOpen
-            ? 'border-emerald-400 ring-2 ring-emerald-400/20'
-            : 'border-slate-200 hover:border-emerald-300'
+            ? 'border-pink-400 ring-2 ring-pink-400/20'
+            : 'border-slate-200 hover:border-pink-300'
         }`}
       >
         <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
         <CaretDown
           size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-emerald-500' : 'text-slate-400'}`}
+          className={`transition-transform ${isOpen ? 'rotate-180 text-pink-500' : 'text-slate-400'}`}
         />
       </button>
 
@@ -159,7 +131,7 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-emerald-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
+            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-pink-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
           >
             {options.map((option) => (
               <button
@@ -170,7 +142,7 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
                 }}
                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                   value === option.value
-                    ? 'bg-emerald-50 text-emerald-700 font-medium'
+                    ? 'bg-pink-50 text-pink-700 font-medium'
                     : 'text-slate-600 hover:bg-slate-50'
                 } first:rounded-t-xl last:rounded-b-xl`}
               >
@@ -191,19 +163,16 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
   const hasActiveFilters = Object.keys(filters).length > 0
 
-  const spotTypeOptions: SelectOption[] = [
+  const yesNoOptions: SelectOption[] = [
     { value: '', label: '全部' },
-    { value: '山水', label: '山水' },
-    { value: '古迹', label: '古迹' },
-    { value: '人文', label: '人文' },
-    { value: '溶洞', label: '溶洞' },
+    { value: '1', label: '有' },
+    { value: '0', label: '无' },
   ]
 
-  const crowdDensityOptions: SelectOption[] = [
+  const discountOptions: SelectOption[] = [
     { value: '', label: '全部' },
-    { value: String(CrowdDensity.LOW), label: '稀少' },
-    { value: String(CrowdDensity.MEDIUM), label: '适中' },
-    { value: String(CrowdDensity.HIGH), label: '拥挤' },
+    { value: '1', label: '有优惠' },
+    { value: '0', label: '无优惠' },
   ]
 
   const distanceOptions: SelectOption[] = [
@@ -216,13 +185,13 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   ]
 
   return (
-    <div className="sticky top-[57px] z-10 bg-gradient-to-r from-emerald-50/95 via-white/95 to-emerald-50/95 backdrop-blur-sm border-b border-emerald-100/50 shadow-sm">
+    <div className="sticky top-[57px] z-10 bg-gradient-to-r from-pink-50/95 via-white/95 to-pink-50/95 backdrop-blur-sm border-b border-pink-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
           <div className="relative">
             <input
               type="text"
-              placeholder="搜索景点名字..."
+              placeholder="搜索商场名字..."
               value={filters.name || ''}
               onChange={(e) =>
                 onFilterChange({
@@ -230,7 +199,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   name: e.target.value || undefined,
                 })
               }
-              className="w-56 px-4 py-2.5 bg-white border-2 border-emerald-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition-all shadow-sm"
+              className="w-56 px-4 py-2.5 bg-white border-2 border-pink-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all shadow-sm"
             />
           </div>
           {hasActiveFilters && (
@@ -238,7 +207,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               onClick={handleReset}
-              className="px-3 py-1.5 text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded-full transition-all font-medium"
+              className="px-3 py-1.5 text-sm text-pink-600 hover:text-pink-700 hover:bg-pink-100 rounded-full transition-all font-medium"
             >
               ✕ 重置
             </motion.button>
@@ -247,34 +216,48 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
         <div className="text-center">
           <span className="text-sm text-slate-500">
-            已找到 <span className="text-emerald-600 font-bold text-base">{resultCount}</span> 个景点
+            已找到 <span className="text-pink-600 font-bold text-base">{resultCount}</span> 个商场
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-emerald-100">
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-pink-100">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">景点类型</span>
+            <span className="text-xs text-slate-400 font-medium">影院</span>
             <CustomSelect
-              value={filters.spot_type || ''}
-              options={spotTypeOptions}
+              value={filters.cinema_has !== undefined ? String(filters.cinema_has) : ''}
+              options={yesNoOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
-                  spot_type: val || undefined,
+                  cinema_has: val !== '' ? Number(val) : undefined,
                 })
               }
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">人流量</span>
+            <span className="text-xs text-slate-400 font-medium">大型超市</span>
             <CustomSelect
-              value={filters.crowd_density !== undefined ? String(filters.crowd_density) : ''}
-              options={crowdDensityOptions}
+              value={filters.supermarket_has !== undefined ? String(filters.supermarket_has) : ''}
+              options={yesNoOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
-                  crowd_density: val ? Number(val) as CrowdDensityType : undefined,
+                  supermarket_has: val !== '' ? Number(val) : undefined,
+                })
+              }
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium">优惠活动</span>
+            <CustomSelect
+              value={filters.discount_status !== undefined ? String(filters.discount_status) : ''}
+              options={discountOptions}
+              onChange={(val) =>
+                onFilterChange({
+                  ...filters,
+                  discount_status: val !== '' ? Number(val) : undefined,
                 })
               }
             />
@@ -293,44 +276,28 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               }
             />
           </div>
-
-          <button
-            onClick={() =>
-              onFilterChange({
-                ...filters,
-                can_book: filters.can_book ? undefined : true,
-              })
-            }
-            className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-              filters.can_book
-                ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
-                : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-300'
-            }`}
-          >
-              可预约
-          </button>
         </div>
       </div>
     </div>
   )
 }
 
-interface ParkPageProps {
+interface MallPageProps {
   onBack: () => void
 }
 
-export function ParkPage({ onBack }: ParkPageProps) {
+export function MallPage({ onBack }: MallPageProps) {
   const [filters, setFilters] = useState<FilterOptions>({})
   const [displayCount, setDisplayCount] = useState(5)
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
-  const [parks, setParks] = useState<Park[]>([])
+  const [malls, setMalls] = useState<Mall[]>([])
   const [total, setTotal] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 调用 Mock API 获取数据
   useEffect(() => {
-    const fetchParks = async () => {
+    const fetchMalls = async () => {
       setIsFetching(true)
       try {
         const params: any = {
@@ -338,23 +305,23 @@ export function ParkPage({ onBack }: ParkPageProps) {
           page_size: 100,
         }
         if (filters.name) params.name = filters.name
-        if (filters.spot_type) params.spot_type = filters.spot_type
-        if (filters.crowd_density !== undefined) params.crowd_density = filters.crowd_density
-        if (filters.can_book !== undefined) params.can_book = filters.can_book
+        if (filters.cinema_has !== undefined) params.cinema_has = filters.cinema_has
+        if (filters.supermarket_has !== undefined) params.supermarket_has = filters.supermarket_has
+        if (filters.discount_status !== undefined) params.discount_status = filters.discount_status
         if (filters.distance) params.distance = filters.distance
 
-        const response = await getParks(params)
-        setParks(response.data.list)
+        const response = await getMalls(params)
+        setMalls(response.data.list)
         setTotal(response.data.total)
         setDisplayCount(Math.min(5, response.data.list.length))
       } catch (error) {
-        console.error('Failed to fetch parks:', error)
+        console.error('Failed to fetch malls:', error)
       } finally {
         setIsFetching(false)
       }
     }
 
-    fetchParks()
+    fetchMalls()
   }, [filters])
 
   // 滚动分页
@@ -380,7 +347,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
     return () => container.removeEventListener('scroll', handleScroll)
   }, [isLoading, displayCount, total])
 
-  const displayedParks = parks.slice(0, displayCount)
+  const displayedMalls = malls.slice(0, displayCount)
   const hasMore = displayCount < total
 
   return (
@@ -401,10 +368,10 @@ export function ParkPage({ onBack }: ParkPageProps) {
               </motion.button>
               <div>
                 <h1 className="text-lg font-medium tracking-tight text-slate-900">
-                  户外景点
+                  商场筛选
                 </h1>
                 <p className="text-xs text-slate-500">
-                  已找到 {total} 个景点
+                  已找到 {total} 个商场
                 </p>
               </div>
             </div>
@@ -422,23 +389,23 @@ export function ParkPage({ onBack }: ParkPageProps) {
         {isFetching ? (
           <div className="flex justify-center py-16">
             <div className="flex items-center gap-2 text-slate-500">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               <span className="text-sm ml-2">加载中...</span>
             </div>
           </div>
         ) : (
           <>
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
-              {displayedParks.map((park) => (
-                <ParkCard key={park.id} park={park} />
+              {displayedMalls.map((mall) => (
+                <MallCard key={mall.id} mall={mall} />
               ))}
             </div>
 
             {total === 0 && (
               <div className="text-center py-16">
-                <p className="text-slate-400 text-lg">没有找到符合条件的景点</p>
+                <p className="text-slate-400 text-lg">没有找到符合条件的商场</p>
                 <p className="text-slate-400 text-sm mt-2">试试调整筛选条件或点击重置</p>
               </div>
             )}
@@ -454,7 +421,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
               </div>
             )}
 
-            {!isLoading && hasMore === false && displayedParks.length > 0 && (
+            {!isLoading && hasMore === false && displayedMalls.length > 0 && (
               <div className="text-center py-8">
                 <p className="text-slate-400 text-sm">— 没有更多了 —</p>
               </div>

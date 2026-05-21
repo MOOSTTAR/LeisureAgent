@@ -3,10 +3,34 @@ import { Lobby } from './components/lobby'
 import { ManualPlanPage } from './pages/ManualPlanPage'
 import { RestaurantPage } from './pages/RestaurantPage'
 import { ParkPage } from './pages/ParkPage'
-import { AnimatePresence, motion } from 'framer-motion'
+import { MallPage } from './pages/MallPage'
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import './index.css'
 
-type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park'
+function CursorCircle() {
+  const mouseX = useMotionValue(-100)
+  const mouseY = useMotionValue(-100)
+  const springX = useSpring(mouseX, { stiffness: 150, damping: 15 })
+  const springY = useSpring(mouseY, { stiffness: 150, damping: 15 })
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set(e.clientX)
+      mouseY.set(e.clientY)
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [mouseX, mouseY])
+
+  return (
+    <motion.div
+      className="fixed top-0 left-0 w-8 h-8 rounded-full border-2 border-pink-400/60 pointer-events-none z-50 -translate-x-1/2 -translate-y-1/2"
+      style={{ x: springX, y: springY }}
+    />
+  )
+}
+
+type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('lobby')
@@ -21,6 +45,8 @@ function App() {
         setCurrentPage('restaurant')
       } else if (hash === '/manual-plan/park') {
         setCurrentPage('park')
+      } else if (hash === '/manual-plan/mall') {
+        setCurrentPage('mall')
       } else {
         setCurrentPage('lobby')
       }
@@ -55,8 +81,14 @@ function App() {
     setCurrentPage('manual-plan')
   }
 
+  const handleMallBack = () => {
+    window.location.hash = '/manual-plan'
+    setCurrentPage('manual-plan')
+  }
+
   return (
     <div className="h-[100dvh]">
+      <CursorCircle />
       <AnimatePresence mode="wait">
         {currentPage === 'lobby' ? (
           <motion.div
@@ -100,6 +132,17 @@ function App() {
             className="h-full"
           >
             <ParkPage onBack={handleParkBack} />
+          </motion.div>
+        ) : currentPage === 'mall' ? (
+          <motion.div
+            key="mall"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <MallPage onBack={handleMallBack} />
           </motion.div>
         ) : null}
       </AnimatePresence>

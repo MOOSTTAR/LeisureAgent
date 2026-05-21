@@ -49,6 +49,13 @@ pip install -r requirements.txt
 uvicorn app.main:app --host localhost --port 8080
 ```
 
+## 数据库查询
+```bash
+sqlite3 leisure_agent.db ".tables"
+sqlite3 leisure_agent.db "SELECT * FROM restaurant LIMIT 3;"
+```
+
+
 ## 依赖
 
 - Python 3.12

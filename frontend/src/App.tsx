@@ -101,7 +101,7 @@ function App() {
           >
             <ParkPage onBack={handleParkBack} />
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   )

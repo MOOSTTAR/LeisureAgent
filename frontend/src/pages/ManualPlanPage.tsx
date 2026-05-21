@@ -23,6 +23,8 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
   const handleCategoryClick = (categoryId: string) => {
     if (categoryId === 'food') {
       window.location.hash = '/manual-plan/restaurant'
+    } else if (categoryId === 'outdoor') {
+      window.location.hash = '/manual-plan/park'
     }
   }
 

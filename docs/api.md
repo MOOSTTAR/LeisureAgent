@@ -7,6 +7,7 @@ LeisureAgent 后端 API 接口定义。
 | 端点 | 方法 | 描述 |
 |------|------|------|
 | `/api/restaurants` | GET | 获取餐厅列表 |
+| `/api/parks` | GET | 获取公园列表 |
 
 ---
 
@@ -103,6 +104,61 @@ LeisureAgent 后端 API 接口定义。
 1. 只预约不排队：`booking_hours` 有效，`queue_time = -1`
 2. 只排队不预约：`queue_time > 0`，`booking_hours = "不能预约"`
 3. 既不排队也不预约：`queue_time = -1`，`booking_hours = "不能预约"`
+
+---
+
+## `/api/parks` - 获取公园列表
+
+**请求：** `GET /api/parks`
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `name` | string | 否 | 公园名字模糊搜索 |
+| `crowd_level` | integer | 否 | 人流量：1 稀少/2 适中/3 拥挤 |
+| `distance` | string | 否 | 距离筛选：`<200m`/`<500m`/`<1.0km`/`<2.0km`/`other` |
+| `page` | integer | 否 | 页码，默认 1 |
+| `page_size` | integer | 否 | 每页数量，默认 5 |
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "朝阳公园",
+        "address": "朝阳区朝阳公园路 1 号",
+        "x": 800,
+        "y": 600,
+        "crowd_level": 2
+      }
+    ],
+    "total": 100,
+    "page": 1,
+    "page_size": 5
+  },
+  "msg": "success"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `id` | integer | 公园 ID |
+| `name` | string | 公园名字 |
+| `address` | string | 详细地址 |
+| `x` | integer | 坐标系横坐标（用于计算距离） |
+| `y` | integer | 坐标系纵坐标（用于计算距离） |
+| `crowd_level` | integer | 人流量：1 稀少/2 适中/3 拥挤 |
+
+**距离计算规则：**
+- 距离 = |x| + |y|（单位：米）
+- >= 1000 米时转换为千米，如 `1.7km`
 
 ---
 

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Lobby } from './components/lobby'
 import { ManualPlanPage } from './pages/ManualPlanPage'
 import { RestaurantPage } from './pages/RestaurantPage'
+import { ParkPage } from './pages/ParkPage'
 import { AnimatePresence, motion } from 'framer-motion'
 import './index.css'
 
-type Page = 'lobby' | 'manual-plan' | 'restaurant'
+type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('lobby')
@@ -18,6 +19,8 @@ function App() {
         setCurrentPage('manual-plan')
       } else if (hash === '/manual-plan/restaurant') {
         setCurrentPage('restaurant')
+      } else if (hash === '/manual-plan/park') {
+        setCurrentPage('park')
       } else {
         setCurrentPage('lobby')
       }
@@ -47,6 +50,11 @@ function App() {
     setCurrentPage('manual-plan')
   }
 
+  const handleParkBack = () => {
+    window.location.hash = '/manual-plan'
+    setCurrentPage('manual-plan')
+  }
+
   return (
     <div className="h-[100dvh]">
       <AnimatePresence mode="wait">
@@ -71,7 +79,7 @@ function App() {
           >
             <ManualPlanPage onBack={handleBack} />
           </motion.div>
-        ) : (
+        ) : currentPage === 'restaurant' ? (
           <motion.div
             key="restaurant"
             initial={{ opacity: 0, x: 50 }}
@@ -81,6 +89,17 @@ function App() {
             className="h-full"
           >
             <RestaurantPage onBack={handleRestaurantBack} />
+          </motion.div>
+        ) : currentPage === 'park' ? (
+          <motion.div
+            key="park"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ParkPage onBack={handleParkBack} />
           </motion.div>
         )}
       </AnimatePresence>

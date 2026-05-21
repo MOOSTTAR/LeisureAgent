@@ -467,3 +467,246 @@ export async function getRestaurants(params: GetRestaurantsParams): Promise<GetR
     msg: 'success',
   }
 }
+
+// ==================== 公园 / Parks ====================
+
+interface Park {
+  id: number
+  name: string
+  address: string
+  x: number
+  y: number
+  crowd_level: number // 1 稀少 2 适中 3 拥挤
+}
+
+interface GetParksParams {
+  name?: string
+  crowd_level?: number
+  distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
+  page?: number
+  page_size?: number
+}
+
+interface GetParksResponse {
+  code: number
+  data: {
+    list: Park[]
+    total: number
+    page: number
+    page_size: number
+  }
+  msg: string
+}
+
+const MOCK_PARKS: Park[] = [
+  {
+    id: 1,
+    name: '朝阳公园',
+    address: '朝阳区朝阳公园路 1 号',
+    x: 800,
+    y: 600,
+    crowd_level: 2,
+  },
+  {
+    id: 2,
+    name: '颐和园',
+    address: '海淀区新建宫门路 19 号',
+    x: 2000,
+    y: 1500,
+    crowd_level: 3,
+  },
+  {
+    id: 3,
+    name: '圆明园',
+    address: '海淀区清华西路 28 号',
+    x: 1800,
+    y: 1400,
+    crowd_level: 2,
+  },
+  {
+    id: 4,
+    name: '奥林匹克森林公园',
+    address: '朝阳区北辰东路 15 号',
+    x: 1200,
+    y: 1000,
+    crowd_level: 1,
+  },
+  {
+    id: 5,
+    name: '玉渊潭公园',
+    address: '海淀区西三环中路 10 号',
+    x: 1000,
+    y: 800,
+    crowd_level: 2,
+  },
+  {
+    id: 6,
+    name: '北海公园',
+    address: '西城区文津街 1 号',
+    x: 500,
+    y: 400,
+    crowd_level: 3,
+  },
+  {
+    id: 7,
+    name: '中山公园',
+    address: '东城区中华路 4 号',
+    x: 400,
+    y: 350,
+    crowd_level: 2,
+  },
+  {
+    id: 8,
+    name: '景山公园',
+    address: '西城区景山前街',
+    x: 450,
+    y: 380,
+    crowd_level: 3,
+  },
+  {
+    id: 9,
+    name: '天坛公园',
+    address: '东城区天坛内东里 7 号',
+    x: 600,
+    y: 500,
+    crowd_level: 2,
+  },
+  {
+    id: 10,
+    name: '地坛公园',
+    address: '东城区安定门外大街地坛公园',
+    x: 700,
+    y: 550,
+    crowd_level: 1,
+  },
+  {
+    id: 11,
+    name: '日坛公园',
+    address: '朝阳区朝阳门南大街 14 号',
+    x: 550,
+    y: 420,
+    crowd_level: 1,
+  },
+  {
+    id: 12,
+    name: '月坛公园',
+    address: '西城区月坛北街甲 6 号',
+    x: 900,
+    y: 700,
+    crowd_level: 1,
+  },
+  {
+    id: 13,
+    name: '陶然亭公园',
+    address: '西城区太平街 19 号',
+    x: 350,
+    y: 300,
+    crowd_level: 2,
+  },
+  {
+    id: 14,
+    name: '紫竹院公园',
+    address: '海淀区中关村南大街 33 号',
+    x: 1100,
+    y: 850,
+    crowd_level: 1,
+  },
+  {
+    id: 15,
+    name: '北京动物园',
+    address: '西城区西直门外大街 137 号',
+    x: 950,
+    y: 750,
+    crowd_level: 3,
+  },
+  {
+    id: 16,
+    name: '北京植物园',
+    address: '海淀区香山南路',
+    x: 2500,
+    y: 1800,
+    crowd_level: 2,
+  },
+  {
+    id: 17,
+    name: '八大处公园',
+    address: '石景山区八大处路 3 号',
+    x: 2800,
+    y: 2000,
+    crowd_level: 1,
+  },
+  {
+    id: 18,
+    name: '龙潭公园',
+    address: '东城区龙潭路 8 号',
+    x: 750,
+    y: 600,
+    crowd_level: 1,
+  },
+  {
+    id: 19,
+    name: '红螺寺',
+    address: '怀柔区红螺东路 2 号',
+    x: 5000,
+    y: 4000,
+    crowd_level: 2,
+  },
+  {
+    id: 20,
+    name: '十渡风景区',
+    address: '房山区十渡镇',
+    x: 6000,
+    y: 5000,
+    crowd_level: 1,
+  },
+]
+
+/**
+ * 获取公园列表
+ * GET /api/parks
+ */
+export async function getParks(params: GetParksParams): Promise<GetParksResponse> {
+  // 模拟网络延迟
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  let filtered = [...MOCK_PARKS]
+
+  // 名字搜索
+  if (params.name) {
+    filtered = filtered.filter(r => r.name.includes(params.name!))
+  }
+
+  // 人流量筛选
+  if (params.crowd_level !== undefined) {
+    filtered = filtered.filter(r => r.crowd_level === params.crowd_level)
+  }
+
+  // 距离筛选
+  if (params.distance) {
+    const { min, max } = parseDistance(params.distance)
+    filtered = filtered.filter(r => {
+      const distance = calculateDistance(r.x, r.y)
+      return distance >= min && distance <= max
+    })
+  }
+
+  const total = filtered.length
+
+  // 分页
+  const page = params.page || 1
+  const page_size = params.page_size || 5
+  const start = (page - 1) * page_size
+  const end = start + page_size
+  const list = filtered.slice(start, end)
+
+  return {
+    code: 0,
+    data: {
+      list,
+      total,
+      page,
+      page_size,
+    },
+    msg: 'success',
+  }
+}

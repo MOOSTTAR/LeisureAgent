@@ -81,7 +81,63 @@ CREATE TABLE mall (
     y INTEGER NOT NULL, -- 坐标系，纵坐标
     cinema_has INTEGER DEFAULT 0, -- 是否有影院 0无 1有
     supermarket_has INTEGER DEFAULT 0, -- 是否有大型超市
-    discount_status INTEGER DEFAULT 0 -- 是否有优惠活动 0无 1有
+);
+
+/* 游乐园/主题乐园表 */
+CREATE TABLE amusement_park (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
+    name TEXT NOT NULL, -- 乐园名字
+    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
+    x INTEGER NOT NULL, -- 坐标系,横坐标 
+    y INTEGER NOT NULL, -- 坐标系，纵坐标
+    business_hours TEXT DEFAULT NULL, -- 营业时间，如“10:00-22:00”
+    booking_hours TEXT DEFAULT NULL, -- 可以预约的时间，如“10:00-22:00”，不能预约直接填充“不能预约”
+    current_booking_count INTEGER DEFAULT -1, -- 当前预约数
+    max_booking_count INTEGER DEFAULT -1, -- 最大预约数
+    park_theme TEXT DEFAULT NULL, -- 乐园主题：童话/海洋/科幻/卡通等
+    ticket_price REAL DEFAULT 0.00, -- 门票价格
+    queue_time INTEGER DEFAULT -1, -- -1则不需要排队，大于0则为排队时长
+    performance_info TEXT DEFAULT NULL, -- 演出/表演信息   
+);
+
+/* 户外景点信息表 */
+CREATE TABLE scenic_spot (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
+    name TEXT NOT NULL, -- 户外名字
+    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
+    x INTEGER NOT NULL, -- 坐标系,横坐标 
+    y INTEGER NOT NULL, -- 坐标系，纵坐标
+    spot_type TEXT DEFAULT NULL, -- 景点类型 山水/古迹/人文/溶洞等
+    ticket_type INTEGER DEFAULT 0, -- 门票类型 0免费 1收费
+    ticket_price REAL DEFAULT NULL, -- 门票单价
+    business_hours TEXT DEFAULT NULL, -- 开放时间，如“10:00-22:00”
+    booking_hours TEXT DEFAULT NULL, -- 可以预约的时间，如“10:00-22:00”，不能预约直接填充“不能预约”
+    current_booking_count INTEGER DEFAULT -1, -- 当前预约数
+    max_booking_count INTEGER DEFAULT -1, -- 最大预约数
+    mountain_feature INTEGER DEFAULT 0, -- 是否山地景观 0否 1是
+    water_feature INTEGER DEFAULT 0, -- 是否临水景观 0否 1是
+    historic_relic INTEGER DEFAULT 0, -- 是否历史古迹 0否 1是
+    crowd_density INTEGER DEFAULT 2, -- 人流量 1稀少 2适中 3拥挤
+);
+
+/* 展馆展览馆信息表 */
+CREATE TABLE exhibition_hall (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 主键ID
+    name TEXT NOT NULL, -- 展馆名称
+    address TEXT NOT NULL, -- 详细地址 示例 xx区xx县xx街道xx号
+    x INTEGER NOT NULL, -- 坐标系,横坐标 
+    y INTEGER NOT NULL, -- 坐标系，纵坐标
+    hall_type TEXT DEFAULT NULL, -- 展馆类型 历史/艺术/科技/自然
+    business_hours TEXT DEFAULT NULL, -- 开放时间，如“10:00-22:00”
+    booking_hours TEXT DEFAULT NULL, -- 可以预约的时间，如“10:00-22:00”，不能预约直接填充“不能预约”
+    current_booking_count INTEGER DEFAULT -1, -- 当前预约数
+    max_booking_count INTEGER DEFAULT -1, -- 最大预约数
+    exhibition_theme TEXT DEFAULT NULL, -- 主打展览主题
+    ticket_type INTEGER DEFAULT 0, -- 门票类型 0免费 1收费
+    ticket_price REAL DEFAULT NULL, -- 门票价格
+    manual_guide INTEGER DEFAULT 0, -- 是否人工讲解服务
+    interactive_project INTEGER DEFAULT 0, -- 有无互动体验项目
+    crowd_level INTEGER DEFAULT 2, -- 人流量 1偏少2适中3拥挤
 );
 
 /* 用户信息表 */

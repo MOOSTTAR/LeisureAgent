@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
+import { getRestaurants, type Restaurant } from '../mock/api'
 
 const DiningStyle = {
   DINE_IN: 0,
@@ -21,23 +22,6 @@ const DINING_STYLE_LABELS: Record<DiningStyleType, string> = {
 const CUISINE_TYPES = ['中餐', '西餐', '日料', '火锅', '烧烤', '快餐', '其他'] as const
 type CuisineType = (typeof CUISINE_TYPES)[number]
 
-interface Restaurant {
-  id: number
-  name: string
-  address: string
-  x: number
-  y: number
-  cuisine_type: CuisineType | null
-  dining_style: DiningStyleType
-  tags: string[]
-  business_hours: string | null
-  booking_hours: string | null
-  current_booking_count: number
-  max_booking_count: number
-  queue_time: number
-  indoor_env: string | null
-}
-
 interface FilterOptions {
   name?: string
   cuisine_type?: CuisineType
@@ -46,346 +30,15 @@ interface FilterOptions {
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
-const MOCK_RESTAURANTS: Restaurant[] = [
-  {
-    id: 1,
-    name: '海底捞火锅',
-    address: '朝阳区建国路 93 号万达广场 3 层',
-    x: 500,
-    y: 300,
-    cuisine_type: '火锅',
-    dining_style: DiningStyle.BOTH,
-    tags: ['网红店', '服务好'],
-    business_hours: '10:00-22:00',
-    booking_hours: '10:00-21:00',
-    current_booking_count: 15,
-    max_booking_count: 50,
-    queue_time: -1,
-    indoor_env: '宽敞明亮，有包间',
-  },
-  {
-    id: 2,
-    name: '外婆家',
-    address: '海淀区中关村大街 1 号海雅百货 5 层',
-    x: 800,
-    y: 600,
-    cuisine_type: '中餐',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['家常菜', '性价比高'],
-    business_hours: '10:30-21:30',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 15,
-    indoor_env: '温馨舒适',
-  },
-  {
-    id: 3,
-    name: '寿司一郎',
-    address: '东城区王府井大街 138 号',
-    x: 200,
-    y: 150,
-    cuisine_type: '日料',
-    dining_style: DiningStyle.BOTH,
-    tags: ['精致', '高档', 'Omakase'],
-    business_hours: '11:30-14:00,17:30-21:30',
-    booking_hours: '11:00-20:00',
-    current_booking_count: 8,
-    max_booking_count: 20,
-    queue_time: -1,
-    indoor_env: '日式简约风格',
-  },
-  {
-    id: 4,
-    name: '麦当劳',
-    address: '西城区西单北大街 130 号',
-    x: 350,
-    y: 250,
-    cuisine_type: '快餐',
-    dining_style: DiningStyle.BOTH,
-    tags: ['快捷', '便宜'],
-    business_hours: '06:00-23:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: -1,
-    indoor_env: '标准快餐店装修',
-  },
-  {
-    id: 5,
-    name: '蜀大侠火锅',
-    address: '朝阳区工体北路 6 号',
-    x: 1200,
-    y: 800,
-    cuisine_type: '火锅',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['川味', '辣', '人气高'],
-    business_hours: '11:00-23:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 60,
-    indoor_env: '江湖风装修',
-  },
-  {
-    id: 6,
-    name: '必胜客',
-    address: '丰台区南三环西路 16 号',
-    x: 1500,
-    y: 1000,
-    cuisine_type: '西餐',
-    dining_style: DiningStyle.BOTH,
-    tags: ['披萨', '家庭聚餐'],
-    business_hours: '10:00-22:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: -1,
-    indoor_env: '美式休闲风格',
-  },
-  {
-    id: 7,
-    name: '江边城外烤鱼',
-    address: '朝阳区朝阳北路 101 号',
-    x: 700,
-    y: 450,
-    cuisine_type: '中餐',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['烤鱼', '宵夜'],
-    business_hours: '11:00-02:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 20,
-    indoor_env: '大排档风格',
-  },
-  {
-    id: 8,
-    name: '星巴克',
-    address: '海淀区丹棱街 5 号',
-    x: 100,
-    y: 80,
-    cuisine_type: '其他',
-    dining_style: DiningStyle.TAKEOUT,
-    tags: ['咖啡', '商务', '安静'],
-    business_hours: '07:00-21:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: -1,
-    indoor_env: '商务休闲',
-  },
-  {
-    id: 9,
-    name: '全聚德烤鸭店',
-    address: '东城区前门大街 32 号',
-    x: 400,
-    y: 350,
-    cuisine_type: '中餐',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['北京烤鸭', '老字号', '宴请'],
-    business_hours: '10:30-21:00',
-    booking_hours: '10:00-20:00',
-    current_booking_count: 45,
-    max_booking_count: 80,
-    queue_time: -1,
-    indoor_env: '传统中式装修',
-  },
-  {
-    id: 10,
-    name: '韩式烤肉馆',
-    address: '朝阳区望京街 9 号',
-    x: 1800,
-    y: 1200,
-    cuisine_type: '其他',
-    dining_style: DiningStyle.BOTH,
-    tags: ['韩式', '烤肉', '夜宵'],
-    business_hours: '11:30-03:00',
-    booking_hours: '11:30-02:00',
-    current_booking_count: 25,
-    max_booking_count: 50,
-    queue_time: -1,
-    indoor_env: '韩式简约风',
-  },
-  {
-    id: 11,
-    name: '小龙坎老火锅',
-    address: '西城区新街口北大街 1 号',
-    x: 600,
-    y: 400,
-    cuisine_type: '火锅',
-    dining_style: DiningStyle.BOTH,
-    tags: ['重庆火锅', '辣', '排队'],
-    business_hours: '11:00-23:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 50,
-    indoor_env: '复古风',
-  },
-  {
-    id: 12,
-    name: '西贝莜面村',
-    address: '海淀区成府路 28 号',
-    x: 900,
-    y: 700,
-    cuisine_type: '中餐',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['西北菜', '健康', '家庭'],
-    business_hours: '10:00-21:30',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 10,
-    indoor_env: '简约温馨',
-  },
-  {
-    id: 13,
-    name: '肯德基',
-    address: '东城区东长安街 1 号',
-    x: 250,
-    y: 200,
-    cuisine_type: '快餐',
-    dining_style: DiningStyle.BOTH,
-    tags: ['快餐', '早餐', '便捷'],
-    business_hours: '06:00-24:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: -1,
-    indoor_env: '标准快餐店',
-  },
-  {
-    id: 14,
-    name: '天福楼',
-    address: '朝阳区建国门外大街 1 号',
-    x: 550,
-    y: 280,
-    cuisine_type: '中餐',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['粤菜', '早茶', '高档'],
-    business_hours: '07:00-22:00',
-    booking_hours: '07:00-21:00',
-    current_booking_count: 40,
-    max_booking_count: 100,
-    queue_time: -1,
-    indoor_env: '豪华粤式装修',
-  },
-  {
-    id: 15,
-    name: '烤肉之家',
-    address: '丰台区方庄南路 2 号',
-    x: 2000,
-    y: 1500,
-    cuisine_type: '烧烤',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['烤肉', '宵夜', '啤酒'],
-    business_hours: '16:00-04:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 15,
-    indoor_env: '工业风',
-  },
-  {
-    id: 16,
-    name: '茶餐厅 1988',
-    address: '朝阳区三里屯路 19 号',
-    x: 480,
-    y: 320,
-    cuisine_type: '其他',
-    dining_style: DiningStyle.BOTH,
-    tags: ['港式', '茶餐厅', '怀旧'],
-    business_hours: '10:00-22:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 20,
-    indoor_env: '怀旧港风',
-  },
-  {
-    id: 17,
-    name: '拉面馆',
-    address: '海淀区中关村南大街 2 号',
-    x: 850,
-    y: 650,
-    cuisine_type: '中餐',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['兰州拉面', '清真', '实惠'],
-    business_hours: '06:30-21:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 5,
-    indoor_env: '简洁干净',
-  },
-  {
-    id: 18,
-    name: 'Pizza Hut',
-    address: '西城区金融大街 1 号',
-    x: 300,
-    y: 180,
-    cuisine_type: '西餐',
-    dining_style: DiningStyle.BOTH,
-    tags: ['披萨', '意面', '家庭'],
-    business_hours: '10:00-22:00',
-    booking_hours: '10:00-21:00',
-    current_booking_count: 12,
-    max_booking_count: 30,
-    queue_time: -1,
-    indoor_env: '休闲西式',
-  },
-  {
-    id: 19,
-    name: '呷哺呷哺',
-    address: '朝阳区朝阳门外大街 8 号',
-    x: 420,
-    y: 290,
-    cuisine_type: '火锅',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['小火锅', '快餐', '一人食'],
-    business_hours: '10:00-22:00',
-    booking_hours: '不能预约',
-    current_booking_count: -1,
-    max_booking_count: -1,
-    queue_time: 10,
-    indoor_env: '简约快餐风',
-  },
-  {
-    id: 20,
-    name: '日料居酒屋',
-    address: '朝阳区工体西路 5 号',
-    x: 1100,
-    y: 750,
-    cuisine_type: '日料',
-    dining_style: DiningStyle.DINE_IN,
-    tags: ['居酒屋', '烧鸟', '夜宵'],
-    business_hours: '17:00-02:00',
-    booking_hours: '17:00-01:00',
-    current_booking_count: 22,
-    max_booking_count: 40,
-    queue_time: -1,
-    indoor_env: '日式和风',
-  },
-]
-
-function getDistanceValue(x: number, y: number): number {
-  return Math.abs(x) + Math.abs(y)
-}
-
-function canBook(bookingHours: string | null): boolean {
-  return bookingHours !== null && bookingHours !== '不能预约'
-}
-
 interface RestaurantCardProps {
   restaurant: Restaurant
   onClick?: () => void
 }
 
 function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
-  const distance = getDistanceValue(restaurant.x, restaurant.y)
+  const distance = Math.abs(restaurant.x) + Math.abs(restaurant.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
-  const isBookable = canBook(restaurant.booking_hours)
+  const isBookable = restaurant.booking_hours !== '不能预约' && restaurant.booking_hours !== null
   const hasQueue = restaurant.queue_time > 0
 
   const diningStyleLabel = DINING_STYLE_LABELS[restaurant.dining_style]
@@ -471,7 +124,6 @@ interface FilterBarProps {
   resultCount: number
 }
 
-// 自定义下拉选项组件
 interface SelectOption {
   value: string
   label: string
@@ -689,44 +341,41 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
   const [filters, setFilters] = useState<FilterOptions>({})
   const [displayCount, setDisplayCount] = useState(5)
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [total, setTotal] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const filteredRestaurants = MOCK_RESTAURANTS.filter((restaurant) => {
-    if (filters.name && !restaurant.name.toLowerCase().includes(filters.name.toLowerCase())) {
-      return false
-    }
-    if (filters.cuisine_type && restaurant.cuisine_type !== filters.cuisine_type) {
-      return false
-    }
-    if (filters.dining_style !== undefined && restaurant.dining_style !== filters.dining_style) {
-      return false
-    }
-    if (filters.can_book === true && !canBook(restaurant.booking_hours)) {
-      return false
-    }
-    if (filters.distance) {
-      const distance = getDistanceValue(restaurant.x, restaurant.y)
-      switch (filters.distance) {
-        case '<200m':
-          if (distance >= 200) return false
-          break
-        case '<500m':
-          if (distance >= 500) return false
-          break
-        case '<1.0km':
-          if (distance >= 1000) return false
-          break
-        case '<2.0km':
-          if (distance >= 2000) return false
-          break
-        case 'other':
-          if (distance < 2000) return false
-          break
+  // 调用 Mock API 获取数据
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      setIsFetching(true)
+      try {
+        const params: any = {
+          page: 1,
+          page_size: 5,
+        }
+        if (filters.name) params.name = filters.name
+        if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
+        if (filters.dining_style !== undefined) params.dining_style = filters.dining_style
+        if (filters.can_book !== undefined) params.can_book = filters.can_book
+        if (filters.distance) params.distance = filters.distance
+
+        const response = await getRestaurants(params)
+        setRestaurants(response.data.list)
+        setTotal(response.data.total)
+        setDisplayCount(response.data.list.length)
+      } catch (error) {
+        console.error('Failed to fetch restaurants:', error)
+      } finally {
+        setIsFetching(false)
       }
     }
-    return true
-  })
 
+    fetchRestaurants()
+  }, [filters])
+
+  // 滚动分页
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -736,10 +385,10 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
       const scrollHeight = container.scrollHeight
       const clientHeight = container.clientHeight
 
-      if (scrollHeight - scrollTop - clientHeight < 100 && !isLoading && displayCount < filteredRestaurants.length) {
+      if (scrollHeight - scrollTop - clientHeight < 100 && !isLoading && displayCount < total) {
         setIsLoading(true)
         setTimeout(() => {
-          setDisplayCount((prev) => Math.min(prev + 5, filteredRestaurants.length))
+          setDisplayCount((prev) => Math.min(prev + 5, total))
           setIsLoading(false)
         }, 500)
       }
@@ -747,14 +396,10 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
 
     container.addEventListener('scroll', handleScroll)
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [isLoading, displayCount, filteredRestaurants.length])
+  }, [isLoading, displayCount, total])
 
-  useEffect(() => {
-    setDisplayCount(5)
-  }, [filters])
-
-  const displayedRestaurants = filteredRestaurants.slice(0, displayCount)
-  const hasMore = displayCount < filteredRestaurants.length
+  const displayedRestaurants = restaurants.slice(0, displayCount)
+  const hasMore = displayCount < total
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50/50">
@@ -777,7 +422,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
                   餐厅筛选
                 </h1>
                 <p className="text-xs text-slate-500">
-                  已找到 {filteredRestaurants.length} 家餐厅
+                  已找到 {total} 家餐厅
                 </p>
               </div>
             </div>
@@ -788,38 +433,51 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
       <FilterBar
         filters={filters}
         onFilterChange={setFilters}
-        resultCount={filteredRestaurants.length}
+        resultCount={total}
       />
 
-      <div ref={containerRef} className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-        <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
-          {displayedRestaurants.map((restaurant) => (
-            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
-          ))}
-        </div>
-
-        {filteredRestaurants.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-slate-400 text-lg">没有找到符合条件的餐厅</p>
-            <p className="text-slate-400 text-sm mt-2">试试调整筛选条件或点击重置</p>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="flex justify-center py-8">
+      <div ref={containerRef} className="flex-1 overflow-y-auto force-scroll" style={{ minHeight: 0 }}>
+        {isFetching ? (
+          <div className="flex justify-center py-16">
             <div className="flex items-center gap-2 text-slate-500">
-              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               <span className="text-sm ml-2">加载中...</span>
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
+              {displayedRestaurants.map((restaurant) => (
+                <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+              ))}
+            </div>
 
-        {!isLoading && hasMore === false && displayedRestaurants.length > 0 && (
-          <div className="text-center py-8">
-            <p className="text-slate-400 text-sm">— 没有更多了 —</p>
-          </div>
+            {total === 0 && (
+              <div className="text-center py-16">
+                <p className="text-slate-400 text-lg">没有找到符合条件的餐厅</p>
+                <p className="text-slate-400 text-sm mt-2">试试调整筛选条件或点击重置</p>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="flex justify-center py-8">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="text-sm ml-2">加载中...</span>
+                </div>
+              </div>
+            )}
+
+            {!isLoading && hasMore === false && displayedRestaurants.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-slate-400 text-sm">— 没有更多了 —</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

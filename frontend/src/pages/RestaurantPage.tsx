@@ -233,6 +233,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
     <div className="sticky top-[57px] z-10 bg-gradient-to-r from-orange-50/95 via-white/95 to-orange-50/95 backdrop-blur-sm border-b border-orange-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
+          <span className="text-sm text-slate-500 font-medium">筛选</span>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="p-2 rounded-xl hover:bg-orange-100 transition-colors"
@@ -337,7 +338,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                     : 'bg-white text-slate-600 hover:bg-blue-50 border-2 border-slate-200'
                 }`}
               >
-                📅 可预约
+                可预约
               </motion.button>
             </div>
           </div>

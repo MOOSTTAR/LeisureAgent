@@ -191,6 +191,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
     <div className="sticky top-[57px] z-10 bg-gradient-to-r from-amber-50/95 via-white/95 to-amber-50/95 backdrop-blur-sm border-b border-amber-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
+          <span className="text-sm text-slate-500 font-medium">筛选</span>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="p-2 rounded-xl hover:bg-amber-100 transition-colors"

@@ -162,6 +162,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   }
 
   const hasActiveFilters = Object.keys(filters).length > 0
+  const [collapsed, setCollapsed] = useState(true)
 
   const yesNoOptions: SelectOption[] = [
     { value: '', label: '全部' },
@@ -188,6 +189,16 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
     <div className="sticky top-[57px] z-10 bg-gradient-to-r from-pink-50/95 via-white/95 to-pink-50/95 backdrop-blur-sm border-b border-pink-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2 rounded-xl hover:bg-pink-100 transition-colors"
+            title={collapsed ? '展开筛选' : '收起筛选'}
+          >
+            <CaretDown
+              size={20}
+              className={`text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            />
+          </button>
           <div className="relative">
             <input
               type="text"
@@ -202,6 +213,9 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               className="w-56 px-4 py-2.5 bg-white border-2 border-pink-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition-all shadow-sm"
             />
           </div>
+          <span className="text-sm text-slate-500">
+            已找到 <span className="text-pink-600 font-bold text-base">{resultCount}</span> 个商场
+          </span>
           {hasActiveFilters && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
@@ -214,69 +228,69 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           )}
         </div>
 
-        <div className="text-center">
-          <span className="text-sm text-slate-500">
-            已找到 <span className="text-pink-600 font-bold text-base">{resultCount}</span> 个商场
-          </span>
-        </div>
+        <motion.div
+          animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+          className="overflow-hidden"
+        >
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-pink-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">影院</span>
+              <CustomSelect
+                value={filters.cinema_has !== undefined ? String(filters.cinema_has) : ''}
+                options={yesNoOptions}
+                onChange={(val) =>
+                  onFilterChange({
+                    ...filters,
+                    cinema_has: val !== '' ? Number(val) : undefined,
+                  })
+                }
+              />
+            </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-pink-100">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">影院</span>
-            <CustomSelect
-              value={filters.cinema_has !== undefined ? String(filters.cinema_has) : ''}
-              options={yesNoOptions}
-              onChange={(val) =>
-                onFilterChange({
-                  ...filters,
-                  cinema_has: val !== '' ? Number(val) : undefined,
-                })
-              }
-            />
-          </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">大型超市</span>
+              <CustomSelect
+                value={filters.supermarket_has !== undefined ? String(filters.supermarket_has) : ''}
+                options={yesNoOptions}
+                onChange={(val) =>
+                  onFilterChange({
+                    ...filters,
+                    supermarket_has: val !== '' ? Number(val) : undefined,
+                  })
+                }
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">大型超市</span>
-            <CustomSelect
-              value={filters.supermarket_has !== undefined ? String(filters.supermarket_has) : ''}
-              options={yesNoOptions}
-              onChange={(val) =>
-                onFilterChange({
-                  ...filters,
-                  supermarket_has: val !== '' ? Number(val) : undefined,
-                })
-              }
-            />
-          </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">优惠活动</span>
+              <CustomSelect
+                value={filters.discount_status !== undefined ? String(filters.discount_status) : ''}
+                options={discountOptions}
+                onChange={(val) =>
+                  onFilterChange({
+                    ...filters,
+                    discount_status: val !== '' ? Number(val) : undefined,
+                  })
+                }
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">优惠活动</span>
-            <CustomSelect
-              value={filters.discount_status !== undefined ? String(filters.discount_status) : ''}
-              options={discountOptions}
-              onChange={(val) =>
-                onFilterChange({
-                  ...filters,
-                  discount_status: val !== '' ? Number(val) : undefined,
-                })
-              }
-            />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">距离</span>
+              <CustomSelect
+                value={filters.distance || ''}
+                options={distanceOptions}
+                onChange={(val) =>
+                  onFilterChange({
+                    ...filters,
+                    distance: val ? (val as FilterOptions['distance']) : undefined,
+                  })
+                }
+              />
+            </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">距离</span>
-            <CustomSelect
-              value={filters.distance || ''}
-              options={distanceOptions}
-              onChange={(val) =>
-                onFilterChange({
-                  ...filters,
-                  distance: val ? (val as FilterOptions['distance']) : undefined,
-                })
-              }
-            />
-          </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

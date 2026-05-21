@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { LobbyCard } from './LobbyCard'
 import { Sparkle, SlidersHorizontal } from '@phosphor-icons/react'
 
 export function Lobby() {
+  const [isImgHovered, setIsImgHovered] = useState(false)
   const handleManualPlanClick = () => {
     window.location.hash = '/manual-plan'
   }
@@ -35,10 +37,16 @@ export function Lobby() {
               src="/LeisureAgentI.png"
               alt=""
               className="h-32 w-auto shrink-0 cursor-pointer"
-              whileHover={{
+              onMouseEnter={() => setIsImgHovered(true)}
+              onMouseLeave={() => setIsImgHovered(false)}
+              animate={isImgHovered ? {
                 scale: [1, 1.2, 1, 1.15, 1],
                 rotate: [0, -10, 10, -8, 0],
                 transition: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
+              } : {
+                scale: 1,
+                rotate: 0,
+                transition: { duration: 0.5, ease: 'easeOut' },
               }}
             />
             <h2 className="text-4xl md:text-6xl font-medium tracking-tighter text-slate-900">

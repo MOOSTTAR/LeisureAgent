@@ -4,6 +4,8 @@ import { ManualPlanPage } from './pages/ManualPlanPage'
 import { RestaurantPage } from './pages/RestaurantPage'
 import { ParkPage } from './pages/ParkPage'
 import { MallPage } from './pages/MallPage'
+import { ExhibitionPage } from './pages/ExhibitionPage'
+import { AmusementParkPage } from './pages/AmusementParkPage'
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import './index.css'
 
@@ -30,7 +32,7 @@ function CursorCircle() {
   )
 }
 
-type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall'
+type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibition' | 'amusement'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('lobby')
@@ -47,6 +49,10 @@ function App() {
         setCurrentPage('park')
       } else if (hash === '/manual-plan/mall') {
         setCurrentPage('mall')
+      } else if (hash === '/manual-plan/exhibition') {
+        setCurrentPage('exhibition')
+      } else if (hash === '/manual-plan/amusement') {
+        setCurrentPage('amusement')
       } else {
         setCurrentPage('lobby')
       }
@@ -82,6 +88,16 @@ function App() {
   }
 
   const handleMallBack = () => {
+    window.location.hash = '/manual-plan'
+    setCurrentPage('manual-plan')
+  }
+
+  const handleExhibitionBack = () => {
+    window.location.hash = '/manual-plan'
+    setCurrentPage('manual-plan')
+  }
+
+  const handleAmusementBack = () => {
     window.location.hash = '/manual-plan'
     setCurrentPage('manual-plan')
   }
@@ -132,6 +148,28 @@ function App() {
             className="h-full"
           >
             <ParkPage onBack={handleParkBack} />
+          </motion.div>
+        ) : currentPage === 'exhibition' ? (
+          <motion.div
+            key="exhibition"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <ExhibitionPage onBack={handleExhibitionBack} />
+          </motion.div>
+        ) : currentPage === 'amusement' ? (
+          <motion.div
+            key="amusement"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <AmusementParkPage onBack={handleAmusementBack} />
           </motion.div>
         ) : currentPage === 'mall' ? (
           <motion.div

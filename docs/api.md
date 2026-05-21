@@ -9,6 +9,8 @@ LeisureAgent 后端 API 接口定义。
 | `/api/restaurants` | GET | 获取餐厅列表 |
 | `/api/parks` | GET | 获取户外列表 |
 | `/api/malls` | GET | 获取商场列表 |
+| `/api/exhibitions` | GET | 获取展馆展览列表 |
+| `/api/amusement-parks` | GET | 获取游乐园列表 |
 
 ---
 
@@ -229,6 +231,156 @@ LeisureAgent 后端 API 接口定义。
 | `cinema_has` | integer | 是否有影院：0 无/1 有 |
 | `supermarket_has` | integer | 是否有大型超市：0 无/1 有 |
 | `discount_status` | integer | 是否有优惠活动：0 无/1 有 |
+
+**距离计算规则：**
+- 距离 = |x| + |y|（单位：米）
+- >= 1000 米时转换为千米，如 `1.7km`
+
+---
+
+## `/api/exhibitions` - 获取展馆展览列表
+
+**请求：** `GET /api/exhibitions`
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `name` | string | 否 | 展馆名字模糊搜索 |
+| `hall_type` | string | 否 | 展馆类型：历史/艺术/科技/自然 |
+| `ticket_type` | integer | 否 | 门票类型：0 免费/1 收费 |
+| `crowd_level` | integer | 否 | 人流量：1 偏少/2 适中/3 拥挤 |
+| `can_book` | boolean | 否 | 是否可预约：true/false |
+| `manual_guide` | integer | 否 | 是否有人工讲解：0 无/1 有 |
+| `interactive_project` | integer | 否 | 有无互动体验：0 无/1 有 |
+| `distance` | string | 否 | 距离筛选：`<200m`/`<500m`/`<1.0km`/`<2.0km`/`other` |
+| `page` | integer | 否 | 页码，默认 1 |
+| `page_size` | integer | 否 | 每页数量，默认 5 |
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "中国国家博物馆",
+        "address": "东城区东长安街 16 号",
+        "x": 320,
+        "y": 240,
+        "hall_type": "历史",
+        "business_hours": "09:00-17:00",
+        "booking_hours": "09:00-16:00",
+        "current_booking_count": 200,
+        "max_booking_count": 800,
+        "exhibition_theme": "古代中国基本陈列",
+        "ticket_type": 0,
+        "ticket_price": null,
+        "manual_guide": 1,
+        "interactive_project": 0,
+        "crowd_level": 3
+      }
+    ],
+    "total": 100,
+    "page": 1,
+    "page_size": 5
+  },
+  "msg": "success"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `id` | integer | 展馆 ID |
+| `name` | string | 展馆名字 |
+| `address` | string | 详细地址 |
+| `x` | integer | 坐标系横坐标（用于计算距离） |
+| `y` | integer | 坐标系纵坐标（用于计算距离） |
+| `hall_type` | string | 展馆类型：历史/艺术/科技/自然 |
+| `business_hours` | string | 开放时间 |
+| `booking_hours` | string | 可预约时段，"不能预约"表示不可预约 |
+| `current_booking_count` | integer | 当前已预约数量，-1 表示无效 |
+| `max_booking_count` | integer | 最大预约容量，-1 表示无效 |
+| `exhibition_theme` | string | 主打展览主题 |
+| `ticket_type` | integer | 门票类型：0 免费/1 收费 |
+| `ticket_price` | number | 门票价格 |
+| `manual_guide` | integer | 是否有人工讲解：0 无/1 有 |
+| `interactive_project` | integer | 有无互动体验项目：0 无/1 有 |
+| `crowd_level` | integer | 人流量：1 偏少/2 适中/3 拥挤 |
+
+**距离计算规则：**
+- 距离 = |x| + |y|（单位：米）
+- >= 1000 米时转换为千米，如 `1.7km`
+
+---
+
+## `/api/amusement-parks` - 获取游乐园列表
+
+**请求：** `GET /api/amusement-parks`
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `name` | string | 否 | 乐园名字模糊搜索 |
+| `park_theme` | string | 否 | 乐园主题：童话/海洋/科幻/卡通 |
+| `can_book` | boolean | 否 | 是否可预约：true/false |
+| `distance` | string | 否 | 距离筛选：`<200m`/`<500m`/`<1.0km`/`<2.0km`/`other` |
+| `page` | integer | 否 | 页码，默认 1 |
+| `page_size` | integer | 否 | 每页数量，默认 5 |
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "北京欢乐谷",
+        "address": "朝阳区东四环小武基北路",
+        "x": 1500,
+        "y": 1100,
+        "business_hours": "09:00-22:00",
+        "booking_hours": "08:30-21:00",
+        "current_booking_count": 200,
+        "max_booking_count": 800,
+        "park_theme": "科幻",
+        "ticket_price": 299,
+        "queue_time": 30,
+        "performance_info": "《金面王朝》大型演出 14:00/16:00"
+      }
+    ],
+    "total": 100,
+    "page": 1,
+    "page_size": 5
+  },
+  "msg": "success"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `id` | integer | 乐园 ID |
+| `name` | string | 乐园名字 |
+| `address` | string | 详细地址 |
+| `x` | integer | 坐标系横坐标（用于计算距离） |
+| `y` | integer | 坐标系纵坐标（用于计算距离） |
+| `business_hours` | string | 营业时间 |
+| `booking_hours` | string | 可预约时段，"不能预约"表示不可预约 |
+| `current_booking_count` | integer | 当前已预约数量，-1 表示无效 |
+| `max_booking_count` | integer | 最大预约容量，-1 表示无效 |
+| `park_theme` | string | 乐园主题：童话/海洋/科幻/卡通等 |
+| `ticket_price` | number | 门票价格 |
+| `queue_time` | integer | 预计排队时间（分钟），-1 表示无需排队 |
+| `performance_info` | string | 演出/表演信息 |
 
 **距离计算规则：**
 - 距离 = |x| + |y|（单位：米）

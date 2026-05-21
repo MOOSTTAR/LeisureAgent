@@ -3,45 +3,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
-import { getRestaurants, type Restaurant } from '../mock/api'
-
-const DiningStyle = {
-  DINE_IN: 0,
-  TAKEOUT: 1,
-  BOTH: 2,
-} as const
-
-type DiningStyleType = typeof DiningStyle[keyof typeof DiningStyle]
-
-const DINING_STYLE_LABELS: Record<DiningStyleType, string> = {
-  [DiningStyle.DINE_IN]: '堂食',
-  [DiningStyle.TAKEOUT]: '外卖',
-  [DiningStyle.BOTH]: '均可',
-}
-
-const CUISINE_TYPES = ['中餐', '西餐', '日料', '火锅', '烧烤', '快餐', '其他'] as const
-type CuisineType = (typeof CUISINE_TYPES)[number]
+import { getAmusementParks, type AmusementPark } from '../mock/api'
 
 interface FilterOptions {
   name?: string
-  cuisine_type?: CuisineType
-  dining_style?: DiningStyleType
+  park_theme?: string
   can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
-interface RestaurantCardProps {
-  restaurant: Restaurant
+interface AmusementParkCardProps {
+  park: AmusementPark
   onClick?: () => void
 }
 
-function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
-  const distance = Math.abs(restaurant.x) + Math.abs(restaurant.y)
+function AmusementParkCard({ park, onClick }: AmusementParkCardProps) {
+  const distance = Math.abs(park.x) + Math.abs(park.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
-  const isBookable = restaurant.booking_hours !== '不能预约' && restaurant.booking_hours !== null
-  const hasQueue = restaurant.queue_time > 0
-
-  const diningStyleLabel = DINING_STYLE_LABELS[restaurant.dining_style as DiningStyleType]
+  const canBook = park.booking_hours !== '不能预约'
+  const hasQueue = park.queue_time > 0
 
   return (
     <motion.div
@@ -56,63 +36,45 @@ function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-medium text-slate-900 tracking-tight truncate">
-              {restaurant.name}
+              {park.name}
             </h3>
             <p className="text-sm text-slate-500 mt-1 truncate">
-              {restaurant.address}
+              {park.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-lg whitespace-nowrap">
+          <span className="shrink-0 ml-2 px-2.5 py-1 bg-amber-50 text-amber-600 text-xs font-medium rounded-lg whitespace-nowrap">
             {distanceText}
           </span>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
-          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-md whitespace-nowrap">
-            {restaurant.cuisine_type}
-          </span>
-          <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-xs rounded-md whitespace-nowrap">
-            {diningStyleLabel}
-          </span>
-          {isBookable && (
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-md whitespace-nowrap">
-              可预约
+          {park.park_theme && (
+            <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-amber-50 text-amber-700">
+              {park.park_theme}
             </span>
           )}
-          {restaurant.tags.slice(0, 3).map((tag: string, i: number) => (
-            <span key={i} className="px-2 py-0.5 bg-slate-50 text-slate-500 text-xs rounded-md whitespace-nowrap">
-              {tag}
+          <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-yellow-50 text-yellow-700">
+            {park.ticket_price === 0 ? '免费' : `¥${park.ticket_price}`}
+          </span>
+          {canBook && (
+            <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-blue-50 text-blue-600">
+              可预约（{park.current_booking_count}/{park.max_booking_count}）
             </span>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-          <span className="truncate">营业时间：{restaurant.business_hours}</span>
+          )}
           {hasQueue && (
-            <span className="text-red-400 shrink-0 ml-2 whitespace-nowrap">排队约 {restaurant.queue_time}分钟</span>
+            <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-red-50 text-red-500">
+              排队约 {park.queue_time}分钟
+            </span>
           )}
         </div>
 
-        <div className="pt-2 border-t border-slate-100 min-h-[20px]">
-          {isBookable ? (
-            <div className="flex items-center text-xs text-slate-500 flex-wrap gap-2">
-              <span className="whitespace-nowrap">预约时段：{restaurant.booking_hours}</span>
-              {restaurant.max_booking_count > 0 && (
-                <span className="whitespace-nowrap">
-                  剩余名额：{Math.max(0, restaurant.max_booking_count - restaurant.current_booking_count)}
-                </span>
-              )}
-            </div>
-          ) : hasQueue ? (
-            <div className="text-xs text-slate-400">
-              现场排队取号
-            </div>
-          ) : (
-            <div className="text-xs text-slate-400">
-              无需预约，无需排队
-            </div>
-          )}
-        </div>
+        {park.performance_info && (
+          <div className="pt-2 border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              演出：{park.performance_info}
+            </p>
+          </div>
+        )}
       </div>
     </motion.div>
   )
@@ -157,14 +119,14 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
         onClick={() => setIsOpen(!isOpen)}
         className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
           isOpen
-            ? 'border-orange-400 ring-2 ring-orange-400/20'
-            : 'border-slate-200 hover:border-orange-300'
+            ? 'border-amber-400 ring-2 ring-amber-400/20'
+            : 'border-slate-200 hover:border-amber-300'
         }`}
       >
         <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
         <CaretDown
           size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-orange-500' : 'text-slate-400'}`}
+          className={`transition-transform ${isOpen ? 'rotate-180 text-amber-500' : 'text-slate-400'}`}
         />
       </button>
 
@@ -175,7 +137,7 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-orange-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
+            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-amber-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
           >
             {options.map((option) => (
               <button
@@ -186,7 +148,7 @@ function CustomSelect({ value, options, onChange }: CustomSelectProps) {
                 }}
                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                   value === option.value
-                    ? 'bg-orange-50 text-orange-700 font-medium'
+                    ? 'bg-amber-50 text-amber-700 font-medium'
                     : 'text-slate-600 hover:bg-slate-50'
                 } first:rounded-t-xl last:rounded-b-xl`}
               >
@@ -208,16 +170,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   const hasActiveFilters = Object.keys(filters).length > 0
   const [collapsed, setCollapsed] = useState(true)
 
-  const cuisineOptions: SelectOption[] = [
+  const themeOptions: SelectOption[] = [
     { value: '', label: '全部' },
-    ...CUISINE_TYPES.map((cuisine) => ({ value: cuisine, label: cuisine })),
-  ]
-
-  const diningStyleOptions: SelectOption[] = [
-    { value: '', label: '全部' },
-    { value: String(DiningStyle.DINE_IN), label: '堂食' },
-    { value: String(DiningStyle.TAKEOUT), label: '外卖' },
-    { value: String(DiningStyle.BOTH), label: '均可' },
+    { value: '童话', label: '童话' },
+    { value: '海洋', label: '海洋' },
+    { value: '科幻', label: '科幻' },
+    { value: '卡通', label: '卡通' },
   ]
 
   const distanceOptions: SelectOption[] = [
@@ -230,12 +188,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   ]
 
   return (
-    <div className="sticky top-[57px] z-10 bg-gradient-to-r from-orange-50/95 via-white/95 to-orange-50/95 backdrop-blur-sm border-b border-orange-100/50 shadow-sm">
+    <div className="sticky top-[57px] z-10 bg-gradient-to-r from-amber-50/95 via-white/95 to-amber-50/95 backdrop-blur-sm border-b border-amber-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-xl hover:bg-orange-100 transition-colors"
+            className="p-2 rounded-xl hover:bg-amber-100 transition-colors"
             title={collapsed ? '展开筛选' : '收起筛选'}
           >
             <CaretDown
@@ -246,7 +204,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           <div className="relative">
             <input
               type="text"
-              placeholder="🔍 搜索餐厅名字..."
+              placeholder="搜索乐园名字..."
               value={filters.name || ''}
               onChange={(e) =>
                 onFilterChange({
@@ -254,142 +212,120 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   name: e.target.value || undefined,
                 })
               }
-              className="w-56 px-4 py-2.5 bg-white border-2 border-orange-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all shadow-sm"
+              className="w-56 px-4 py-2.5 bg-white border-2 border-amber-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all shadow-sm"
             />
           </div>
           <span className="text-sm text-slate-500">
-            已找到 <span className="text-orange-600 font-bold text-base">{resultCount}</span> 家餐厅
+            已找到 <span className="text-amber-600 font-bold text-base">{resultCount}</span> 个乐园
           </span>
           {hasActiveFilters && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               onClick={handleReset}
-              className="px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-100 rounded-full transition-all font-medium"
+              className="px-3 py-1.5 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-full transition-all font-medium"
             >
               ✕ 重置
             </motion.button>
           )}
         </div>
 
+        <AnimatePresence>
+        {!collapsed && (
         <motion.div
-          animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className="overflow-hidden"
-        >
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-orange-100">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">菜系</span>
-              <CustomSelect
-                value={filters.cuisine_type || ''}
-                options={cuisineOptions}
-                onChange={(val) =>
-                  onFilterChange({
-                    ...filters,
-                    cuisine_type: val ? (val as CuisineType) : undefined,
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">用餐方式</span>
-              <CustomSelect
-                value={filters.dining_style !== undefined ? String(filters.dining_style) : ''}
-                options={diningStyleOptions}
-                onChange={(val) =>
-                  onFilterChange({
-                    ...filters,
-                    dining_style: val ? Number(val) as DiningStyleType : undefined,
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">距离</span>
-              <CustomSelect
-                value={filters.distance || ''}
-                options={distanceOptions}
-                onChange={(val) =>
-                  onFilterChange({
-                    ...filters,
-                    distance: val ? (val as FilterOptions['distance']) : undefined,
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">预约</span>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() =>
-                  onFilterChange({
-                    ...filters,
-                    can_book: filters.can_book === true ? undefined : true,
-                  })
-                }
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm ${
-                  filters.can_book === true
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-blue-200'
-                    : 'bg-white text-slate-600 hover:bg-blue-50 border-2 border-slate-200'
-                }`}
-              >
-                📅 可预约
-              </motion.button>
-            </div>
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-amber-100">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium">主题</span>
+            <CustomSelect
+              value={filters.park_theme || ''}
+              options={themeOptions}
+              onChange={(val) =>
+                onFilterChange({
+                  ...filters,
+                  park_theme: val || undefined,
+                })
+              }
+            />
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium">距离</span>
+            <CustomSelect
+              value={filters.distance || ''}
+              options={distanceOptions}
+              onChange={(val) =>
+                onFilterChange({
+                  ...filters,
+                  distance: val ? (val as FilterOptions['distance']) : undefined,
+                })
+              }
+            />
+          </div>
+
+          <button
+            onClick={() =>
+              onFilterChange({
+                ...filters,
+                can_book: filters.can_book ? undefined : true,
+              })
+            }
+            className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
+              filters.can_book
+                ? 'bg-amber-50 border-amber-400 text-amber-700'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-amber-300'
+            }`}
+          >
+            可预约
+          </button>
         </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </div>
   )
 }
 
-interface RestaurantPageProps {
+interface AmusementParkPageProps {
   onBack: () => void
 }
 
-export function RestaurantPage({ onBack }: RestaurantPageProps) {
+export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
   const [filters, setFilters] = useState<FilterOptions>({})
   const [displayCount, setDisplayCount] = useState(5)
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [parks, setParks] = useState<AmusementPark[]>([])
   const [total, setTotal] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // 调用 Mock API 获取数据
   useEffect(() => {
-    const fetchRestaurants = async () => {
+    const fetchParks = async () => {
       setIsFetching(true)
       try {
-        const params: any = {
-          page: 1,
-          page_size: 100, // 一次性获取全部数据，由前端 displayCount 控制逐步展示
-        }
+        const params: any = { page: 1, page_size: 100 }
         if (filters.name) params.name = filters.name
-        if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
-        if (filters.dining_style !== undefined) params.dining_style = filters.dining_style
+        if (filters.park_theme) params.park_theme = filters.park_theme
         if (filters.can_book !== undefined) params.can_book = filters.can_book
         if (filters.distance) params.distance = filters.distance
 
-        const response = await getRestaurants(params)
-        setRestaurants(response.data.list)
+        const response = await getAmusementParks(params)
+        setParks(response.data.list)
         setTotal(response.data.total)
         setDisplayCount(Math.min(5, response.data.list.length))
       } catch (error) {
-        console.error('Failed to fetch restaurants:', error)
+        console.error('Failed to fetch amusement parks:', error)
       } finally {
         setIsFetching(false)
       }
     }
 
-    fetchRestaurants()
+    fetchParks()
   }, [filters])
 
-  // 滚动分页
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -412,7 +348,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
     return () => container.removeEventListener('scroll', handleScroll)
   }, [isLoading, displayCount, total])
 
-  const displayedRestaurants = restaurants.slice(0, displayCount)
+  const displayedParks = parks.slice(0, displayCount)
   const hasMore = displayCount < total
 
   return (
@@ -433,10 +369,10 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
               </motion.button>
               <div>
                 <h1 className="text-lg font-medium tracking-tight text-slate-900">
-                  餐厅筛选
+                  游乐园/主题乐园
                 </h1>
                 <p className="text-xs text-slate-500">
-                  已找到 {total} 家餐厅
+                  已找到 {total} 个乐园
                 </p>
               </div>
             </div>
@@ -454,23 +390,23 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
         {isFetching ? (
           <div className="flex justify-center py-16">
             <div className="flex items-center gap-2 text-slate-500">
-              <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               <span className="text-sm ml-2">加载中...</span>
             </div>
           </div>
         ) : (
           <>
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
-              {displayedRestaurants.map((restaurant) => (
-                <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+              {displayedParks.map((park) => (
+                <AmusementParkCard key={park.id} park={park} />
               ))}
             </div>
 
             {total === 0 && (
               <div className="text-center py-16">
-                <p className="text-slate-400 text-lg">没有找到符合条件的餐厅</p>
+                <p className="text-slate-400 text-lg">没有找到符合条件的乐园</p>
                 <p className="text-slate-400 text-sm mt-2">试试调整筛选条件或点击重置</p>
               </div>
             )}
@@ -486,7 +422,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
               </div>
             )}
 
-            {!isLoading && hasMore === false && displayedRestaurants.length > 0 && (
+            {!isLoading && hasMore === false && displayedParks.length > 0 && (
               <div className="text-center py-8">
                 <p className="text-slate-400 text-sm">— 没有更多了 —</p>
               </div>

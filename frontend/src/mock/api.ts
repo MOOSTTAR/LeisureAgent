@@ -17,7 +17,7 @@ const DiningStyle = {
 
 type DiningStyleType = typeof DiningStyle[keyof typeof DiningStyle]
 
-interface Restaurant {
+export interface Restaurant {
   id: number
   name: string
   address: string
@@ -470,7 +470,7 @@ export async function getRestaurants(params: GetRestaurantsParams): Promise<GetR
 
 // ==================== 户外景点 / Scenic Spots ====================
 
-interface Park {
+export interface Park {
   id: number
   name: string
   address: string
@@ -770,7 +770,7 @@ const MOCK_PARKS: Park[] = [
 
 // ==================== 商场 / Malls ====================
 
-interface Mall {
+export interface Mall {
   id: number
   name: string
   address: string
@@ -1069,6 +1069,884 @@ export async function getMalls(params: GetMallsParams): Promise<GetMallsResponse
  * 获取公园列表
  * GET /api/parks
  */
+// ==================== 展馆展览馆 / Exhibition Halls ====================
+
+interface ExhibitionHall {
+  id: number
+  name: string
+  address: string
+  x: number
+  y: number
+  hall_type: string | null // 历史/艺术/科技/自然
+  business_hours: string | null
+  booking_hours: string | null
+  current_booking_count: number
+  max_booking_count: number
+  exhibition_theme: string | null // 主打展览主题
+  ticket_type: number // 0 免费 1 收费
+  ticket_price: number | null
+  manual_guide: number // 0 无 1 有
+  interactive_project: number // 0 无 1 有
+  crowd_level: number // 1 偏少 2 适中 3 拥挤
+}
+
+interface GetExhibitionsParams {
+  name?: string
+  hall_type?: string
+  ticket_type?: number
+  crowd_level?: number
+  can_book?: boolean
+  manual_guide?: number
+  interactive_project?: number
+  distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
+  page?: number
+  page_size?: number
+}
+
+interface GetExhibitionsResponse {
+  code: number
+  data: {
+    list: ExhibitionHall[]
+    total: number
+    page: number
+    page_size: number
+  }
+  msg: string
+}
+
+const MOCK_EXHIBITIONS: ExhibitionHall[] = [
+  {
+    id: 1,
+    name: '中国国家博物馆',
+    address: '东城区东长安街 16 号',
+    x: 320,
+    y: 240,
+    hall_type: '历史',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 200,
+    max_booking_count: 800,
+    exhibition_theme: '古代中国基本陈列',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 3,
+  },
+  {
+    id: 2,
+    name: '故宫博物院',
+    address: '东城区景山前街 4 号',
+    x: 300,
+    y: 250,
+    hall_type: '历史',
+    business_hours: '08:30-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 300,
+    max_booking_count: 800,
+    exhibition_theme: '宫廷文物珍宝展',
+    ticket_type: 1,
+    ticket_price: 60,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 3,
+  },
+  {
+    id: 3,
+    name: '中国科学技术馆',
+    address: '朝阳区北辰东路 5 号',
+    x: 1100,
+    y: 900,
+    hall_type: '科技',
+    business_hours: '09:30-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 150,
+    max_booking_count: 600,
+    exhibition_theme: '科学乐园·华夏之光',
+    ticket_type: 1,
+    ticket_price: 30,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 3,
+  },
+  {
+    id: 4,
+    name: '国家自然博物馆',
+    address: '东城区天桥南大街 126 号',
+    x: 450,
+    y: 350,
+    hall_type: '自然',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 80,
+    max_booking_count: 400,
+    exhibition_theme: '恐龙化石展·植物世界',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 2,
+  },
+  {
+    id: 5,
+    name: '今日美术馆',
+    address: '朝阳区百子湾路 32 号',
+    x: 650,
+    y: 480,
+    hall_type: '艺术',
+    business_hours: '10:00-18:00',
+    booking_hours: '10:00-17:00',
+    current_booking_count: 30,
+    max_booking_count: 200,
+    exhibition_theme: '当代艺术系列展',
+    ticket_type: 1,
+    ticket_price: 40,
+    manual_guide: 0,
+    interactive_project: 0,
+    crowd_level: 1,
+  },
+  {
+    id: 6,
+    name: '首都博物馆',
+    address: '西城区复兴门外大街 16 号',
+    x: 350,
+    y: 280,
+    hall_type: '历史',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 60,
+    max_booking_count: 500,
+    exhibition_theme: '北京历史文化展',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 2,
+  },
+  {
+    id: 7,
+    name: '清华大学艺术博物馆',
+    address: '海淀区双清路 30 号',
+    x: 900,
+    y: 700,
+    hall_type: '艺术',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 45,
+    max_booking_count: 300,
+    exhibition_theme: '书画艺术·陶瓷精品展',
+    ticket_type: 1,
+    ticket_price: 20,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 2,
+  },
+  {
+    id: 8,
+    name: '北京天文馆',
+    address: '西城区西直门外大街 138 号',
+    x: 920,
+    y: 720,
+    hall_type: '科技',
+    business_hours: '09:00-16:30',
+    booking_hours: '09:00-15:30',
+    current_booking_count: 70,
+    max_booking_count: 300,
+    exhibition_theme: '宇宙探索·天文观测',
+    ticket_type: 1,
+    ticket_price: 15,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 2,
+  },
+  {
+    id: 9,
+    name: '中国美术馆',
+    address: '东城区五四大街 1 号',
+    x: 280,
+    y: 220,
+    hall_type: '艺术',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 40,
+    max_booking_count: 350,
+    exhibition_theme: '近现代美术大师作品展',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 2,
+  },
+  {
+    id: 10,
+    name: '中国航空博物馆',
+    address: '昌平区小汤山镇顺沙路',
+    x: 4500,
+    y: 3500,
+    hall_type: '科技',
+    business_hours: '08:30-17:00',
+    booking_hours: '08:00-16:00',
+    current_booking_count: 35,
+    max_booking_count: 300,
+    exhibition_theme: '中国航空发展史',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 1,
+    crowd_level: 1,
+  },
+  {
+    id: 11,
+    name: '北京汽车博物馆',
+    address: '丰台区南四环西路 126 号',
+    x: 2500,
+    y: 2000,
+    hall_type: '科技',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 25,
+    max_booking_count: 200,
+    exhibition_theme: '汽车百年历史·未来汽车',
+    ticket_type: 1,
+    ticket_price: 25,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 1,
+  },
+  {
+    id: 12,
+    name: '中华世纪坛艺术馆',
+    address: '海淀区复兴路甲 9 号',
+    x: 1200,
+    y: 950,
+    hall_type: '艺术',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 20,
+    max_booking_count: 200,
+    exhibition_theme: '世界艺术巡礼·数字艺术展',
+    ticket_type: 1,
+    ticket_price: 30,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 1,
+  },
+  {
+    id: 13,
+    name: '北京古观象台',
+    address: '东城区东裱褙胡同 2 号',
+    x: 340,
+    y: 260,
+    hall_type: '历史',
+    business_hours: '09:00-17:00',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    exhibition_theme: '古代天文仪器陈列',
+    ticket_type: 1,
+    ticket_price: 10,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 1,
+  },
+  {
+    id: 14,
+    name: '中国电影博物馆',
+    address: '朝阳区南影路 9 号',
+    x: 1800,
+    y: 1400,
+    hall_type: '艺术',
+    business_hours: '09:00-16:30',
+    booking_hours: '09:00-15:30',
+    current_booking_count: 30,
+    max_booking_count: 250,
+    exhibition_theme: '中国电影百年历程',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 1,
+  },
+  {
+    id: 15,
+    name: '中国地质博物馆',
+    address: '西城区西四羊肉胡同 15 号',
+    x: 250,
+    y: 200,
+    hall_type: '自然',
+    business_hours: '09:00-16:30',
+    booking_hours: '09:00-15:30',
+    current_booking_count: 15,
+    max_booking_count: 150,
+    exhibition_theme: '地球瑰宝·矿物晶体展',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 1,
+  },
+  {
+    id: 16,
+    name: '北京自然博物馆',
+    address: '东城区天桥南大街 126 号',
+    x: 460,
+    y: 360,
+    hall_type: '自然',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 55,
+    max_booking_count: 350,
+    exhibition_theme: '生命的演化·动物世界',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 2,
+  },
+  {
+    id: 17,
+    name: '798 艺术区展览中心',
+    address: '朝阳区酒仙桥路 4 号',
+    x: 1600,
+    y: 1200,
+    hall_type: '艺术',
+    business_hours: '10:00-19:00',
+    booking_hours: '10:00-18:00',
+    current_booking_count: 20,
+    max_booking_count: 150,
+    exhibition_theme: '当代艺术·潮流展览',
+    ticket_type: 1,
+    ticket_price: 35,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 2,
+  },
+  {
+    id: 18,
+    name: '中国人民革命军事博物馆',
+    address: '海淀区复兴路 9 号',
+    x: 1100,
+    y: 850,
+    hall_type: '历史',
+    business_hours: '09:00-17:00',
+    booking_hours: '09:00-16:00',
+    current_booking_count: 90,
+    max_booking_count: 500,
+    exhibition_theme: '兵器陈列·军事历史',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 2,
+  },
+  {
+    id: 19,
+    name: '北京海洋馆',
+    address: '海淀区高梁桥斜街乙 18 号',
+    x: 950,
+    y: 750,
+    hall_type: '自然',
+    business_hours: '09:00-17:30',
+    booking_hours: '09:00-16:30',
+    current_booking_count: 100,
+    max_booking_count: 400,
+    exhibition_theme: '海洋生物展示·海豚表演',
+    ticket_type: 1,
+    ticket_price: 80,
+    manual_guide: 0,
+    interactive_project: 1,
+    crowd_level: 3,
+  },
+  {
+    id: 20,
+    name: '宋庆龄故居展览馆',
+    address: '西城区后海北沿 46 号',
+    x: 200,
+    y: 160,
+    hall_type: '历史',
+    business_hours: '09:00-16:30',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    exhibition_theme: '宋庆龄生平展',
+    ticket_type: 0,
+    ticket_price: null,
+    manual_guide: 1,
+    interactive_project: 0,
+    crowd_level: 1,
+  },
+]
+
+/**
+ * 获取展览馆列表
+ * GET /api/exhibitions
+ */
+export async function getExhibitions(params: GetExhibitionsParams): Promise<GetExhibitionsResponse> {
+  // 模拟网络延迟
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  let filtered = [...MOCK_EXHIBITIONS]
+
+  // 名字搜索
+  if (params.name) {
+    filtered = filtered.filter(r => r.name.includes(params.name!))
+  }
+
+  // 展馆类型筛选
+  if (params.hall_type) {
+    filtered = filtered.filter(r => r.hall_type === params.hall_type)
+  }
+
+  // 门票类型筛选
+  if (params.ticket_type !== undefined) {
+    filtered = filtered.filter(r => r.ticket_type === params.ticket_type)
+  }
+
+  // 人流量筛选
+  if (params.crowd_level !== undefined) {
+    filtered = filtered.filter(r => r.crowd_level === params.crowd_level)
+  }
+
+  // 是否可预约
+  if (params.can_book !== undefined) {
+    filtered = filtered.filter(r => {
+      const canBook = r.booking_hours !== '不能预约'
+      return canBook === params.can_book
+    })
+  }
+
+  // 人工讲解
+  if (params.manual_guide !== undefined) {
+    filtered = filtered.filter(r => r.manual_guide === params.manual_guide)
+  }
+
+  // 互动体验
+  if (params.interactive_project !== undefined) {
+    filtered = filtered.filter(r => r.interactive_project === params.interactive_project)
+  }
+
+  // 距离筛选
+  if (params.distance) {
+    const { min, max } = parseDistance(params.distance)
+    filtered = filtered.filter(r => {
+      const distance = calculateDistance(r.x, r.y)
+      return distance >= min && distance <= max
+    })
+  }
+
+  const total = filtered.length
+
+  // 分页
+  const page = params.page || 1
+  const page_size = params.page_size || 5
+  const start = (page - 1) * page_size
+  const end = start + page_size
+  const list = filtered.slice(start, end)
+
+  return {
+    code: 0,
+    data: {
+      list,
+      total,
+      page,
+      page_size,
+    },
+    msg: 'success',
+  }
+}
+
+export { type ExhibitionHall, type GetExhibitionsParams, type GetExhibitionsResponse }
+
+// ==================== 游乐园/主题乐园 / Amusement Parks ====================
+
+interface AmusementPark {
+  id: number
+  name: string
+  address: string
+  x: number
+  y: number
+  business_hours: string | null
+  booking_hours: string | null
+  current_booking_count: number
+  max_booking_count: number
+  park_theme: string | null // 童话/海洋/科幻/卡通等
+  ticket_price: number
+  queue_time: number // -1 无需排队
+  performance_info: string | null
+}
+
+interface GetAmusementParksParams {
+  name?: string
+  park_theme?: string
+  can_book?: boolean
+  distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
+  page?: number
+  page_size?: number
+}
+
+interface GetAmusementParksResponse {
+  code: number
+  data: {
+    list: AmusementPark[]
+    total: number
+    page: number
+    page_size: number
+  }
+  msg: string
+}
+
+const MOCK_AMUSEMENT_PARKS: AmusementPark[] = [
+  {
+    id: 1,
+    name: '北京欢乐谷',
+    address: '朝阳区东四环小武基北路',
+    x: 1500,
+    y: 1100,
+    business_hours: '09:00-22:00',
+    booking_hours: '08:30-21:00',
+    current_booking_count: 200,
+    max_booking_count: 800,
+    park_theme: '科幻',
+    ticket_price: 299,
+    queue_time: 30,
+    performance_info: '《金面王朝》大型演出 14:00/16:00',
+  },
+  {
+    id: 2,
+    name: '环球影城',
+    address: '通州区梨园镇东六环',
+    x: 5000,
+    y: 3800,
+    business_hours: '09:00-21:00',
+    booking_hours: '08:00-20:00',
+    current_booking_count: 500,
+    max_booking_count: 1500,
+    park_theme: '科幻',
+    ticket_price: 528,
+    queue_time: 45,
+    performance_info: '霍格沃茨灯光秀 19:30/20:30',
+  },
+  {
+    id: 3,
+    name: '北京动物园海洋馆',
+    address: '海淀区高梁桥斜街乙 18 号',
+    x: 950,
+    y: 750,
+    business_hours: '09:00-17:30',
+    booking_hours: '09:00-16:30',
+    current_booking_count: 100,
+    max_booking_count: 400,
+    park_theme: '海洋',
+    ticket_price: 80,
+    queue_time: 15,
+    performance_info: '海豚表演 10:30/14:00/16:00',
+  },
+  {
+    id: 4,
+    name: '石景山游乐园',
+    address: '石景山区石景山路 25 号',
+    x: 2200,
+    y: 1700,
+    business_hours: '09:00-17:30',
+    booking_hours: '09:00-16:30',
+    current_booking_count: 60,
+    max_booking_count: 400,
+    park_theme: '童话',
+    ticket_price: 99,
+    queue_time: 10,
+    performance_info: '花车巡游 15:00',
+  },
+  {
+    id: 5,
+    name: '北京水上乐园',
+    address: '朝阳区来广营北路 88 号',
+    x: 1800,
+    y: 1400,
+    business_hours: '10:00-20:00',
+    booking_hours: '10:00-19:00',
+    current_booking_count: 80,
+    max_booking_count: 500,
+    park_theme: '海洋',
+    ticket_price: 168,
+    queue_time: 20,
+    performance_info: '造浪池 DJ 表演 15:00/17:00',
+  },
+  {
+    id: 6,
+    name: '世界公园',
+    address: '丰台区丰台路 158 号',
+    x: 2500,
+    y: 1900,
+    business_hours: '08:30-17:30',
+    booking_hours: '08:00-16:30',
+    current_booking_count: 40,
+    max_booking_count: 300,
+    park_theme: '卡通',
+    ticket_price: 100,
+    queue_time: -1,
+    performance_info: '世界风情表演 14:30',
+  },
+  {
+    id: 7,
+    name: '乐多港·卡乐星球',
+    address: '昌平区城南街道邓庄村西',
+    x: 4000,
+    y: 3200,
+    business_hours: '09:00-18:00',
+    booking_hours: '09:00-17:00',
+    current_booking_count: 30,
+    max_booking_count: 300,
+    park_theme: '科幻',
+    ticket_price: 220,
+    queue_time: 10,
+    performance_info: '4D 影院整点播放',
+  },
+  {
+    id: 8,
+    name: '呀路古热带植物园',
+    address: '大兴区长子营镇',
+    x: 3500,
+    y: 2800,
+    business_hours: '08:30-17:30',
+    booking_hours: '08:00-17:00',
+    current_booking_count: 20,
+    max_booking_count: 200,
+    park_theme: '童话',
+    ticket_price: 60,
+    queue_time: -1,
+    performance_info: '少数民族歌舞表演 11:00/14:30',
+  },
+  {
+    id: 9,
+    name: '北京海洋馆',
+    address: '海淀区高梁桥斜街乙 18 号',
+    x: 960,
+    y: 760,
+    business_hours: '09:00-17:30',
+    booking_hours: '09:00-16:30',
+    current_booking_count: 90,
+    max_booking_count: 400,
+    park_theme: '海洋',
+    ticket_price: 80,
+    queue_time: 15,
+    performance_info: '海狮表演 11:00/13:30/15:30',
+  },
+  {
+    id: 10,
+    name: '疯狂运动乐园',
+    address: '朝阳区亮马桥路 27 号',
+    x: 700,
+    y: 550,
+    business_hours: '10:00-22:00',
+    booking_hours: '10:00-21:00',
+    current_booking_count: 25,
+    max_booking_count: 150,
+    park_theme: '卡通',
+    ticket_price: 128,
+    queue_time: 5,
+    performance_info: null,
+  },
+  {
+    id: 11,
+    name: '南宫温泉水世界',
+    address: '丰台区王佐镇南宫路',
+    x: 3000,
+    y: 2400,
+    business_hours: '09:00-22:00',
+    booking_hours: '09:00-21:00',
+    current_booking_count: 50,
+    max_booking_count: 300,
+    park_theme: '海洋',
+    ticket_price: 198,
+    queue_time: 5,
+    performance_info: null,
+  },
+  {
+    id: 12,
+    name: '北京恐龙乐园',
+    address: '昌平区十三陵镇',
+    x: 4200,
+    y: 3400,
+    business_hours: '09:00-17:30',
+    booking_hours: '09:00-16:30',
+    current_booking_count: 35,
+    max_booking_count: 250,
+    park_theme: '童话',
+    ticket_price: 88,
+    queue_time: 8,
+    performance_info: '恐龙互动表演 10:30/14:30',
+  },
+  {
+    id: 13,
+    name: '北京巧克力乐园',
+    address: '朝阳区东坝乡',
+    x: 2000,
+    y: 1600,
+    business_hours: '09:30-18:00',
+    booking_hours: '09:00-17:00',
+    current_booking_count: 15,
+    max_booking_count: 150,
+    park_theme: '童话',
+    ticket_price: 58,
+    queue_time: 5,
+    performance_info: '巧克力 DIY 体验',
+  },
+  {
+    id: 14,
+    name: '幻境乐园',
+    address: '朝阳区三里屯路 19 号院',
+    x: 520,
+    y: 400,
+    business_hours: '10:00-22:00',
+    booking_hours: '10:00-21:00',
+    current_booking_count: 10,
+    max_booking_count: 100,
+    park_theme: '科幻',
+    ticket_price: 158,
+    queue_time: -1,
+    performance_info: 'VR 沉浸体验',
+  },
+  {
+    id: 15,
+    name: '北京稻香湖公园',
+    address: '海淀区苏家坨镇稻香湖路',
+    x: 3200,
+    y: 2500,
+    business_hours: '08:30-17:30',
+    booking_hours: '不能预约',
+    current_booking_count: -1,
+    max_booking_count: -1,
+    park_theme: '童话',
+    ticket_price: 0,
+    queue_time: -1,
+    performance_info: null,
+  },
+  {
+    id: 16,
+    name: '国色天香乐园',
+    address: '大兴区魏善庄镇',
+    x: 3800,
+    y: 3000,
+    business_hours: '09:00-18:00',
+    booking_hours: '09:00-17:00',
+    current_booking_count: 20,
+    max_booking_count: 200,
+    park_theme: '卡通',
+    ticket_price: 45,
+    queue_time: -1,
+    performance_info: '花海观赏季',
+  },
+  {
+    id: 17,
+    name: '大运河文化旅游景区',
+    address: '通州区运河公园内',
+    x: 4800,
+    y: 3600,
+    business_hours: '08:30-20:00',
+    booking_hours: '08:00-19:00',
+    current_booking_count: 45,
+    max_booking_count: 300,
+    park_theme: '童话',
+    ticket_price: 0,
+    queue_time: -1,
+    performance_info: '灯光水舞秀 19:30',
+  },
+  {
+    id: 18,
+    name: '泡泡跑主题乐园',
+    address: '朝阳区常营乡',
+    x: 1700,
+    y: 1300,
+    business_hours: '09:30-18:00',
+    booking_hours: '09:00-17:00',
+    current_booking_count: 15,
+    max_booking_count: 150,
+    park_theme: '卡通',
+    ticket_price: 68,
+    queue_time: 8,
+    performance_info: '泡泡派对 14:00/16:00',
+  },
+  {
+    id: 19,
+    name: '冰雪大世界',
+    address: '昌平区小汤山镇',
+    x: 4500,
+    y: 3600,
+    business_hours: '09:00-21:00',
+    booking_hours: '09:00-20:00',
+    current_booking_count: 30,
+    max_booking_count: 200,
+    park_theme: '童话',
+    ticket_price: 128,
+    queue_time: 10,
+    performance_info: '冰雕展·雪上项目',
+  },
+  {
+    id: 20,
+    name: '北京野生动物园',
+    address: '大兴区榆垡镇万亩森林',
+    x: 5500,
+    y: 4200,
+    business_hours: '08:30-17:30',
+    booking_hours: '08:00-16:30',
+    current_booking_count: 120,
+    max_booking_count: 500,
+    park_theme: '童话',
+    ticket_price: 150,
+    queue_time: 20,
+    performance_info: '动物表演 11:00/14:00',
+  },
+]
+
+/**
+ * 获取游乐园列表
+ * GET /api/amusement-parks
+ */
+export async function getAmusementParks(params: GetAmusementParksParams): Promise<GetAmusementParksResponse> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  let filtered = [...MOCK_AMUSEMENT_PARKS]
+
+  if (params.name) {
+    filtered = filtered.filter(r => r.name.includes(params.name!))
+  }
+
+  if (params.park_theme) {
+    filtered = filtered.filter(r => r.park_theme === params.park_theme)
+  }
+
+  if (params.can_book !== undefined) {
+    filtered = filtered.filter(r => {
+      const canBook = r.booking_hours !== '不能预约'
+      return canBook === params.can_book
+    })
+  }
+
+  if (params.distance) {
+    const { min, max } = parseDistance(params.distance)
+    filtered = filtered.filter(r => {
+      const distance = calculateDistance(r.x, r.y)
+      return distance >= min && distance <= max
+    })
+  }
+
+  const total = filtered.length
+
+  const page = params.page || 1
+  const page_size = params.page_size || 5
+  const start = (page - 1) * page_size
+  const end = start + page_size
+  const list = filtered.slice(start, end)
+
+  return {
+    code: 0,
+    data: { list, total, page, page_size },
+    msg: 'success',
+  }
+}
+
+export { type AmusementPark, type GetAmusementParksParams, type GetAmusementParksResponse }
+
 export async function getParks(params: GetParksParams): Promise<GetParksResponse> {
   // 模拟网络延迟
   await new Promise(resolve => setTimeout(resolve, 200))

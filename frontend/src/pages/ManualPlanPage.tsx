@@ -27,6 +27,10 @@ export function ManualPlanPage({ onBack }: ManualPlanPageProps) {
       window.location.hash = '/manual-plan/park'
     } else if (categoryId === 'shopping') {
       window.location.hash = '/manual-plan/mall'
+    } else if (categoryId === 'exhibition') {
+      window.location.hash = '/manual-plan/exhibition'
+    } else if (categoryId === 'entertainment') {
+      window.location.hash = '/manual-plan/amusement'
     }
   }
 

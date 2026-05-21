@@ -41,8 +41,8 @@ interface ParkCardProps {
 function ParkCard({ park, onClick }: ParkCardProps) {
   const distance = Math.abs(park.x) + Math.abs(park.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
-  const densityLabel = CROWD_DENSITY_LABELS[park.crowd_density]
-  const densityColor = CROWD_DENSITY_COLORS[park.crowd_density]
+  const densityLabel = CROWD_DENSITY_LABELS[park.crowd_density as CrowdDensityType]
+  const densityColor = CROWD_DENSITY_COLORS[park.crowd_density as CrowdDensityType]
   const canBook = park.booking_hours !== '不能预约'
 
   return (
@@ -190,6 +190,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   }
 
   const hasActiveFilters = Object.keys(filters).length > 0
+  const [collapsed, setCollapsed] = useState(true)
 
   const spotTypeOptions: SelectOption[] = [
     { value: '', label: '全部' },
@@ -219,6 +220,16 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
     <div className="sticky top-[57px] z-10 bg-gradient-to-r from-emerald-50/95 via-white/95 to-emerald-50/95 backdrop-blur-sm border-b border-emerald-100/50 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-4 space-y-4">
         <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2 rounded-xl hover:bg-emerald-100 transition-colors"
+            title={collapsed ? '展开筛选' : '收起筛选'}
+          >
+            <CaretDown
+              size={20}
+              className={`text-slate-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            />
+          </button>
           <div className="relative">
             <input
               type="text"
@@ -233,6 +244,9 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               className="w-56 px-4 py-2.5 bg-white border-2 border-emerald-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition-all shadow-sm"
             />
           </div>
+          <span className="text-sm text-slate-500">
+            已找到 <span className="text-emerald-600 font-bold text-base">{resultCount}</span> 个景点
+          </span>
           {hasActiveFilters && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
@@ -245,13 +259,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           )}
         </div>
 
-        <div className="text-center">
-          <span className="text-sm text-slate-500">
-            已找到 <span className="text-emerald-600 font-bold text-base">{resultCount}</span> 个景点
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-emerald-100">
+        <motion.div
+          animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
+          transition={{ duration: 0.35, ease: 'easeInOut' }}
+          className="overflow-hidden"
+        >
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-emerald-100">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">景点类型</span>
             <CustomSelect
@@ -309,7 +322,8 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           >
               可预约
           </button>
-        </div>
+            </div>
+        </motion.div>
       </div>
     </div>
   )

@@ -353,7 +353,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
       try {
         const params: any = {
           page: 1,
-          page_size: 5,
+          page_size: 100, // 一次性获取全部数据，由前端 displayCount 控制逐步展示
         }
         if (filters.name) params.name = filters.name
         if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
@@ -364,7 +364,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
         const response = await getRestaurants(params)
         setRestaurants(response.data.list)
         setTotal(response.data.total)
-        setDisplayCount(response.data.list.length)
+        setDisplayCount(Math.min(5, response.data.list.length))
       } catch (error) {
         console.error('Failed to fetch restaurants:', error)
       } finally {

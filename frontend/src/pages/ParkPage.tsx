@@ -277,7 +277,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
       try {
         const params: any = {
           page: 1,
-          page_size: 5,
+          page_size: 100, // 一次性获取全部数据，由前端 displayCount 控制逐步展示
         }
         if (filters.name) params.name = filters.name
         if (filters.crowd_level !== undefined) params.crowd_level = filters.crowd_level
@@ -286,7 +286,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
         const response = await getParks(params)
         setParks(response.data.list)
         setTotal(response.data.total)
-        setDisplayCount(response.data.list.length)
+        setDisplayCount(Math.min(5, response.data.list.length))
       } catch (error) {
         console.error('Failed to fetch parks:', error)
       } finally {

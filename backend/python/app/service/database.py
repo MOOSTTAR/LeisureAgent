@@ -122,26 +122,41 @@ CREATE TABLE exhibition_hall (
     ticket_price REAL DEFAULT NULL, -- 门票价格
     manual_guide INTEGER DEFAULT 0, -- 是否人工讲解服务
     interactive_project INTEGER DEFAULT 0, -- 有无互动体验项目
-    crowd_level INTEGER DEFAULT 2, -- 人流量 1偏少2适中3拥挤
+    crowd_level INTEGER DEFAULT 2 -- 人流量 1偏少2适中3拥挤
 );
 
-/* 用户信息表 */
-CREATE TABLE user (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 用户ID
-    username TEXT NOT NULL, -- 登录账号
-    user_psw TEXT NOT NULL, -- 登录密码（加密存储）
-    nickname TEXT DEFAULT '', -- 用户昵称
-    avatar TEXT DEFAULT '/default/abc.png', -- 头像地址
-    phone TEXT DEFAULT NULL, -- 手机号
-    email TEXT DEFAULT NULL, -- 邮箱
-    gender INTEGER DEFAULT 0, -- 性别 0未知 1男 2女
-    age INTEGER DEFAULT NULL, -- 年龄
-    status INTEGER DEFAULT 1, -- 账号状态 0禁用 1正常
-    last_login_time TEXT DEFAULT NULL, -- 最后登录时间
+
+
+/* 游玩规划方案表 - 用户行程规划 */
+CREATE TABLE travel_plan (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 方案ID
+    plan_title TEXT NOT NULL, -- 方案标题（如：周末亲子一日游）
+    plan_desc TEXT DEFAULT NULL, -- 方案简介/备注
+    travel_days INTEGER DEFAULT 1, -- 行程天数
+    travel_type TEXT DEFAULT NULL, -- 游玩类型 亲子/美食/逛街/风景/人文
+    travel_date TEXT DEFAULT NULL, -- 计划出行日期
+    total_cost REAL DEFAULT 0, -- 预估总花费
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 创建时间
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 修改时间
-
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP -- 更新时间
 );
+
+
+
+/* 规划方案详情明细表（每日行程地点） */
+CREATE TABLE travel_plan_item (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 明细ID
+    plan_id INTEGER NOT NULL, -- 关联规划方案ID
+    location_table_name TEXT NOT NULL, -- 关联场所表的名称
+    location_id INTEGER NOT NULL, -- 该场所表中的具体id
+    day_num INTEGER DEFAULT 1, -- 第几天行程
+    arrive_time TEXT DEFAULT NULL, -- 预计到达时间
+    leave_time TEXT DEFAULT NULL, -- 预计离开时间
+    stay_minute INTEGER DEFAULT 0, -- 停留时长(分钟)
+    remark TEXT DEFAULT NULL, -- 本段行程备注
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP -- 更新时间
+);
+
 
 CREATE TABLE IF NOT EXISTS items (
     id          Integer PRIMARY KEY,

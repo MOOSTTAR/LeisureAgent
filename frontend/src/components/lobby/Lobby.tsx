@@ -16,9 +16,7 @@ export function Lobby() {
       <nav className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-medium tracking-tight text-slate-900">
-              LeisureAgent
-            </h1>
+            <img src="/logo.png" alt="LeisureAgent" className="h-8 w-auto" />
           </div>
         </div>
       </nav>

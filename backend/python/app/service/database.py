@@ -108,15 +108,10 @@ CREATE TABLE scenic_spot (
     x INTEGER NOT NULL, -- 坐标系,横坐标 
     y INTEGER NOT NULL, -- 坐标系，纵坐标
     spot_type TEXT DEFAULT NULL, -- 景点类型 山水/古迹/人文/溶洞等
-    ticket_type INTEGER DEFAULT 0, -- 门票类型 0免费 1收费
-    ticket_price REAL DEFAULT NULL, -- 门票单价
     business_hours TEXT DEFAULT NULL, -- 开放时间，如“10:00-22:00”
     booking_hours TEXT DEFAULT NULL, -- 可以预约的时间，如“10:00-22:00”，不能预约直接填充“不能预约”
     current_booking_count INTEGER DEFAULT -1, -- 当前预约数
     max_booking_count INTEGER DEFAULT -1, -- 最大预约数
-    mountain_feature INTEGER DEFAULT 0, -- 是否山地景观 0否 1是
-    water_feature INTEGER DEFAULT 0, -- 是否临水景观 0否 1是
-    historic_relic INTEGER DEFAULT 0, -- 是否历史古迹 0否 1是
     crowd_density INTEGER DEFAULT 2, -- 人流量 1稀少 2适中 3拥挤
 );
 
@@ -156,10 +151,6 @@ CREATE TABLE user (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 创建时间
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 修改时间
 
-    -- 内置索引
-    UNIQUE idx_unique_username(username), -- 账号唯一
-    UNIQUE idx_unique_phone(phone), -- 手机号唯一
-    INDEX idx_user_status(status)
 );
 
 CREATE TABLE IF NOT EXISTS items (

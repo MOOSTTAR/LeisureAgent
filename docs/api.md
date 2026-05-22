@@ -54,7 +54,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 ```json
 {
   "code": 0,
-  "data": { ... },
+  "data": {  },
   "msg": "success"
 }
 ```
@@ -69,7 +69,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 {
   "code": 0,
   "data": {
-    "list": [ ... ],
+    "list": [  ],
     "total": 50,
     "page": 1,
     "page_size": 5

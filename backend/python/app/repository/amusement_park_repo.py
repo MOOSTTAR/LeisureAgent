@@ -166,3 +166,4 @@ def delete(id: int) -> bool:
     cur = conn.execute("DELETE FROM amusement_park WHERE id=?", (id,))
     conn.commit()
     return cur.rowcount > 0
+

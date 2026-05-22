@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Clock, CalendarBlank } from '@phosphor-icons/react'
+import { X, Plus, Clock, CalendarBlank, CaretDown } from '@phosphor-icons/react'
 import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../mock/api'
 
 interface AddToPlanModalProps {
@@ -55,6 +55,84 @@ interface ConflictInfo {
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
 
+interface PopSelectProps {
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+  theme: typeof THEME_COLORS['orange']
+  placeholder?: string
+}
+
+function PopSelect({ value, options, onChange, theme: t, placeholder }: PopSelectProps) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const handleToggle = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 80) })
+    }
+    setOpen(!open)
+  }
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (!triggerRef.current?.contains(target) && !dropdownRef.current?.contains(target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={handleToggle}
+        className={`px-2.5 py-2.5 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-1 min-w-[52px] ${
+          open ? `${t.border} ring-2 ${t.ring}` : `border-slate-200 ${t.hover}`
+        }`}
+      >
+        <span className={value ? 'text-slate-700' : 'text-slate-400'}>
+          {value || placeholder || ''}
+        </span>
+        <CaretDown size={12} className={`transition-transform shrink-0 ${open ? 'rotate-180' : 'text-slate-400'}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={dropdownRef}
+            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            transition={{ duration: 0.12 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width }}
+            className="bg-white rounded-xl border border-slate-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-[100] max-h-[200px] overflow-y-auto"
+          >
+            {options.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => { onChange(opt); setOpen(false) }}
+                className={`w-full text-center px-3 py-2 text-sm transition-colors ${
+                  value === opt ? `${t.bg} ${t.text} font-medium` : 'text-slate-600 hover:bg-slate-50'
+                } first:rounded-t-xl last:rounded-b-xl`}
+              >
+                {opt}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
 export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme }: AddToPlanModalProps) {
   const c = THEME_COLORS[theme]
 
@@ -75,7 +153,34 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
   const [error, setError] = useState<string | null>(null)
   const [conflict, setConflict] = useState<ConflictInfo | null>(null)
 
+  const [planDropdownOpen, setPlanDropdownOpen] = useState(false)
+  const [planDropdownPos, setPlanDropdownPos] = useState({ top: 0, left: 0, width: 0 })
+  const planTriggerRef = useRef<HTMLButtonElement>(null)
+  const planDropdownRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  const togglePlanDropdown = () => {
+    if (!planDropdownOpen && planTriggerRef.current) {
+      const rect = planTriggerRef.current.getBoundingClientRect()
+      setPlanDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width })
+    }
+    setPlanDropdownOpen(!planDropdownOpen)
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node
+      const clickedOnTrigger = planTriggerRef.current?.contains(target)
+      const clickedOnDropdown = planDropdownRef.current?.contains(target)
+      if (!clickedOnTrigger && !clickedOnDropdown) {
+        setPlanDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedPlan = plans.find(p => p.id === selectedPlanId)
 
   // Reset state when opening
   useEffect(() => {
@@ -90,6 +195,7 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
       setError(null)
       setConflict(null)
       setSubmitting(false)
+      setPlanDropdownOpen(false)
       loadPlans()
     }
   }, [isOpen])
@@ -270,23 +376,61 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
                     </button>
                   </div>
                 ) : (
-                  <select
-                    value={selectedPlanId ?? ''}
-                    onChange={(e) => handlePlanChange(e.target.value ? Number(e.target.value) : 0)}
-                    className={`w-full px-3 py-2.5 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer appearance-none ${
-                      selectedPlanId
-                        ? `${c.border} ${c.ring}`
-                        : 'border-slate-200 hover:border-slate-300'
-                    } focus:outline-none focus:ring-2`}
-                  >
-                    <option value="">选择要添加到的计划...</option>
-                    {plans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.plan_title} ({plan.travel_days}天{plan.travel_date ? ` · ${plan.travel_date}` : ''})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button
+                      ref={planTriggerRef}
+                      onClick={togglePlanDropdown}
+                      className={`w-full px-3 py-2.5 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                        planDropdownOpen
+                          ? `${c.border} ring-2 ${c.ring}`
+                          : `border-slate-200 ${c.hover}`
+                      }`}
+                    >
+                      <span className={selectedPlan ? 'text-slate-700' : 'text-slate-400'}>
+                        {selectedPlan ? `${selectedPlan.plan_title} (${selectedPlan.travel_days}天)` : '选择要添加到的计划...'}
+                      </span>
+                      <CaretDown size={16} className={`transition-transform shrink-0 ${planDropdownOpen ? 'rotate-180 text-slate-600' : 'text-slate-400'}`} />
+                    </button>
+                  </div>
                 )}
+                <AnimatePresence>
+                  {planDropdownOpen && (
+                    <motion.div
+                      ref={planDropdownRef}
+                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      style={{
+                        position: 'fixed',
+                        top: planDropdownPos.top,
+                        left: planDropdownPos.left,
+                        width: planDropdownPos.width,
+                      }}
+                      className="bg-white rounded-xl border border-slate-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-[100] max-h-[200px] overflow-y-auto"
+                    >
+                      {plans.map((plan) => (
+                        <button
+                          key={plan.id}
+                          onClick={() => {
+                            handlePlanChange(plan.id)
+                            setPlanDropdownOpen(false)
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            selectedPlanId === plan.id
+                              ? `${c.bg} ${c.text} font-medium`
+                              : 'text-slate-600 hover:bg-slate-50'
+                          } first:rounded-t-xl last:rounded-b-xl`}
+                        >
+                          <span className="block truncate">{plan.plan_title}</span>
+                          <span className="block text-xs mt-0.5 opacity-60">
+                            {plan.travel_days}天{plan.travel_date ? ` · ${plan.travel_date}` : ''}
+                          </span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Time selection */}
@@ -294,22 +438,14 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
                 <>
                   <div>
                     <label className="text-xs font-medium text-slate-500 mb-1.5 block">时间段</label>
-                    <div className="flex items-center gap-2">
-                      <select value={startHour} onChange={(e) => setStartHour(e.target.value)} className="px-2 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer">
-                        {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <span className="text-slate-400 font-medium">:</span>
-                      <select value={startMin} onChange={(e) => setStartMin(e.target.value)} className="px-2 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer">
-                        {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                      <span className="text-slate-300 mx-1">—</span>
-                      <select value={endHour} onChange={(e) => setEndHour(e.target.value)} className="px-2 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer">
-                        {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <span className="text-slate-400 font-medium">:</span>
-                      <select value={endMin} onChange={(e) => setEndMin(e.target.value)} className="px-2 py-2 bg-white border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer">
-                        {MINUTES.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
+                    <div className="flex items-center gap-1.5">
+                      <PopSelect value={startHour} options={HOURS} onChange={setStartHour} theme={c} />
+                      <span className="text-slate-400 font-medium text-sm">:</span>
+                      <PopSelect value={startMin} options={MINUTES} onChange={setStartMin} theme={c} />
+                      <span className="text-slate-300 font-medium mx-0.5">—</span>
+                      <PopSelect value={endHour} options={HOURS} onChange={setEndHour} theme={c} />
+                      <span className="text-slate-400 font-medium text-sm">:</span>
+                      <PopSelect value={endMin} options={MINUTES} onChange={setEndMin} theme={c} />
                     </div>
                   </div>
 
@@ -353,15 +489,12 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
                   {/* Day number */}
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-medium text-slate-500">第</label>
-                    <select
-                      value={dayNum}
-                      onChange={(e) => setDayNum(Number(e.target.value))}
-                      className="px-2 py-1.5 bg-white border-2 border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 cursor-pointer"
-                    >
-                      {[1, 2].map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
+                    <PopSelect
+                      value={String(dayNum)}
+                      options={['1', '2']}
+                      onChange={(v) => setDayNum(Number(v))}
+                      theme={c}
+                    />
                     <label className="text-xs font-medium text-slate-500">天</label>
                   </div>
                 </>

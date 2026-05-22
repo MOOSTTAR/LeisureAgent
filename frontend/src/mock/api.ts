@@ -1063,6 +1063,24 @@ export async function deleteRestaurant(id: number): Promise<{ code: number; msg:
 }
 
 /**
+ * 获取可预约餐厅列表
+ * GET /api/get_booking_list?type=restaurant
+ */
+export async function getBookingRestaurants(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: Restaurant[]; total: number; page: number; page_size: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const page = params.page || 1
+  const pageSize = Math.min(params.page_size || 5, 50)
+  const filtered = MOCK_RESTAURANTS.filter(r => r.booking_hours && r.booking_hours !== '不能预约')
+  const total = filtered.length
+  const start = (page - 1) * pageSize
+  return {
+    code: 0,
+    data: { list: filtered.slice(start, start + pageSize), total, page, page_size: pageSize },
+    msg: 'success',
+  }
+}
+
+/**
  * 获取公园列表
  * GET /api/parks
  */
@@ -1564,6 +1582,24 @@ export async function deleteExhibition(id: number): Promise<{ code: number; msg:
   return { code: 0, msg: '删除成功' }
 }
 
+/**
+ * 获取可预约展馆列表
+ * GET /api/get_booking_list?type=exhibition
+ */
+export async function getBookingExhibitions(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: ExhibitionHall[]; total: number; page: number; page_size: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const page = params.page || 1
+  const pageSize = Math.min(params.page_size || 5, 50)
+  const filtered = MOCK_EXHIBITIONS.filter(e => e.booking_hours && e.booking_hours !== '不能预约')
+  const total = filtered.length
+  const start = (page - 1) * pageSize
+  return {
+    code: 0,
+    data: { list: filtered.slice(start, start + pageSize), total, page, page_size: pageSize },
+    msg: 'success',
+  }
+}
+
 export { type ExhibitionHall, type GetExhibitionsParams, type GetExhibitionsResponse }
 
 // ==================== 游乐园/主题乐园 / Amusement Parks ====================
@@ -1969,6 +2005,24 @@ export async function deleteAmusementPark(id: number): Promise<{ code: number; m
   if (index === -1) return { code: 404, msg: '乐园不存在' }
   MOCK_AMUSEMENT_PARKS.splice(index, 1)
   return { code: 0, msg: '删除成功' }
+}
+
+/**
+ * 获取可预约游乐园列表
+ * GET /api/get_booking_list?type=amusement_park
+ */
+export async function getBookingAmusementParks(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: AmusementPark[]; total: number; page: number; page_size: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const page = params.page || 1
+  const pageSize = Math.min(params.page_size || 5, 50)
+  const filtered = MOCK_AMUSEMENT_PARKS.filter(a => a.booking_hours && a.booking_hours !== '不能预约')
+  const total = filtered.length
+  const start = (page - 1) * pageSize
+  return {
+    code: 0,
+    data: { list: filtered.slice(start, start + pageSize), total, page, page_size: pageSize },
+    msg: 'success',
+  }
 }
 
 export { type AmusementPark, type GetAmusementParksParams, type GetAmusementParksResponse }

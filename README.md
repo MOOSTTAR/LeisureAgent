@@ -16,11 +16,11 @@ Agent 会在几分钟内完成：
 
 **项目展示**
 
-![](assets/7ecd78c8-fc2d-4713-9156-1fda97c5c1c1.png)
+![](assets/6a4929d9-a979-466a-91fb-a2fddcad3842.png)
 
 **分类板块**
 
-![](assets/9613c931-dce1-4557-9f92-a89204003b8d.png)
+![](assets/9a6ad124-7a76-4b8e-8697-49f954065e20.png)
 
 ## 技术栈
 

@@ -209,7 +209,11 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                         <div className={`absolute -left-[26px] top-3 w-3 h-3 rounded-full border-2 border-white ${theme.dot} z-10`} />
 
                         {/* Card */}
-                        <div className={`bg-white rounded-xl border ${theme.border} shadow-sm overflow-hidden`}>
+                        <motion.div
+                          whileHover={{ y: -2, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`bg-white rounded-xl border ${theme.border} shadow-sm overflow-hidden cursor-default`}
+                        >
                           {/* Time bar */}
                           {(item.arrive_time || item.leave_time) && (
                             <div className={`flex items-center gap-3 px-4 py-2.5 ${theme.bg} border-b ${theme.border}`}>
@@ -260,7 +264,7 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                               </p>
                             )}
                           </div>
-                        </div>
+                        </motion.div>
                       </div>
                     )
                   })}

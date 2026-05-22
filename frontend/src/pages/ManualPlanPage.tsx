@@ -14,10 +14,8 @@ const CATEGORIES = [
   { id: 'food', name: '美食', icon: '🍜', color: 'orange', description: '探索地道美食' },
   { id: 'outdoor', name: '户外', icon: '🏕️', color: 'green', description: '亲近大自然' },
   { id: 'exhibition', name: '观展', icon: '🎨', color: 'purple', description: '艺术与展览' },
-  { id: 'leisure', name: '休闲', icon: '☕', color: 'blue', description: '放松时光' },
   { id: 'shopping', name: '购物', icon: '🛍️', color: 'pink', description: '逛街购物' },
   { id: 'entertainment', name: '娱乐', icon: '🎪', color: 'yellow', description: '精彩娱乐项目' },
-  { id: 'sports', name: '运动', icon: '⚽', color: 'red', description: '活力运动' },
 ]
 
 export function ManualPlanPage({ onBack, onNavigate }: ManualPlanPageProps) {

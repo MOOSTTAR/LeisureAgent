@@ -14,6 +14,7 @@ def get_by_id(id: int) -> Optional[dict[str, Any]]:
 
 def list_all(
     has_cinema: Optional[bool] = None,
+    name: Optional[str] = None,
     has_supermarket: Optional[bool] = None,
     distance: Optional[str] = None,
     page: int = 1,
@@ -24,6 +25,7 @@ def list_all(
 
     items = mall_repo.search(
         has_cinema=has_cinema,
+        name=name,
         has_supermarket=has_supermarket,
         distance_min=d_min,
         distance_max=d_max,
@@ -32,6 +34,7 @@ def list_all(
     )
     total = mall_repo.count(
         has_cinema=has_cinema,
+        name=name,
         has_supermarket=has_supermarket,
         distance_min=d_min,
         distance_max=d_max,

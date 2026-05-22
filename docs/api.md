@@ -195,13 +195,14 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 **查询参数：**
 
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| `name` | string | 否 | 景点名字模糊搜索 |
+| 参数            | 类型 | 必填 | 描述                 |
+|---------------|------|------|--------------------|
+| `name`        | string | 否 | 景点名字模糊搜索           | 
+| `spot_type`   | string | 否 | 景点类型枚举             | 
 | `crowd_level` | integer | 否 | 人流量：1 稀少/2 适中/3 拥挤 |
-| `distance` | string | 否 | 距离筛选 |
-| `page` | integer | 否 | 页码，默认 1 |
-| `page_size` | integer | 否 | 每页数量，默认 5 |
+| `distance`    | string | 否 | 距离筛选               |
+| `page`        | integer | 否 | 页码，默认 1            |
+| `page_size`   | integer | 否 | 每页数量，默认 5          |
 
 **响应字段说明：**
 
@@ -230,13 +231,14 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 **查询参数：**
 
-| 参数 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| `has_cinema` | boolean | 否 | 是否有影院：true/false |
+| 参数                | 类型      | 必填 | 描述                 |
+|-------------------|---------|------|--------------------|
+| `has_cinema`      | boolean | 否 | 是否有影院：true/false   |
+| `name`            | str     | 否 | 商场名字               |
 | `has_supermarket` | boolean | 否 | 是否有大型超市：true/false |
-| `distance` | string | 否 | 距离筛选 |
-| `page` | integer | 否 | 页码，默认 1 |
-| `page_size` | integer | 否 | 每页数量，默认 5 |
+| `distance`        | string  | 否 | 距离筛选               |
+| `page`            | integer | 否 | 页码，默认 1            |
+| `page_size`       | integer | 否 | 每页数量，默认 5          |
 
 **响应字段说明：**
 
@@ -351,7 +353,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | 参数 | 类型 | 必填 | 描述 |
 |------|------|------|------|
 | `title` | string | 否 | 方案标题搜索 |
-| `travel_type` | string | 否 | 游玩类型：亲子/美食/逛街/风景/人文 |
+| `travel_type` | string | 否 | 游玩类型：亲子/美食/逛街/风景/人文/探险/文化/自然/休闲/购物/单人出行 |
 | `travel_date` | string | 否 | 出行日期：YYYY-MM-DD |
 | `page` | integer | 否 | 页码，默认 1 |
 | `page_size` | integer | 否 | 每页数量，默认 5 |

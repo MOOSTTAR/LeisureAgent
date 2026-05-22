@@ -49,6 +49,7 @@ def filter_has_supermarket(limit: int = 20) -> list[dict[str, Any]]:
 
 def search(
     has_cinema: Optional[bool] = None,
+    name:  Optional[str] = None,
     has_supermarket: Optional[bool] = None,
     distance_min: Optional[int] = None,
     distance_max: Optional[int] = None,
@@ -59,6 +60,9 @@ def search(
     clauses: list[str] = []
     params: list[Any] = []
 
+    if name is not None:
+        clauses.append("name LIKE ?")
+        params.append(f"%{name}%")
     if has_cinema is not None:
         clauses.append("cinema_has = ?")
         params.append(1 if has_cinema else 0)
@@ -85,6 +89,7 @@ def search(
 
 def count(
     has_cinema: Optional[bool] = None,
+    name: Optional[str] = None,
     has_supermarket: Optional[bool] = None,
     distance_min: Optional[int] = None,
     distance_max: Optional[int] = None,
@@ -93,6 +98,9 @@ def count(
     clauses: list[str] = []
     params: list[Any] = []
 
+    if name is not None:
+        clauses.append("name LIKE ?")
+        params.append(f"%{name}%")
     if has_cinema is not None:
         clauses.append("cinema_has = ?")
         params.append(1 if has_cinema else 0)

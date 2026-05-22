@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/parks", tags=["景点/公园"])
 @router.get("")
 def list_parks(
     name: str = Query(None, description="公园名字模糊搜索"),
+    spot_type: str = Query(None, description="景点类型"),
     crowd_level: int = Query(None, description="人流量：1 稀少/2 适中/3 拥挤"),
     distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),
     page: int = Query(1, ge=1),
@@ -20,6 +21,7 @@ def list_parks(
 ):
     items, total = scenic_spot_service.list_all(
         name=name,
+        spot_type=spot_type,
         crowd_level=crowd_level,
         distance=distance,
         page=page,

@@ -186,6 +186,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `spot_type` | string | 否 | 景点类型：山水/古迹/人文/溶洞 |
 | `crowd_level` | integer | 否 | 人流量：1 稀少/2 适中/3 拥挤 |
 | `distance` | string | 否 | 距离筛选 |
+| `booking_hours`| string | 否 | 是否能够预约 |
 | `page` | integer | 否 | 页码，默认 1 |
 | `page_size` | integer | 否 | 每页数量，默认 5 |
 
@@ -200,7 +201,6 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `y` | integer | 坐标系纵坐标 |
 | `spot_type` | string | 景点类型：山水/古迹/人文/溶洞等 |
 | `business_hours` | string | 开放时间 |
-| `booking_hours` | string | 可预约时段 |
 | `current_booking_count` | integer | 当前已预约数量，-1 表示无效 |
 | `max_booking_count` | integer | 最大预约容量，-1 表示无效 |
 | `crowd_density` | integer | 人流量：1 稀少/2 适中/3 拥挤 |

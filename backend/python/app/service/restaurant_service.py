@@ -17,7 +17,6 @@ def list_all(
     name: Optional[str] = None,
     cuisine_type: Optional[str] = None,
     dining_style: Optional[int] = None,
-    can_book: Optional[bool] = None,
     distance: Optional[str] = None,
     page: int = 1,
     page_size: int = 5,
@@ -30,25 +29,6 @@ def list_all(
         items = [i for i in items if i["cuisine_type"] == cuisine_type]
     if dining_style is not None:
         items = [i for i in items if i["dining_style"] == dining_style]
-    if can_book is not None:
-        if can_book:
-            items = [
-                i
-                for i in items
-                if i["booking_hours"]
-                and i["booking_hours"] != "不能预约"
-                and i["max_booking_count"] != -1
-                and i["current_booking_count"] < i["max_booking_count"]
-            ]
-        else:
-            items = [
-                i
-                for i in items
-                if not i["booking_hours"]
-                or i["booking_hours"] == "不能预约"
-                or i["max_booking_count"] == -1
-                or i["current_booking_count"] >= i["max_booking_count"]
-            ]
     if distance:
         items = filter_by_distance(items, distance)
 

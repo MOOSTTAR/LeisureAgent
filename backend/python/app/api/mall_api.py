@@ -14,12 +14,14 @@ router = APIRouter(prefix="/api/malls", tags=["商场"])
 def list_malls(
     has_cinema: bool = Query(None, description="是否有影院"),
     has_supermarket: bool = Query(None, description="是否有大型超市"),
+    distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),
     page: int = Query(1, ge=1),
     page_size: int = Query(5, ge=1, le=50),
 ):
     items, total = mall_service.list_all(
         has_cinema=has_cinema,
         has_supermarket=has_supermarket,
+        distance=distance,
         page=page,
         page_size=page_size,
     )

@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/amusement-parks", tags=["游乐园"])
 
 @router.get("")
 def list_amusement_parks(
-    name: str = Query(None, description="乐园名字模糊搜索"),
+    name: str = Query(None, description="景点乐园名字模糊搜索"),
     park_theme: str = Query(None, description="乐园主题：童话/海洋/科幻/卡通"),
     free_entry: bool = Query(None, description="是否免费入园"),
     distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),

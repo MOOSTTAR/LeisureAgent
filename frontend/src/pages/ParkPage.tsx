@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
-import { getParks, type Park } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
+import { getParks, deletePark, type Park } from '../mock/api'
+import { AddToPlanModal } from '../components/AddToPlanModal'
 
 const CrowdDensity = {
   LOW: 1,      // 稀少
@@ -28,17 +29,19 @@ const CROWD_DENSITY_COLORS: Record<CrowdDensityType, string> = {
 interface FilterOptions {
   name?: string
   spot_type?: string
-  crowd_density?: CrowdDensityType
+  crowd_level?: CrowdDensityType
   can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
 interface ParkCardProps {
   park: Park
+  onDelete?: (id: number) => void
   onClick?: () => void
+  onAddToPlan?: () => void
 }
 
-function ParkCard({ park, onClick }: ParkCardProps) {
+function ParkCard({ park, onDelete, onClick, onAddToPlan }: ParkCardProps) {
   const distance = Math.abs(park.x) + Math.abs(park.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
   const densityLabel = CROWD_DENSITY_LABELS[park.crowd_density as CrowdDensityType]
@@ -52,7 +55,7 @@ function ParkCard({ park, onClick }: ParkCardProps) {
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow"
+      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow group"
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -64,9 +67,20 @@ function ParkCard({ park, onClick }: ParkCardProps) {
               {park.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-lg whitespace-nowrap">
-            {distanceText}
-          </span>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onDelete?.(park.id) }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="删除景点"
+            >
+              <Trash size={16} />
+            </motion.button>
+            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-lg whitespace-nowrap">
+              {distanceText}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
@@ -97,6 +111,14 @@ function ParkCard({ park, onClick }: ParkCardProps) {
             <span>可约时段：{park.booking_hours}</span>
           )}
         </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToPlan?.() }}
+          className="w-full mt-3 py-2 rounded-xl text-sm font-medium border-2 border-dashed border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:border-solid transition-all flex items-center justify-center gap-1.5"
+        >
+          <Plus size={14} />
+          添加到计划
+        </button>
       </div>
     </motion.div>
   )
@@ -283,12 +305,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">人流量</span>
             <CustomSelect
-              value={filters.crowd_density !== undefined ? String(filters.crowd_density) : ''}
+              value={filters.crowd_level !== undefined ? String(filters.crowd_level) : ''}
               options={crowdDensityOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
-                  crowd_density: val ? Number(val) as CrowdDensityType : undefined,
+                  crowd_level: val ? Number(val) as CrowdDensityType : undefined,
                 })
               }
             />
@@ -341,7 +363,25 @@ export function ParkPage({ onBack }: ParkPageProps) {
   const [isFetching, setIsFetching] = useState(false)
   const [parks, setParks] = useState<Park[]>([])
   const [total, setTotal] = useState(0)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<Park | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      const result = await deletePark(id)
+      if (result.code === 0) {
+        setParks(prev => prev.filter(p => p.id !== id))
+        setTotal(prev => prev - 1)
+      }
+    } catch (error) {
+      console.error('Failed to delete park:', error)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   // 调用 Mock API 获取数据
   useEffect(() => {
@@ -354,7 +394,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
         }
         if (filters.name) params.name = filters.name
         if (filters.spot_type) params.spot_type = filters.spot_type
-        if (filters.crowd_density !== undefined) params.crowd_density = filters.crowd_density
+        if (filters.crowd_level !== undefined) params.crowd_level = filters.crowd_level
         if (filters.can_book !== undefined) params.can_book = filters.can_book
         if (filters.distance) params.distance = filters.distance
 
@@ -447,7 +487,14 @@ export function ParkPage({ onBack }: ParkPageProps) {
           <>
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedParks.map((park) => (
-                <ParkCard key={park.id} park={park} />
+                <div className={`relative ${deletingId === park.id ? 'pointer-events-none opacity-50' : ''}`}>
+                  <ParkCard key={park.id} park={park} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(park); setModalOpen(true) }} />
+                  {deletingId === park.id && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm text-slate-400">删除中...</span>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -477,6 +524,24 @@ export function ParkPage({ onBack }: ParkPageProps) {
           </>
         )}
       </div>
+
+      {selectedItem && (
+        <AddToPlanModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          item={{
+            id: selectedItem.id,
+            name: selectedItem.name,
+            address: selectedItem.address,
+            booking_hours: selectedItem.booking_hours,
+            current_booking_count: selectedItem.current_booking_count,
+            max_booking_count: selectedItem.max_booking_count,
+            queue_time: undefined,
+          }}
+          locationTableName="parks"
+          theme="emerald"
+        />
+      )}
     </div>
   )
 }

@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
-import { getExhibitions, type ExhibitionHall } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
+import { getExhibitions, deleteExhibition, type ExhibitionHall } from '../mock/api'
+import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {
   name?: string
   hall_type?: string
-  ticket_type?: number
+  free_entry?: boolean
   crowd_level?: number
   can_book?: boolean
   manual_guide?: number
@@ -18,10 +19,12 @@ interface FilterOptions {
 
 interface ExhibitionCardProps {
   hall: ExhibitionHall
+  onDelete?: (id: number) => void
   onClick?: () => void
+  onAddToPlan?: () => void
 }
 
-function ExhibitionCard({ hall, onClick }: ExhibitionCardProps) {
+function ExhibitionCard({ hall, onDelete, onClick, onAddToPlan }: ExhibitionCardProps) {
   const distance = Math.abs(hall.x) + Math.abs(hall.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
   const canBook = hall.booking_hours !== '不能预约'
@@ -41,7 +44,7 @@ function ExhibitionCard({ hall, onClick }: ExhibitionCardProps) {
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow"
+      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow group"
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -53,9 +56,20 @@ function ExhibitionCard({ hall, onClick }: ExhibitionCardProps) {
               {hall.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-violet-50 text-violet-600 text-xs font-medium rounded-lg whitespace-nowrap">
-            {distanceText}
-          </span>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onDelete?.(hall.id) }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="删除展馆"
+            >
+              <Trash size={16} />
+            </motion.button>
+            <span className="px-2.5 py-1 bg-violet-50 text-violet-600 text-xs font-medium rounded-lg whitespace-nowrap">
+              {distanceText}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
@@ -82,6 +96,14 @@ function ExhibitionCard({ hall, onClick }: ExhibitionCardProps) {
           {hall.interactive_project === 1 && <span>有互动体验</span>}
           {canBook && <span>可预约（{hall.current_booking_count}/{hall.max_booking_count}）</span>}
         </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToPlan?.() }}
+          className="w-full mt-3 py-2 rounded-xl text-sm font-medium border-2 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 hover:border-solid transition-all flex items-center justify-center gap-1.5"
+        >
+          <Plus size={14} />
+          添加到计划
+        </button>
       </div>
     </motion.div>
   )
@@ -187,8 +209,8 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
   const ticketOptions: SelectOption[] = [
     { value: '', label: '全部' },
-    { value: '0', label: '免费' },
-    { value: '1', label: '收费' },
+    { value: 'true', label: '免费' },
+    { value: 'false', label: '收费' },
   ]
 
   const crowdOptions: SelectOption[] = [
@@ -276,12 +298,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">门票</span>
             <CustomSelect
-              value={filters.ticket_type !== undefined ? String(filters.ticket_type) : ''}
+              value={filters.free_entry !== undefined ? String(filters.free_entry) : ''}
               options={ticketOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
-                  ticket_type: val !== '' ? Number(val) : undefined,
+                  free_entry: val !== '' ? val === 'true' : undefined,
                 })
               }
             />
@@ -387,7 +409,25 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
   const [isFetching, setIsFetching] = useState(false)
   const [halls, setHalls] = useState<ExhibitionHall[]>([])
   const [total, setTotal] = useState(0)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<ExhibitionHall | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      const result = await deleteExhibition(id)
+      if (result.code === 0) {
+        setHalls(prev => prev.filter(h => h.id !== id))
+        setTotal(prev => prev - 1)
+      }
+    } catch (error) {
+      console.error('Failed to delete exhibition:', error)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
     const fetchHalls = async () => {
@@ -396,7 +436,7 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
         const params: any = { page: 1, page_size: 100 }
         if (filters.name) params.name = filters.name
         if (filters.hall_type) params.hall_type = filters.hall_type
-        if (filters.ticket_type !== undefined) params.ticket_type = filters.ticket_type
+        if (filters.free_entry !== undefined) params.free_entry = filters.free_entry
         if (filters.crowd_level !== undefined) params.crowd_level = filters.crowd_level
         if (filters.can_book !== undefined) params.can_book = filters.can_book
         if (filters.manual_guide !== undefined) params.manual_guide = filters.manual_guide
@@ -491,7 +531,14 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
           <>
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedHalls.map((hall) => (
-                <ExhibitionCard key={hall.id} hall={hall} />
+                <div className={`relative ${deletingId === hall.id ? 'pointer-events-none opacity-50' : ''}`}>
+                  <ExhibitionCard key={hall.id} hall={hall} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(hall); setModalOpen(true) }} />
+                  {deletingId === hall.id && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm text-slate-400">删除中...</span>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -521,6 +568,24 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
           </>
         )}
       </div>
+
+      {selectedItem && (
+        <AddToPlanModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          item={{
+            id: selectedItem.id,
+            name: selectedItem.name,
+            address: selectedItem.address,
+            booking_hours: selectedItem.booking_hours,
+            current_booking_count: selectedItem.current_booking_count,
+            max_booking_count: selectedItem.max_booking_count,
+            queue_time: undefined,
+          }}
+          locationTableName="exhibitions"
+          theme="violet"
+        />
+      )}
     </div>
   )
 }

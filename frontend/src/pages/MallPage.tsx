@@ -2,23 +2,25 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
-import { getMalls, type Mall } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
+import { getMalls, deleteMall, type Mall } from '../mock/api'
+import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {
   name?: string
-  cinema_has?: number
-  supermarket_has?: number
-  discount_status?: number
+  has_cinema?: boolean
+  has_supermarket?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
 interface MallCardProps {
   mall: Mall
+  onDelete?: (id: number) => void
   onClick?: () => void
+  onAddToPlan?: () => void
 }
 
-function MallCard({ mall, onClick }: MallCardProps) {
+function MallCard({ mall, onDelete, onClick, onAddToPlan }: MallCardProps) {
   const distance = Math.abs(mall.x) + Math.abs(mall.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
 
@@ -29,7 +31,7 @@ function MallCard({ mall, onClick }: MallCardProps) {
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow"
+      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow group"
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -41,9 +43,20 @@ function MallCard({ mall, onClick }: MallCardProps) {
               {mall.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-lg whitespace-nowrap">
-            {distanceText}
-          </span>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onDelete?.(mall.id) }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="删除商场"
+            >
+              <Trash size={16} />
+            </motion.button>
+            <span className="px-2.5 py-1 bg-pink-50 text-pink-600 text-xs font-medium rounded-lg whitespace-nowrap">
+              {distanceText}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
@@ -57,11 +70,6 @@ function MallCard({ mall, onClick }: MallCardProps) {
           }`}>
             {mall.supermarket_has ? '有超市' : '无超市'}
           </span>
-          <span className={`px-2 py-0.5 text-xs rounded-md whitespace-nowrap ${
-            mall.discount_status ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'
-          }`}>
-            {mall.discount_status ? '有优惠' : '无优惠'}
-          </span>
         </div>
 
         <div className="pt-2 border-t border-slate-100">
@@ -69,6 +77,14 @@ function MallCard({ mall, onClick }: MallCardProps) {
             购物休闲，一站式体验
           </p>
         </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToPlan?.() }}
+          className="w-full mt-3 py-2 rounded-xl text-sm font-medium border-2 border-dashed border-pink-300 text-pink-600 hover:bg-pink-50 hover:border-solid transition-all flex items-center justify-center gap-1.5"
+        >
+          <Plus size={14} />
+          添加到计划
+        </button>
       </div>
     </motion.div>
   )
@@ -166,14 +182,8 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
   const yesNoOptions: SelectOption[] = [
     { value: '', label: '全部' },
-    { value: '1', label: '有' },
-    { value: '0', label: '无' },
-  ]
-
-  const discountOptions: SelectOption[] = [
-    { value: '', label: '全部' },
-    { value: '1', label: '有优惠' },
-    { value: '0', label: '无优惠' },
+    { value: 'true', label: '有' },
+    { value: 'false', label: '无' },
   ]
 
   const distanceOptions: SelectOption[] = [
@@ -238,12 +248,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">影院</span>
               <CustomSelect
-                value={filters.cinema_has !== undefined ? String(filters.cinema_has) : ''}
+                value={filters.has_cinema !== undefined ? String(filters.has_cinema) : ''}
                 options={yesNoOptions}
                 onChange={(val) =>
                   onFilterChange({
                     ...filters,
-                    cinema_has: val !== '' ? Number(val) : undefined,
+                    has_cinema: val !== '' ? val === 'true' : undefined,
                   })
                 }
               />
@@ -252,26 +262,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">大型超市</span>
               <CustomSelect
-                value={filters.supermarket_has !== undefined ? String(filters.supermarket_has) : ''}
+                value={filters.has_supermarket !== undefined ? String(filters.has_supermarket) : ''}
                 options={yesNoOptions}
                 onChange={(val) =>
                   onFilterChange({
                     ...filters,
-                    supermarket_has: val !== '' ? Number(val) : undefined,
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">优惠活动</span>
-              <CustomSelect
-                value={filters.discount_status !== undefined ? String(filters.discount_status) : ''}
-                options={discountOptions}
-                onChange={(val) =>
-                  onFilterChange({
-                    ...filters,
-                    discount_status: val !== '' ? Number(val) : undefined,
+                    has_supermarket: val !== '' ? val === 'true' : undefined,
                   })
                 }
               />
@@ -308,7 +304,25 @@ export function MallPage({ onBack }: MallPageProps) {
   const [isFetching, setIsFetching] = useState(false)
   const [malls, setMalls] = useState<Mall[]>([])
   const [total, setTotal] = useState(0)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<Mall | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      const result = await deleteMall(id)
+      if (result.code === 0) {
+        setMalls(prev => prev.filter(m => m.id !== id))
+        setTotal(prev => prev - 1)
+      }
+    } catch (error) {
+      console.error('Failed to delete mall:', error)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   // 调用 Mock API 获取数据
   useEffect(() => {
@@ -320,9 +334,8 @@ export function MallPage({ onBack }: MallPageProps) {
           page_size: 100,
         }
         if (filters.name) params.name = filters.name
-        if (filters.cinema_has !== undefined) params.cinema_has = filters.cinema_has
-        if (filters.supermarket_has !== undefined) params.supermarket_has = filters.supermarket_has
-        if (filters.discount_status !== undefined) params.discount_status = filters.discount_status
+        if (filters.has_cinema !== undefined) params.has_cinema = filters.has_cinema
+        if (filters.has_supermarket !== undefined) params.has_supermarket = filters.has_supermarket
         if (filters.distance) params.distance = filters.distance
 
         const response = await getMalls(params)
@@ -414,7 +427,14 @@ export function MallPage({ onBack }: MallPageProps) {
           <>
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedMalls.map((mall) => (
-                <MallCard key={mall.id} mall={mall} />
+                <div className={`relative ${deletingId === mall.id ? 'pointer-events-none opacity-50' : ''}`}>
+                  <MallCard key={mall.id} mall={mall} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(mall); setModalOpen(true) }} />
+                  {deletingId === mall.id && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm text-slate-400">删除中...</span>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -444,6 +464,20 @@ export function MallPage({ onBack }: MallPageProps) {
           </>
         )}
       </div>
+
+      {selectedItem && (
+        <AddToPlanModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          item={{
+            id: selectedItem.id,
+            name: selectedItem.name,
+            address: selectedItem.address,
+          }}
+          locationTableName="malls"
+          theme="pink"
+        />
+      )}
     </div>
   )
 }

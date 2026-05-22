@@ -31,15 +31,15 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/amusement-parks/{id}` | GET | 获取单个游乐园详情 |
 | `/api/amusement-parks/{id}` | PUT | 更新游乐园信息 |
 | `/api/amusement-parks/{id}` | DELETE | 删除游乐园 |
-| `/api/travel-plans` | GET | 获取旅行方案列表 |
-| `/api/travel-plans` | POST | 创建旅行方案 |
-| `/api/travel-plans/{id}` | GET | 获取单个方案详情 |
-| `/api/travel-plans/{id}` | PUT | 更新方案信息 |
-| `/api/travel-plans/{id}` | DELETE | 删除方案 |
-| `/api/travel-plan-items` | GET | 获取方案明细列表 |
-| `/api/travel-plan-items` | POST | 创建方案明细 |
-| `/api/travel-plan-items/{id}` | GET | 获取单个明细详情 |
-| `/api/travel-plan-items/{id}` | PUT | 更新明细信息 |
+| `/api/travel-plans` | GET | 获取计划方案列表 |
+| `/api/travel-plans` | POST | 创建计划方案 |
+| `/api/travel-plans/{id}` | GET | 获取单个计划详情 |
+| `/api/travel-plans/{id}` | PUT | 更新计划信息 |
+| `/api/travel-plans/{id}` | DELETE | 删除计划 |
+| `/api/travel-plan-items` | GET | 获取计划明细列表 |
+| `/api/travel-plan-items` | POST | 创建计划明细 |
+| `/api/travel-plan-items/{id}` | GET | 获取单个计划明细详情 |
+| `/api/travel-plan-items/{id}` | PUT | 更新计划明细信息 |
 | `/api/travel-plan-items/{id}` | DELETE | 删除明细 |
 
 ---

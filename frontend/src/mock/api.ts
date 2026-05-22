@@ -487,7 +487,7 @@ export interface Park {
 interface GetParksParams {
   name?: string
   spot_type?: string
-  crowd_density?: number
+  crowd_level?: number
   can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
@@ -778,14 +778,12 @@ export interface Mall {
   y: number
   cinema_has: number  // 0 无 1 有
   supermarket_has: number  // 0 无 1 有
-  discount_status: number  // 0 无优惠 1 有优惠
 }
 
 interface GetMallsParams {
   name?: string
-  cinema_has?: number
-  supermarket_has?: number
-  discount_status?: number
+  has_cinema?: boolean
+  has_supermarket?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
   page_size?: number
@@ -811,7 +809,6 @@ const MOCK_MALLS: Mall[] = [
     y: 450,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 2,
@@ -821,7 +818,6 @@ const MOCK_MALLS: Mall[] = [
     y: 150,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 1,
   },
   {
     id: 3,
@@ -831,7 +827,6 @@ const MOCK_MALLS: Mall[] = [
     y: 300,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 0,
   },
   {
     id: 4,
@@ -841,7 +836,6 @@ const MOCK_MALLS: Mall[] = [
     y: 380,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 5,
@@ -851,7 +845,6 @@ const MOCK_MALLS: Mall[] = [
     y: 420,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 6,
@@ -861,7 +854,6 @@ const MOCK_MALLS: Mall[] = [
     y: 520,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 0,
   },
   {
     id: 7,
@@ -871,7 +863,6 @@ const MOCK_MALLS: Mall[] = [
     y: 1100,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 8,
@@ -881,7 +872,6 @@ const MOCK_MALLS: Mall[] = [
     y: 2200,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 9,
@@ -891,7 +881,6 @@ const MOCK_MALLS: Mall[] = [
     y: 1500,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 0,
   },
   {
     id: 10,
@@ -901,7 +890,6 @@ const MOCK_MALLS: Mall[] = [
     y: 1200,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 11,
@@ -911,7 +899,6 @@ const MOCK_MALLS: Mall[] = [
     y: 200,
     cinema_has: 0,
     supermarket_has: 0,
-    discount_status: 0,
   },
   {
     id: 12,
@@ -921,7 +908,6 @@ const MOCK_MALLS: Mall[] = [
     y: 180,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 0,
   },
   {
     id: 13,
@@ -931,7 +917,6 @@ const MOCK_MALLS: Mall[] = [
     y: 190,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 1,
   },
   {
     id: 14,
@@ -941,7 +926,6 @@ const MOCK_MALLS: Mall[] = [
     y: 260,
     cinema_has: 0,
     supermarket_has: 1,
-    discount_status: 0,
   },
   {
     id: 15,
@@ -951,7 +935,6 @@ const MOCK_MALLS: Mall[] = [
     y: 750,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 1,
   },
   {
     id: 16,
@@ -961,7 +944,6 @@ const MOCK_MALLS: Mall[] = [
     y: 600,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 17,
@@ -971,7 +953,6 @@ const MOCK_MALLS: Mall[] = [
     y: 680,
     cinema_has: 1,
     supermarket_has: 0,
-    discount_status: 0,
   },
   {
     id: 18,
@@ -981,7 +962,6 @@ const MOCK_MALLS: Mall[] = [
     y: 2800,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 1,
   },
   {
     id: 19,
@@ -991,7 +971,6 @@ const MOCK_MALLS: Mall[] = [
     y: 3200,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 0,
   },
   {
     id: 20,
@@ -1001,7 +980,6 @@ const MOCK_MALLS: Mall[] = [
     y: 4000,
     cinema_has: 1,
     supermarket_has: 1,
-    discount_status: 0,
   },
 ]
 
@@ -1021,18 +999,13 @@ export async function getMalls(params: GetMallsParams): Promise<GetMallsResponse
   }
 
   // 影院筛选
-  if (params.cinema_has !== undefined) {
-    filtered = filtered.filter(r => r.cinema_has === params.cinema_has)
+  if (params.has_cinema !== undefined) {
+    filtered = filtered.filter(r => r.cinema_has === (params.has_cinema ? 1 : 0))
   }
 
   // 大型超市筛选
-  if (params.supermarket_has !== undefined) {
-    filtered = filtered.filter(r => r.supermarket_has === params.supermarket_has)
-  }
-
-  // 优惠活动筛选
-  if (params.discount_status !== undefined) {
-    filtered = filtered.filter(r => r.discount_status === params.discount_status)
+  if (params.has_supermarket !== undefined) {
+    filtered = filtered.filter(r => r.supermarket_has === (params.has_supermarket ? 1 : 0))
   }
 
   // 距离筛选
@@ -1066,6 +1039,30 @@ export async function getMalls(params: GetMallsParams): Promise<GetMallsResponse
 }
 
 /**
+ * 删除商场
+ * DELETE /api/malls/{id}
+ */
+export async function deleteMall(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_MALLS.findIndex(m => m.id === id)
+  if (index === -1) return { code: 404, msg: '商场不存在' }
+  MOCK_MALLS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
+}
+
+/**
+ * 删除餐厅
+ * DELETE /api/restaurants/{id}
+ */
+export async function deleteRestaurant(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_RESTAURANTS.findIndex(r => r.id === id)
+  if (index === -1) return { code: 404, msg: '餐厅不存在' }
+  MOCK_RESTAURANTS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
+}
+
+/**
  * 获取公园列表
  * GET /api/parks
  */
@@ -1093,7 +1090,7 @@ interface ExhibitionHall {
 interface GetExhibitionsParams {
   name?: string
   hall_type?: string
-  ticket_type?: number
+  free_entry?: boolean
   crowd_level?: number
   can_book?: boolean
   manual_guide?: number
@@ -1497,9 +1494,9 @@ export async function getExhibitions(params: GetExhibitionsParams): Promise<GetE
     filtered = filtered.filter(r => r.hall_type === params.hall_type)
   }
 
-  // 门票类型筛选
-  if (params.ticket_type !== undefined) {
-    filtered = filtered.filter(r => r.ticket_type === params.ticket_type)
+  // 门票类型筛选 (free_entry: true=免费, false=收费)
+  if (params.free_entry !== undefined) {
+    filtered = filtered.filter(r => r.ticket_type === (params.free_entry ? 0 : 1))
   }
 
   // 人流量筛选
@@ -1555,6 +1552,18 @@ export async function getExhibitions(params: GetExhibitionsParams): Promise<GetE
   }
 }
 
+/**
+ * 删除展馆
+ * DELETE /api/exhibition-halls/{id}
+ */
+export async function deleteExhibition(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_EXHIBITIONS.findIndex(e => e.id === id)
+  if (index === -1) return { code: 404, msg: '展馆不存在' }
+  MOCK_EXHIBITIONS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
+}
+
 export { type ExhibitionHall, type GetExhibitionsParams, type GetExhibitionsResponse }
 
 // ==================== 游乐园/主题乐园 / Amusement Parks ====================
@@ -1578,6 +1587,7 @@ interface AmusementPark {
 interface GetAmusementParksParams {
   name?: string
   park_theme?: string
+  free_entry?: boolean
   can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
@@ -1915,6 +1925,10 @@ export async function getAmusementParks(params: GetAmusementParksParams): Promis
     filtered = filtered.filter(r => r.park_theme === params.park_theme)
   }
 
+  if (params.free_entry !== undefined) {
+    filtered = filtered.filter(r => params.free_entry ? r.ticket_price === 0 : r.ticket_price > 0)
+  }
+
   if (params.can_book !== undefined) {
     filtered = filtered.filter(r => {
       const canBook = r.booking_hours !== '不能预约'
@@ -1943,6 +1957,18 @@ export async function getAmusementParks(params: GetAmusementParksParams): Promis
     data: { list, total, page, page_size },
     msg: 'success',
   }
+}
+
+/**
+ * 删除游乐园
+ * DELETE /api/amusement-parks/{id}
+ */
+export async function deleteAmusementPark(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_AMUSEMENT_PARKS.findIndex(a => a.id === id)
+  if (index === -1) return { code: 404, msg: '乐园不存在' }
+  MOCK_AMUSEMENT_PARKS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
 }
 
 export { type AmusementPark, type GetAmusementParksParams, type GetAmusementParksResponse }
@@ -2020,6 +2046,9 @@ const MOCK_TRAVEL_PLANS: TravelPlan[] = [
 ]
 
 export interface GetTravelPlansParams {
+  title?: string
+  travel_type?: string
+  travel_date?: string
   page?: number
   page_size?: number
 }
@@ -2038,17 +2067,32 @@ export interface GetTravelPlansResponse {
 export async function getTravelPlans(params: GetTravelPlansParams = {}): Promise<GetTravelPlansResponse> {
   await new Promise(resolve => setTimeout(resolve, 200))
 
+  let filtered = [...MOCK_TRAVEL_PLANS]
+
+  if (params.title) {
+    filtered = filtered.filter(p => p.plan_title.includes(params.title!))
+  }
+
+  if (params.travel_type) {
+    filtered = filtered.filter(p => p.travel_type === params.travel_type)
+  }
+
+  if (params.travel_date) {
+    filtered = filtered.filter(p => p.travel_date === params.travel_date)
+  }
+
+  const total = filtered.length
   const page = params.page || 1
   const page_size = params.page_size || 5
   const start = (page - 1) * page_size
   const end = start + page_size
-  const list = MOCK_TRAVEL_PLANS.slice(start, end)
+  const list = filtered.slice(start, end)
 
   return {
     code: 0,
     data: {
       list,
-      total: MOCK_TRAVEL_PLANS.length,
+      total,
       page,
       page_size,
     },
@@ -2068,6 +2112,178 @@ export async function deleteTravelPlan(id: number): Promise<{ code: number; msg:
   return { code: 0, msg: '删除成功' }
 }
 
+// ==================== TravelPlanItem (计划明细) ====================
+
+export interface TravelPlanItem {
+  id: number
+  plan_id: number
+  location_table_name: string
+  location_id: number
+  day_num: number
+  arrive_time: string | null
+  leave_time: string | null
+  stay_minute: number
+  remark: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ResolvedLocation {
+  name: string
+  address: string
+  typeLabel: string
+  subtypeLabel: string | null
+  theme: 'orange' | 'emerald' | 'pink' | 'violet' | 'amber'
+}
+
+const MOCK_TRAVEL_PLAN_ITEMS: TravelPlanItem[] = [
+  // Plan 1: 周末亲子一日游
+  { id: 1, plan_id: 1, location_table_name: 'amusement_parks', location_id: 20, day_num: 1, arrive_time: '09:00', leave_time: '11:30', stay_minute: 150, remark: '看动物表演 11:00 场次', created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
+  { id: 2, plan_id: 1, location_table_name: 'restaurants', location_id: 1, day_num: 1, arrive_time: '12:00', leave_time: '13:30', stay_minute: 90, remark: '提前预约包间', created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
+  { id: 3, plan_id: 1, location_table_name: 'amusement_parks', location_id: 1, day_num: 1, arrive_time: '14:30', leave_time: '18:00', stay_minute: 210, remark: '看《金面王朝》16:00 场', created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
+
+  // Plan 2: 朋友聚会吃饭逛街
+  { id: 4, plan_id: 2, location_table_name: 'restaurants', location_id: 8, day_num: 1, arrive_time: '18:00', leave_time: '20:00', stay_minute: 120, remark: '提前取号避免排队', created_at: '2026-05-21 09:15:00', updated_at: '2026-05-21 09:15:00' },
+  { id: 5, plan_id: 2, location_table_name: 'malls', location_id: 4, day_num: 1, arrive_time: '20:15', leave_time: '22:00', stay_minute: 105, remark: '逛三里屯，看电影', created_at: '2026-05-21 09:15:00', updated_at: '2026-05-21 09:15:00' },
+
+  // Plan 3: 独自散心文化之旅
+  { id: 6, plan_id: 3, location_table_name: 'exhibitions', location_id: 1, day_num: 1, arrive_time: '09:00', leave_time: '11:30', stay_minute: 150, remark: '古代中国基本陈列', created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
+  { id: 7, plan_id: 3, location_table_name: 'parks', location_id: 6, day_num: 1, arrive_time: '13:30', leave_time: '15:30', stay_minute: 120, remark: '湖边散步放松', created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
+  { id: 8, plan_id: 3, location_table_name: 'restaurants', location_id: 9, day_num: 1, arrive_time: '16:00', leave_time: '17:00', stay_minute: 60, remark: '喝杯咖啡休息', created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
+
+  // Plan 4: 约会浪漫行程
+  { id: 9, plan_id: 4, location_table_name: 'amusement_parks', location_id: 2, day_num: 1, arrive_time: '09:00', leave_time: '17:00', stay_minute: 480, remark: '霍格沃茨灯光秀 19:30', created_at: '2026-05-18 20:45:00', updated_at: '2026-05-18 20:45:00' },
+  { id: 10, plan_id: 4, location_table_name: 'restaurants', location_id: 13, day_num: 1, arrive_time: '18:30', leave_time: '20:30', stay_minute: 120, remark: '窗边位置预约', created_at: '2026-05-18 20:45:00', updated_at: '2026-05-18 20:45:00' },
+
+  // Plan 5: 周末放松半日游
+  { id: 11, plan_id: 5, location_table_name: 'parks', location_id: 4, day_num: 1, arrive_time: '14:00', leave_time: '16:00', stay_minute: 120, remark: '南园散步，北园看花', created_at: '2026-05-22 11:00:00', updated_at: '2026-05-22 11:00:00' },
+  { id: 12, plan_id: 5, location_table_name: 'malls', location_id: 5, day_num: 1, arrive_time: '16:30', leave_time: '18:30', stay_minute: 120, remark: '逛商场 + 晚餐', created_at: '2026-05-22 11:00:00', updated_at: '2026-05-22 11:00:00' },
+]
+
+const TABLE_NAME_LABELS: Record<string, { typeLabel: string; theme: ResolvedLocation['theme'] }> = {
+  restaurants: { typeLabel: '餐厅', theme: 'orange' },
+  parks: { typeLabel: '景点', theme: 'emerald' },
+  malls: { typeLabel: '商场', theme: 'pink' },
+  exhibitions: { typeLabel: '展馆', theme: 'violet' },
+  amusement_parks: { typeLabel: '乐园', theme: 'amber' },
+}
+
+export function resolveLocation(tableName: string, locationId: number): ResolvedLocation | null {
+  const labelInfo = TABLE_NAME_LABELS[tableName]
+  if (!labelInfo) return null
+
+  let found: { name: string; address: string; subtypeLabel?: string } | null = null
+
+  switch (tableName) {
+    case 'restaurants': {
+      const r = MOCK_RESTAURANTS.find(item => item.id === locationId)
+      if (r) found = { name: r.name, address: r.address, subtypeLabel: r.cuisine_type || undefined }
+      break
+    }
+    case 'parks': {
+      const p = MOCK_PARKS.find(item => item.id === locationId)
+      if (p) found = { name: p.name, address: p.address, subtypeLabel: p.spot_type || undefined }
+      break
+    }
+    case 'malls': {
+      const m = MOCK_MALLS.find(item => item.id === locationId)
+      if (m) found = { name: m.name, address: m.address, subtypeLabel: undefined }
+      break
+    }
+    case 'exhibitions': {
+      const e = MOCK_EXHIBITIONS.find(item => item.id === locationId)
+      if (e) found = { name: e.name, address: e.address, subtypeLabel: e.hall_type || undefined }
+      break
+    }
+    case 'amusement_parks': {
+      const a = MOCK_AMUSEMENT_PARKS.find(item => item.id === locationId)
+      if (a) found = { name: a.name, address: a.address, subtypeLabel: a.park_theme || undefined }
+      break
+    }
+  }
+
+  if (!found) return null
+
+  return {
+    name: found.name,
+    address: found.address,
+    typeLabel: labelInfo.typeLabel,
+    subtypeLabel: found.subtypeLabel || null,
+    theme: labelInfo.theme,
+  }
+}
+
+export interface GetTravelPlanItemsParams {
+  plan_id?: number
+  page?: number
+  page_size?: number
+}
+
+export async function getTravelPlanItems(params: GetTravelPlanItemsParams = {}): Promise<{ code: number; data: { list: TravelPlanItem[]; total: number; page: number; page_size: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  let filtered = [...MOCK_TRAVEL_PLAN_ITEMS]
+
+  if (params.plan_id !== undefined) {
+    filtered = filtered.filter(item => item.plan_id === params.plan_id)
+  }
+
+  const total = filtered.length
+  const page = params.page || 1
+  const page_size = params.page_size || 10
+  const start = (page - 1) * page_size
+  const end = start + page_size
+  const list = filtered.slice(start, end)
+
+  return {
+    code: 0,
+    data: { list, total, page, page_size },
+    msg: 'success',
+  }
+}
+
+/**
+ * 删除计划明细
+ * DELETE /api/travel-plan-items/{id}
+ */
+export async function deleteTravelPlanItem(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_TRAVEL_PLAN_ITEMS.findIndex(i => i.id === id)
+  if (index === -1) return { code: 404, msg: '明细不存在' }
+  MOCK_TRAVEL_PLAN_ITEMS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
+}
+
+export async function addTravelPlanItem(params: {
+  plan_id: number
+  location_table_name: string
+  location_id: number
+  day_num?: number
+  arrive_time?: string | null
+  leave_time?: string | null
+  stay_minute?: number
+  remark?: string | null
+}): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_TRAVEL_PLAN_ITEMS.reduce((max, i) => Math.max(max, i.id), 0)
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  const newItem: TravelPlanItem = {
+    id: maxId + 1,
+    plan_id: params.plan_id,
+    location_table_name: params.location_table_name,
+    location_id: params.location_id,
+    day_num: params.day_num ?? 1,
+    arrive_time: params.arrive_time ?? null,
+    leave_time: params.leave_time ?? null,
+    stay_minute: params.stay_minute ?? 0,
+    remark: params.remark ?? null,
+    created_at: now,
+    updated_at: now,
+  }
+  MOCK_TRAVEL_PLAN_ITEMS.push(newItem)
+  return { code: 0, data: { id: newItem.id }, msg: '添加成功' }
+}
+
 export async function getParks(params: GetParksParams): Promise<GetParksResponse> {
   // 模拟网络延迟
   await new Promise(resolve => setTimeout(resolve, 200))
@@ -2085,8 +2301,8 @@ export async function getParks(params: GetParksParams): Promise<GetParksResponse
   }
 
   // 人流量筛选
-  if (params.crowd_density !== undefined) {
-    filtered = filtered.filter(r => r.crowd_density === params.crowd_density)
+  if (params.crowd_level !== undefined) {
+    filtered = filtered.filter(r => r.crowd_density === params.crowd_level)
   }
 
   // 是否可预约筛选
@@ -2125,4 +2341,16 @@ export async function getParks(params: GetParksParams): Promise<GetParksResponse
     },
     msg: 'success',
   }
+}
+
+/**
+ * 删除景点
+ * DELETE /api/parks/{id}
+ */
+export async function deletePark(id: number): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_PARKS.findIndex(p => p.id === id)
+  if (index === -1) return { code: 404, msg: '景点不存在' }
+  MOCK_PARKS.splice(index, 1)
+  return { code: 0, msg: '删除成功' }
 }

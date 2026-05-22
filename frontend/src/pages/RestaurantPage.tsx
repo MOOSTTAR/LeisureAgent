@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
-import { getRestaurants, type Restaurant } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
+import { getRestaurants, deleteRestaurant, type Restaurant } from '../mock/api'
+import { AddToPlanModal } from '../components/AddToPlanModal'
 
 const DiningStyle = {
   DINE_IN: 0,
@@ -32,10 +33,12 @@ interface FilterOptions {
 
 interface RestaurantCardProps {
   restaurant: Restaurant
+  onDelete?: (id: number) => void
   onClick?: () => void
+  onAddToPlan?: () => void
 }
 
-function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
+function RestaurantCard({ restaurant, onDelete, onClick, onAddToPlan }: RestaurantCardProps) {
   const distance = Math.abs(restaurant.x) + Math.abs(restaurant.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
   const isBookable = restaurant.booking_hours !== '不能预约' && restaurant.booking_hours !== null
@@ -50,7 +53,7 @@ function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow"
+      className="bg-white rounded-2xl border border-slate-200/50 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow group"
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -62,9 +65,20 @@ function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
               {restaurant.address}
             </p>
           </div>
-          <span className="shrink-0 ml-2 px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-lg whitespace-nowrap">
-            {distanceText}
-          </span>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onDelete?.(restaurant.id) }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="删除餐厅"
+            >
+              <Trash size={16} />
+            </motion.button>
+            <span className="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-lg whitespace-nowrap">
+              {distanceText}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
@@ -113,6 +127,14 @@ function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
             </div>
           )}
         </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToPlan?.() }}
+          className="w-full mt-3 py-2 rounded-xl text-sm font-medium border-2 border-dashed border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-solid transition-all flex items-center justify-center gap-1.5"
+        >
+          <Plus size={14} />
+          添加到计划
+        </button>
       </div>
     </motion.div>
   )
@@ -359,7 +381,25 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
   const [isFetching, setIsFetching] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [total, setTotal] = useState(0)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<Restaurant | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      const result = await deleteRestaurant(id)
+      if (result.code === 0) {
+        setRestaurants(prev => prev.filter(r => r.id !== id))
+        setTotal(prev => prev - 1)
+      }
+    } catch (error) {
+      console.error('Failed to delete restaurant:', error)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   // 调用 Mock API 获取数据
   useEffect(() => {
@@ -465,7 +505,14 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
           <>
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedRestaurants.map((restaurant) => (
-                <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+                <div className={`relative ${deletingId === restaurant.id ? 'pointer-events-none opacity-50' : ''}`}>
+                  <RestaurantCard key={restaurant.id} restaurant={restaurant} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(restaurant); setModalOpen(true) }} />
+                  {deletingId === restaurant.id && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm text-slate-400">删除中...</span>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -495,6 +542,24 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
           </>
         )}
       </div>
+
+      {selectedItem && (
+        <AddToPlanModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          item={{
+            id: selectedItem.id,
+            name: selectedItem.name,
+            address: selectedItem.address,
+            booking_hours: selectedItem.booking_hours,
+            current_booking_count: selectedItem.current_booking_count,
+            max_booking_count: selectedItem.max_booking_count,
+            queue_time: selectedItem.queue_time,
+          }}
+          locationTableName="restaurants"
+          theme="orange"
+        />
+      )}
     </div>
   )
 }

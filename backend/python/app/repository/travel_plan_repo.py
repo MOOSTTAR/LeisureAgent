@@ -48,6 +48,59 @@ def filter_by_date(travel_date: str, limit: int = 20) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def search(
+    title: Optional[str] = None,
+    travel_type: Optional[str] = None,
+    travel_date: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    conn = get_connection()
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if title:
+        clauses.append("plan_title LIKE ?")
+        params.append(f"%{title}%")
+    if travel_type:
+        clauses.append("travel_type = ?")
+        params.append(travel_type)
+    if travel_date:
+        clauses.append("travel_date = ?")
+        params.append(travel_date)
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    rows = conn.execute(
+        f"SELECT * FROM travel_plan{where} ORDER BY id LIMIT ? OFFSET ?",
+        [*params, limit, offset],
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count(
+    title: Optional[str] = None,
+    travel_type: Optional[str] = None,
+    travel_date: Optional[str] = None,
+) -> int:
+    conn = get_connection()
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if title:
+        clauses.append("plan_title LIKE ?")
+        params.append(f"%{title}%")
+    if travel_type:
+        clauses.append("travel_type = ?")
+        params.append(travel_type)
+    if travel_date:
+        clauses.append("travel_date = ?")
+        params.append(travel_date)
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    row = conn.execute(f"SELECT COUNT(*) FROM travel_plan{where}", params).fetchone()
+    return row[0]
+
+
 def create(data: dict[str, Any]) -> int:
     conn = get_connection()
     keys = list(data.keys())

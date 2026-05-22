@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from app.api import filter_by_distance, paginate
+from app.api import parse_distance_filter
 from app.repository import exhibition_hall_repo
 
 
@@ -20,18 +20,26 @@ def list_all(
     page: int = 1,
     page_size: int = 5,
 ) -> tuple[list[dict[str, Any]], int]:
-    items = exhibition_hall_repo.get_all(limit=9999)
+    offset = (page - 1) * page_size
+    d_min, d_max = parse_distance_filter(distance) if distance else (None, None)
 
-    if name:
-        items = [i for i in items if name.lower() in i["name"].lower()]
-    if hall_type:
-        items = [i for i in items if i["hall_type"] == hall_type]
-    if free_entry is not None:
-        items = [i for i in items if (i["ticket_type"] == 0) == free_entry]
-    if distance:
-        items = filter_by_distance(items, distance)
-
-    return paginate(items, page, page_size)
+    items = exhibition_hall_repo.search(
+        name=name,
+        hall_type=hall_type,
+        free_entry=free_entry,
+        distance_min=d_min,
+        distance_max=d_max,
+        limit=page_size,
+        offset=offset,
+    )
+    total = exhibition_hall_repo.count(
+        name=name,
+        hall_type=hall_type,
+        free_entry=free_entry,
+        distance_min=d_min,
+        distance_max=d_max,
+    )
+    return items, total
 
 
 def create(data: dict[str, Any]) -> int:
@@ -44,3 +52,15 @@ def update(id: int, data: dict[str, Any]) -> bool:
 
 def delete(id: int) -> bool:
     return exhibition_hall_repo.delete(id)
+
+
+def get_booking_list(
+    page: int = 1,
+    page_size: int = 5,
+) -> tuple[list[dict[str, Any]], int]:
+    offset = (page - 1) * page_size
+    items = exhibition_hall_repo.search(
+        bookable=True, limit=page_size, offset=offset
+    )
+    total = exhibition_hall_repo.count(bookable=True)
+    return items, total

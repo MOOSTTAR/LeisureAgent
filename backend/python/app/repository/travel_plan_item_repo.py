@@ -43,6 +43,36 @@ def get_by_location(
     return [dict(r) for r in rows]
 
 
+def search(
+    plan_id: Optional[int] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    conn = get_connection()
+    if plan_id is not None:
+        rows = conn.execute(
+            "SELECT * FROM travel_plan_item WHERE plan_id=? ORDER BY id LIMIT ? OFFSET ?",
+            (plan_id, limit, offset),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM travel_plan_item ORDER BY id LIMIT ? OFFSET ?",
+            (limit, offset),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count(plan_id: Optional[int] = None) -> int:
+    conn = get_connection()
+    if plan_id is not None:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM travel_plan_item WHERE plan_id=?", (plan_id,)
+        ).fetchone()
+    else:
+        row = conn.execute("SELECT COUNT(*) FROM travel_plan_item").fetchone()
+    return row[0]
+
+
 def create(data: dict[str, Any]) -> int:
     conn = get_connection()
     keys = list(data.keys())

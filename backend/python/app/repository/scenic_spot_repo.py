@@ -48,6 +48,81 @@ def filter_by_crowd(density: int, limit: int = 20) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def search(
+    name: Optional[str] = None,
+    spot_type: Optional[str] = None,
+    crowd_level: Optional[int] = None,
+    distance_min: Optional[int] = None,
+    distance_max: Optional[int] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    conn = get_connection()
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if name:
+        clauses.append("name LIKE ?")
+        params.append(f"%{name}%")
+    if spot_type:
+        clauses.append("spot_type = ?")
+        params.append(spot_type)
+    if crowd_level is not None:
+        clauses.append("crowd_density = ?")
+        params.append(crowd_level)
+    if distance_min is not None and distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) BETWEEN ? AND ?")
+        params.extend([distance_min, distance_max])
+    elif distance_min is not None:
+        clauses.append("(ABS(x) + ABS(y)) >= ?")
+        params.append(distance_min)
+    elif distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) <= ?")
+        params.append(distance_max)
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    rows = conn.execute(
+        f"SELECT * FROM scenic_spot{where} ORDER BY id LIMIT ? OFFSET ?",
+        [*params, limit, offset],
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count(
+    name: Optional[str] = None,
+    spot_type: Optional[str] = None,
+    crowd_level: Optional[int] = None,
+    distance_min: Optional[int] = None,
+    distance_max: Optional[int] = None,
+) -> int:
+    conn = get_connection()
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if name:
+        clauses.append("name LIKE ?")
+        params.append(f"%{name}%")
+    if spot_type:
+        clauses.append("spot_type = ?")
+        params.append(spot_type)
+    if crowd_level is not None:
+        clauses.append("crowd_density = ?")
+        params.append(crowd_level)
+    if distance_min is not None and distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) BETWEEN ? AND ?")
+        params.extend([distance_min, distance_max])
+    elif distance_min is not None:
+        clauses.append("(ABS(x) + ABS(y)) >= ?")
+        params.append(distance_min)
+    elif distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) <= ?")
+        params.append(distance_max)
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    row = conn.execute(f"SELECT COUNT(*) FROM scenic_spot{where}", params).fetchone()
+    return row[0]
+
+
 def create(data: dict[str, Any]) -> int:
     conn = get_connection()
     keys = list(data.keys())

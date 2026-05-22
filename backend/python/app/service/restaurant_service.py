@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from app.api import filter_by_distance, paginate, parse_tags
+from app.api import parse_distance_filter, parse_tags
 from app.repository import restaurant_repo
 
 
@@ -21,19 +21,26 @@ def list_all(
     page: int = 1,
     page_size: int = 5,
 ) -> tuple[list[dict[str, Any]], int]:
-    items = restaurant_repo.get_all(limit=9999)
+    offset = (page - 1) * page_size
+    d_min, d_max = parse_distance_filter(distance) if distance else (None, None)
 
-    if name:
-        items = [i for i in items if name.lower() in i["name"].lower()]
-    if cuisine_type:
-        items = [i for i in items if i["cuisine_type"] == cuisine_type]
-    if dining_style is not None:
-        items = [i for i in items if i["dining_style"] == dining_style]
-    if distance:
-        items = filter_by_distance(items, distance)
-
-    items = [_format(i) for i in items]
-    return paginate(items, page, page_size)
+    items = restaurant_repo.search(
+        name=name,
+        cuisine_type=cuisine_type,
+        dining_style=dining_style,
+        distance_min=d_min,
+        distance_max=d_max,
+        limit=page_size,
+        offset=offset,
+    )
+    total = restaurant_repo.count(
+        name=name,
+        cuisine_type=cuisine_type,
+        dining_style=dining_style,
+        distance_min=d_min,
+        distance_max=d_max,
+    )
+    return [_format(i) for i in items], total
 
 
 def create(data: dict[str, Any]) -> int:
@@ -46,6 +53,18 @@ def update(id: int, data: dict[str, Any]) -> bool:
 
 def delete(id: int) -> bool:
     return restaurant_repo.delete(id)
+
+
+def get_booking_list(
+    page: int = 1,
+    page_size: int = 5,
+) -> tuple[list[dict[str, Any]], int]:
+    offset = (page - 1) * page_size
+    items = restaurant_repo.search(
+        bookable=True, limit=page_size, offset=offset
+    )
+    total = restaurant_repo.count(bookable=True)
+    return [_format(i) for i in items], total
 
 
 def _format(row: dict[str, Any]) -> dict[str, Any]:

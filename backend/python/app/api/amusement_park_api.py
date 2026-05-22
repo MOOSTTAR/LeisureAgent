@@ -29,6 +29,18 @@ def list_amusement_parks(
     )
     return success(paged(items, total, page, page_size))
 
+@router.get("/get_booking_list")
+def get_booking_list(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(5, ge=1, le=50),
+):
+    items, total = amusement_park_service.get_booking_list(
+        page=page,
+        page_size=page_size,
+    )
+
+    return success(paged(items, total, page, page_size))
+
 
 @router.get("/{id}")
 def get_amusement_park(id: int):

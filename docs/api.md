@@ -8,6 +8,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 |------|------|------|
 | `/api/restaurants` | GET | 获取餐厅列表 |
 | `/api/restaurants` | POST | 创建餐厅 |
+| `/api/restaurants/get_booking_list` | GET | 获取可预约餐厅列表 |
 | `/api/restaurants/{id}` | GET | 获取单个餐厅详情 |
 | `/api/restaurants/{id}` | PUT | 更新餐厅信息 |
 | `/api/restaurants/{id}` | DELETE | 删除餐厅 |
@@ -23,11 +24,13 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/malls/{id}` | DELETE | 删除商场 |
 | `/api/exhibition-halls` | GET | 获取展馆列表 |
 | `/api/exhibition-halls` | POST | 创建展馆 |
+| `/api/exhibition-halls/get_booking_list` | GET | 获取可预约展馆列表 |
 | `/api/exhibition-halls/{id}` | GET | 获取单个展馆详情 |
 | `/api/exhibition-halls/{id}` | PUT | 更新展馆信息 |
 | `/api/exhibition-halls/{id}` | DELETE | 删除展馆 |
 | `/api/amusement-parks` | GET | 获取游乐园列表 |
 | `/api/amusement-parks` | POST | 创建游乐园 |
+| `/api/amusement-parks/get_booking_list` | GET | 获取可预约游乐园列表 |
 | `/api/amusement-parks/{id}` | GET | 获取单个游乐园详情 |
 | `/api/amusement-parks/{id}` | PUT | 更新游乐园信息 |
 | `/api/amusement-parks/{id}` | DELETE | 删除游乐园 |
@@ -51,7 +54,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 ```json
 {
   "code": 0,
-  "data": { ... },
+  "data": {  },
   "msg": "success"
 }
 ```
@@ -66,7 +69,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 {
   "code": 0,
   "data": {
-    "list": [ ... ],
+    "list": [  ],
     "total": 50,
     "page": 1,
     "page_size": 5
@@ -131,7 +134,6 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `name` | string | 否 | 餐厅名字模糊搜索 |
 | `cuisine_type` | string | 否 | 菜系：中餐/西餐/日料/火锅/烧烤/快餐/其他 |
 | `dining_style` | integer | 否 | 用餐方式：0 堂食/1 外卖/2 均可 |
-| `can_book` | boolean | 否 | 是否可预约：true/false |
 | `distance` | string | 否 | 距离筛选 |
 | `page` | integer | 否 | 页码，默认 1 |
 | `page_size` | integer | 否 | 每页数量，默认 5 |
@@ -171,6 +173,19 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ### DELETE /{id} 删除
 路径参数 `id`：餐厅 ID。
+
+### GET /get_booking_list 获取可预约餐厅
+
+筛选 `booking_hours` 不为空且不等于"不能预约"的餐厅列表。
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 默认值 | 描述 |
+|------|------|------|--------|------|
+| `page` | integer | 否 | 1 | 页码 |
+| `page_size` | integer | 否 | 5 | 每页数量，最大 50 |
+
+**响应：** 标准分页格式，`data.list` 为餐厅对象数组。
 
 ---
 
@@ -279,6 +294,10 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 ### GET/POST/PUT/DELETE
 同餐厅接口模式。
 
+### GET /get_booking_list 获取可预约展馆
+
+筛选 `booking_hours` 不为空且不等于"不能预约"的展馆列表。查询参数同餐厅 `get_booking_list`。
+
 ---
 
 ## `/api/amusement-parks` - 游乐园
@@ -316,6 +335,10 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ### GET/POST/PUT/DELETE
 同餐厅接口模式。
+
+### GET /get_booking_list 获取可预约游乐园
+
+筛选 `booking_hours` 不为空且不等于"不能预约"的游乐园列表。查询参数同餐厅 `get_booking_list`。
 
 ---
 

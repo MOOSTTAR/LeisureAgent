@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin } from '@phosphor-icons/react'
-import { getTravelPlans, deleteTravelPlan, getTravelPlanItems, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../mock/api'
+import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple } from '@phosphor-icons/react'
+import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../mock/api'
 
 interface TravelPlanPageProps {
   onBack: () => void
@@ -90,6 +90,471 @@ function TravelPlanCard({ plan, onDelete, onClick }: { plan: TravelPlan; onDelet
   )
 }
 
+const TRAVEL_TYPES = ['亲子', '聚会', '单人出行'] as const
+
+interface CreatePlanModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onCreated: () => void
+}
+
+function CreatePlanModal({ isOpen, onClose, onCreated }: CreatePlanModalProps) {
+  const [title, setTitle] = useState('')
+  const [desc, setDesc] = useState('')
+  const [travelType, setTravelType] = useState('')
+  const [travelDate, setTravelDate] = useState('')
+  const [travelDays, setTravelDays] = useState(1)
+  const [totalCost, setTotalCost] = useState<number | ''>('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!title.trim()) return
+    setIsSubmitting(true)
+    try {
+      const result = await createTravelPlan({
+        plan_title: title.trim(),
+        plan_desc: desc.trim() || null,
+        travel_type: travelType || null,
+        travel_date: travelDate || null,
+        travel_days: travelDays,
+        total_cost: totalCost === '' ? 0 : totalCost,
+      })
+      if (result.code === 0) {
+        onCreated()
+        onClose()
+        setTitle('')
+        setDesc('')
+        setTravelType('')
+        setTravelDate('')
+        setTravelDays(1)
+        setTotalCost('')
+      }
+    } catch (error) {
+      console.error('Failed to create plan:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-medium text-slate-900">添加计划</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">计划标题 *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="例如：周末亲子一日游"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">备注</label>
+                <input
+                  type="text"
+                  value={desc}
+                  onChange={(e) => setDesc(e.target.value)}
+                  placeholder="简单描述一下计划..."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">游玩类型</label>
+                  <select
+                    value={travelType}
+                    onChange={(e) => setTravelType(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  >
+                    <option value="">不限</option>
+                    {TRAVEL_TYPES.map((t) => (
+                      <option key={t} value={t}>{TRAVEL_TYPE_ICONS[t] || ''} {t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">出行日期</label>
+                  <input
+                    type="date"
+                    value={travelDate}
+                    onChange={(e) => setTravelDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">行程天数</label>
+                  <select
+                    value={travelDays}
+                    onChange={(e) => setTravelDays(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  >
+                    <option value={1}>1 天</option>
+                    <option value={2}>2 天</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">预估花费（元）</label>
+                  <input
+                    type="number"
+                    value={totalCost}
+                    onChange={(e) => setTotalCost(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0"
+                    min="0"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!title.trim() || isSubmitting}
+                className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${
+                  title.trim() && !isSubmitting
+                    ? 'bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200'
+                    : 'bg-slate-300 cursor-not-allowed'
+                }`}
+              >
+                {isSubmitting ? '创建中...' : '创建'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+interface EditItemModalProps {
+  item: TravelPlanItem
+  isOpen: boolean
+  onClose: () => void
+  onUpdated: () => void
+}
+
+function EditItemModal({ item, isOpen, onClose, onUpdated }: EditItemModalProps) {
+  const [arriveTime, setArriveTime] = useState(item.arrive_time || '')
+  const [leaveTime, setLeaveTime] = useState(item.leave_time || '')
+  const [stayMinute, setStayMinute] = useState(item.stay_minute)
+  const [remark, setRemark] = useState(item.remark || '')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setArriveTime(item.arrive_time || '')
+      setLeaveTime(item.leave_time || '')
+      setStayMinute(item.stay_minute)
+      setRemark(item.remark || '')
+    }
+  }, [isOpen, item])
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    try {
+      await updateTravelPlanItem(item.id, {
+        arrive_time: arriveTime || null,
+        leave_time: leaveTime || null,
+        stay_minute: stayMinute,
+        remark: remark || null,
+      })
+      onUpdated()
+      onClose()
+    } catch (error) {
+      console.error('Failed to update item:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-medium text-slate-900">编辑行程</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">到达时间</label>
+                  <input
+                    type="time"
+                    value={arriveTime}
+                    onChange={(e) => setArriveTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">离开时间</label>
+                  <input
+                    type="time"
+                    value={leaveTime}
+                    onChange={(e) => setLeaveTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">停留时间（分钟）</label>
+                <input
+                  type="number"
+                  value={stayMinute}
+                  onChange={(e) => setStayMinute(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">备注</label>
+                <input
+                  type="text"
+                  value={remark}
+                  onChange={(e) => setRemark(e.target.value)}
+                  placeholder="例如：窗边位置预约"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${
+                  !isSubmitting
+                    ? 'bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200'
+                    : 'bg-slate-300 cursor-not-allowed'
+                }`}
+              >
+                {isSubmitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+interface EditPlanModalProps {
+  plan: TravelPlan
+  isOpen: boolean
+  onClose: () => void
+  onUpdated: () => void
+}
+
+function EditPlanModal({ plan, isOpen, onClose, onUpdated }: EditPlanModalProps) {
+  const [title, setTitle] = useState(plan.plan_title)
+  const [desc, setDesc] = useState(plan.plan_desc || '')
+  const [travelType, setTravelType] = useState(plan.travel_type || '')
+  const [travelDate, setTravelDate] = useState(plan.travel_date || '')
+  const [travelDays, setTravelDays] = useState(plan.travel_days)
+  const [totalCost, setTotalCost] = useState<number | ''>(plan.total_cost)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!title.trim()) return
+    setIsSubmitting(true)
+    try {
+      await updateTravelPlan(plan.id, {
+        plan_title: title.trim(),
+        plan_desc: desc.trim() || null,
+        travel_type: travelType || null,
+        travel_date: travelDate || null,
+        travel_days: travelDays,
+        total_cost: totalCost === '' ? 0 : totalCost,
+      })
+      onUpdated()
+      onClose()
+    } catch (error) {
+      console.error('Failed to update plan:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-medium text-slate-900">编辑计划</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">计划标题 *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">备注</label>
+                <input
+                  type="text"
+                  value={desc}
+                  onChange={(e) => setDesc(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">游玩类型</label>
+                  <select
+                    value={travelType}
+                    onChange={(e) => setTravelType(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  >
+                    <option value="">不限</option>
+                    {TRAVEL_TYPES.map((t) => (
+                      <option key={t} value={t}>{TRAVEL_TYPE_ICONS[t] || ''} {t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">出行日期</label>
+                  <input
+                    type="date"
+                    value={travelDate}
+                    onChange={(e) => setTravelDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">行程天数</label>
+                  <select
+                    value={travelDays}
+                    onChange={(e) => setTravelDays(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  >
+                    <option value={1}>1 天</option>
+                    <option value={2}>2 天</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">预估花费（元）</label>
+                  <input
+                    type="number"
+                    value={totalCost}
+                    onChange={(e) => setTotalCost(e.target.value === '' ? '' : Number(e.target.value))}
+                    min="0"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!title.trim() || isSubmitting}
+                className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${
+                  title.trim() && !isSubmitting
+                    ? 'bg-blue-500 hover:bg-blue-600 shadow-md shadow-blue-200'
+                    : 'bg-slate-300 cursor-not-allowed'
+                }`}
+              >
+                {isSubmitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 interface PlanDetailProps {
   plan: TravelPlan
   onBack: () => void
@@ -99,28 +564,53 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
   const [items, setItems] = useState<TravelPlanItem[]>([])
   const [locations, setLocations] = useState<Map<number, ResolvedLocation | null>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null)
+  const [editItemModal, setEditItemModal] = useState<TravelPlanItem | null>(null)
+  const [planData, setPlanData] = useState(plan)
+
+  const fetchDetail = async () => {
+    setIsLoading(true)
+    try {
+      const res = await getTravelPlanItems({ plan_id: plan.id })
+      const fetchedItems = res.data.list
+      setItems(fetchedItems)
+
+      const locMap = new Map<number, ResolvedLocation | null>()
+      for (const item of fetchedItems) {
+        locMap.set(item.id, resolveLocation(item.location_table_name, item.location_id))
+      }
+      setLocations(locMap)
+    } catch (error) {
+      console.error('Failed to fetch plan items:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchDetail = async () => {
-      setIsLoading(true)
-      try {
-        const res = await getTravelPlanItems({ plan_id: plan.id })
-        const fetchedItems = res.data.list
-        setItems(fetchedItems)
-
-        const locMap = new Map<number, ResolvedLocation | null>()
-        for (const item of fetchedItems) {
-          locMap.set(item.id, resolveLocation(item.location_table_name, item.location_id))
-        }
-        setLocations(locMap)
-      } catch (error) {
-        console.error('Failed to fetch plan items:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
     fetchDetail()
   }, [plan.id])
+
+  const handleDeleteItem = async (itemId: number) => {
+    setDeletingItemId(itemId)
+    try {
+      const result = await deleteTravelPlanItem(itemId)
+      if (result.code === 0) {
+        setItems(prev => prev.filter(i => i.id !== itemId))
+        setLocations(prev => { const next = new Map(prev); next.delete(itemId); return next })
+      }
+    } catch (error) {
+      console.error('Failed to delete item:', error)
+    } finally {
+      setDeletingItemId(null)
+    }
+  }
+
+  const handlePlanUpdated = async () => {
+    const res = await getTravelPlanById(plan.id)
+    if (res.data) setPlanData(res.data)
+  }
 
   // Group items by day_num
   const groupedByDay = new Map<number, TravelPlanItem[]>()
@@ -151,25 +641,34 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
             >
               <ArrowLeft weight="bold" size={24} className="text-slate-600" />
             </motion.button>
-            <h1 className="text-lg font-medium text-slate-900 tracking-tight">{plan.plan_title}</h1>
+            <h1 className="text-lg font-medium text-slate-900 tracking-tight">{planData.plan_title}</h1>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setEditModalOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-blue-500"
+              title="编辑计划"
+            >
+              <PencilSimple size={16} />
+            </motion.button>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 ml-11">
-            {plan.travel_date && (
+            {planData.travel_date && (
               <span className="flex items-center gap-1">
                 <CalendarBlank size={14} />
-                {plan.travel_date}
+                {planData.travel_date}
               </span>
             )}
-            {plan.travel_type && (
-              <span className={`px-2 py-0.5 rounded-md font-medium ${TRAVEL_TYPE_COLORS[plan.travel_type] || 'bg-slate-50 text-slate-500'}`}>
-                {TRAVEL_TYPE_ICONS[plan.travel_type] || ''} {plan.travel_type}
+            {planData.travel_type && (
+              <span className={`px-2 py-0.5 rounded-md font-medium ${TRAVEL_TYPE_COLORS[planData.travel_type] || 'bg-slate-50 text-slate-500'}`}>
+                {TRAVEL_TYPE_ICONS[planData.travel_type] || ''} {planData.travel_type}
               </span>
             )}
-            <span>共 {plan.travel_days} 天</span>
-            <span>预算约 ¥{plan.total_cost}</span>
+            <span>共 {planData.travel_days} 天</span>
+            <span>预算约 ¥{planData.total_cost}</span>
           </div>
-          {plan.plan_desc && (
-            <p className="text-sm text-slate-500 mt-2 ml-11">{plan.plan_desc}</p>
+          {planData.plan_desc && (
+            <p className="text-sm text-slate-500 mt-2 ml-11">{planData.plan_desc}</p>
           )}
         </div>
       </div>
@@ -246,6 +745,31 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                                     </div>
                                     <h4 className="text-base font-medium text-slate-900">{loc.name}</h4>
                                   </div>
+                                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => setEditItemModal(item)}
+                                      className="p-1.5 rounded-lg text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                                      title="编辑行程"
+                                    >
+                                      <PencilSimple size={14} />
+                                    </motion.button>
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => handleDeleteItem(item.id)}
+                                      disabled={deletingItemId === item.id}
+                                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                      title="删除此行程"
+                                    >
+                                      {deletingItemId === item.id ? (
+                                        <span className="text-xs text-slate-400">...</span>
+                                      ) : (
+                                        <Trash size={14} />
+                                      )}
+                                    </motion.button>
+                                  </div>
                                 </div>
                                 <p className="flex items-center gap-1 text-xs text-slate-400 mb-2">
                                   <MapPin size={12} />
@@ -280,6 +804,22 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
           </div>
         )}
       </div>
+
+      <EditPlanModal
+        plan={planData}
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onUpdated={handlePlanUpdated}
+      />
+
+      {editItemModal && (
+        <EditItemModal
+          item={editItemModal}
+          isOpen={true}
+          onClose={() => setEditItemModal(null)}
+          onUpdated={fetchDetail}
+        />
+      )}
     </motion.div>
   )
 }
@@ -292,6 +832,7 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<TravelPlan | null>(null)
   const [pageSize, setPageSize] = useState(5)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -308,19 +849,20 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
     }
   }
 
-  useEffect(() => {
-    const fetchPlans = async () => {
-      setIsFetching(true)
-      try {
-        const response = await getTravelPlans({ page, page_size: pageSize })
-        setPlans(response.data.list)
-        setTotal(response.data.total)
-      } catch (error) {
-        console.error('Failed to fetch travel plans:', error)
-      } finally {
-        setIsFetching(false)
-      }
+  const fetchPlans = async () => {
+    setIsFetching(true)
+    try {
+      const response = await getTravelPlans({ page, page_size: pageSize })
+      setPlans(response.data.list)
+      setTotal(response.data.total)
+    } catch (error) {
+      console.error('Failed to fetch travel plans:', error)
+    } finally {
+      setIsFetching(false)
     }
+  }
+
+  useEffect(() => {
     fetchPlans()
   }, [page, pageSize])
 
@@ -371,6 +913,15 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
                       </p>
                     </div>
                   </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setCreateModalOpen(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-medium shadow-md shadow-blue-200 hover:bg-blue-600 transition-colors"
+                  >
+                    <Plus size={18} weight="bold" />
+                    添加计划
+                  </motion.button>
                 </div>
               </div>
             </nav>
@@ -480,6 +1031,12 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CreatePlanModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={fetchPlans}
+      />
     </div>
   )
 }

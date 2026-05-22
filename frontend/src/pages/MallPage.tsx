@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
-import { getMalls, deleteMall, type Mall } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
+import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../mock/api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {
@@ -16,6 +16,7 @@ interface FilterOptions {
 interface MallCardProps {
   mall: Mall
   onDelete?: (id: number) => void
+  onEdit?: () => void
   onClick?: () => void
   onAddToPlan?: () => void
 }
@@ -44,6 +45,15 @@ function MallCard({ mall, onDelete, onClick, onAddToPlan }: MallCardProps) {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onEdit?.() }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-pink-50 hover:text-pink-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="编辑商场"
+            >
+              <PencilSimple size={16} />
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -87,6 +97,116 @@ function MallCard({ mall, onDelete, onClick, onAddToPlan }: MallCardProps) {
         </button>
       </div>
     </motion.div>
+  )
+}
+
+interface MallFormData {
+  name: string
+  address: string
+  x: number
+  y: number
+  cinema_has: number
+  supermarket_has: number
+}
+
+function MallFormModal({ isOpen, editItem, onClose, onSaved }: {
+  isOpen: boolean
+  editItem: Mall | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [x, setX] = useState(0)
+  const [y, setY] = useState(0)
+  const [cinemaHas, setCinemaHas] = useState(1)
+  const [supermarketHas, setSupermarketHas] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editItem) {
+        setName(editItem.name)
+        setAddress(editItem.address)
+        setX(editItem.x)
+        setY(editItem.y)
+        setCinemaHas(editItem.cinema_has)
+        setSupermarketHas(editItem.supermarket_has)
+      } else {
+        setName(''); setAddress(''); setX(0); setY(0); setCinemaHas(1); setSupermarketHas(1)
+      }
+    }
+  }, [isOpen, editItem])
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return
+    setSubmitting(true)
+    const data: MallFormData = { name: name.trim(), address: address.trim() || '未知', x, y, cinema_has: cinemaHas, supermarket_has: supermarketHas }
+    if (editItem) {
+      await updateMall(editItem.id, data)
+    } else {
+      await createMall(data)
+    }
+    setSubmitting(false)
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-medium text-slate-900">{editItem ? '编辑商场' : '添加商场'}</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100"><X size={20} className="text-slate-400" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">名称 *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">地址</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 X</label>
+                  <input type="number" value={x} onChange={(e) => setX(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 Y</label>
+                  <input type="number" value={y} onChange={(e) => setY(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">影院</label>
+                  <select value={cinemaHas} onChange={(e) => setCinemaHas(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
+                    <option value={1}>有影院</option>
+                    <option value={0}>无影院</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">大型超市</label>
+                  <select value={supermarketHas} onChange={(e) => setSupermarketHas(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
+                    <option value={1}>有超市</option>
+                    <option value={0}>无超市</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">取消</button>
+              <button onClick={handleSubmit} disabled={!name.trim() || submitting} className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${name.trim() && !submitting ? 'bg-pink-500 hover:bg-pink-600 shadow-md shadow-pink-200' : 'bg-slate-300 cursor-not-allowed'}`}>
+                {submitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -307,7 +427,22 @@ export function MallPage({ onBack }: MallPageProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Mall | null>(null)
+  const [formModalOpen, setFormModalOpen] = useState(false)
+  const [editItem, setEditItem] = useState<Mall | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('returnToAddPlan')
+    if (!stored) return
+    try {
+      const data = JSON.parse(stored)
+      if (data.locationTableName === 'malls') {
+        sessionStorage.removeItem('returnToAddPlan')
+        setSelectedItem(data.item)
+        setModalOpen(true)
+      }
+    } catch {}
+  }, [])
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -324,33 +459,26 @@ export function MallPage({ onBack }: MallPageProps) {
     }
   }
 
-  // 调用 Mock API 获取数据
-  useEffect(() => {
-    const fetchMalls = async () => {
-      setIsFetching(true)
-      try {
-        const params: any = {
-          page: 1,
-          page_size: 100,
-        }
-        if (filters.name) params.name = filters.name
-        if (filters.has_cinema !== undefined) params.has_cinema = filters.has_cinema
-        if (filters.has_supermarket !== undefined) params.has_supermarket = filters.has_supermarket
-        if (filters.distance) params.distance = filters.distance
-
-        const response = await getMalls(params)
-        setMalls(response.data.list)
-        setTotal(response.data.total)
-        setDisplayCount(Math.min(5, response.data.list.length))
-      } catch (error) {
-        console.error('Failed to fetch malls:', error)
-      } finally {
-        setIsFetching(false)
-      }
+  const fetchMalls = async () => {
+    setIsFetching(true)
+    try {
+      const params: any = { page: 1, page_size: 100 }
+      if (filters.name) params.name = filters.name
+      if (filters.has_cinema !== undefined) params.has_cinema = filters.has_cinema
+      if (filters.has_supermarket !== undefined) params.has_supermarket = filters.has_supermarket
+      if (filters.distance) params.distance = filters.distance
+      const response = await getMalls(params)
+      setMalls(response.data.list)
+      setTotal(response.data.total)
+      setDisplayCount(Math.min(5, response.data.list.length))
+    } catch (error) {
+      console.error('Failed to fetch malls:', error)
+    } finally {
+      setIsFetching(false)
     }
+  }
 
-    fetchMalls()
-  }, [filters])
+  useEffect(() => { fetchMalls() }, [filters])
 
   // 滚动分页
   useEffect(() => {
@@ -403,6 +531,15 @@ export function MallPage({ onBack }: MallPageProps) {
                 </p>
               </div>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setEditItem(null); setFormModalOpen(true) }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-pink-500 text-white text-sm font-medium shadow-md shadow-pink-200 hover:bg-pink-600 transition-colors"
+            >
+              <Plus size={18} weight="bold" />
+              添加商场
+            </motion.button>
           </div>
         </div>
       </nav>
@@ -428,7 +565,7 @@ export function MallPage({ onBack }: MallPageProps) {
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedMalls.map((mall) => (
                 <div className={`relative ${deletingId === mall.id ? 'pointer-events-none opacity-50' : ''}`}>
-                  <MallCard key={mall.id} mall={mall} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(mall); setModalOpen(true) }} />
+                  <MallCard key={mall.id} mall={mall} onDelete={handleDelete} onEdit={() => { setEditItem(mall); setFormModalOpen(true) }} onAddToPlan={() => { setSelectedItem(mall); setModalOpen(true) }} />
                   {deletingId === mall.id && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-sm text-slate-400">删除中...</span>
@@ -478,6 +615,13 @@ export function MallPage({ onBack }: MallPageProps) {
           theme="pink"
         />
       )}
+
+      <MallFormModal
+        isOpen={formModalOpen}
+        editItem={editItem}
+        onClose={() => { setFormModalOpen(false); setEditItem(null) }}
+        onSaved={fetchMalls}
+      />
     </div>
   )
 }

@@ -309,6 +309,11 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
   }
 
   const goToTravelPlans = () => {
+    sessionStorage.setItem('returnToAddPlan', JSON.stringify({
+      locationTableName,
+      item,
+      theme,
+    }))
     window.location.hash = '#/travel-plans'
     onClose()
   }
@@ -339,7 +344,7 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
                   onClick={goToTravelPlans}
                   className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1"
                 >
-                  我的计划 <CalendarBlank size={14} />
+                  查看我的计划 <CalendarBlank size={14} />
                 </button>
                 <button
                   onClick={onClose}

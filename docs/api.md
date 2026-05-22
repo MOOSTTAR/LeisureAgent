@@ -405,8 +405,57 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `created_at` | string | 创建时间 |
 | `updated_at` | string | 更新时间 |
 
-### GET/POST/PUT/DELETE
-同餐厅接口模式。
+### POST 创建明细
+
+> **⚠ 后端未开发** — 以下业务逻辑仅在前端 Mock 层实现，后端 `POST /api/travel-plan-items` 目前只做通用 INSERT，未包含任何业务校验。
+
+**请求体：**
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `plan_id` | integer | 是 | 关联方案 ID |
+| `location_table_name` | string | 是 | 关联场所表名称（如 restaurants） |
+| `location_id` | integer | 是 | 场所表中具体 ID |
+| `day_num` | integer | 否 | 第几天行程，默认 1（仅支持 1 或 2） |
+| `arrive_time` | string | 否 | 预计到达时间，格式 HH:MM |
+| `leave_time` | string | 否 | 预计离开时间，格式 HH:MM |
+| `stay_minute` | integer | 否 | 停留时长（分钟），默认 0 |
+| `remark` | string | 否 | 本段行程备注 |
+
+**⚠ 后端必须实现的业务判断：**
+
+1. **预约名额检查**：查询场所的 `current_booking_count` 和 `max_booking_count`，若两者均 >= 0 且 `current_booking_count >= max_booking_count`，拒绝创建，返回 `{ code: 400, msg: "预约名额已满" }`
+2. **排队时间调整**：若场所的 `queue_time > 0`，实际 `arrive_time` 应自动提前 `queue_time` 分钟，冲突检测以调整后的时间段为准
+3. **时间段冲突检测**：新增明细的 `[调整后arrive_time, leave_time]` 不能与同一 `plan_id` 下已有明细的时间段重叠。重叠判定公式：`!(newEnd <= existStart || newStart >= existEnd)`。冲突时返回 `{ code: 409, msg: "时间段冲突" }`
+4. **时间合法性**：`arrive_time` 必须早于 `leave_time`，否则返回 `{ code: 400, msg: "到达时间必须早于离开时间" }`
+
+**成功响应：**
+
+```json
+{ "code": 0, "data": { "id": 13 }, "msg": "创建成功" }
+```
+
+**错误响应示例：**
+
+```json
+{ "code": 409, "data": null, "msg": "时间段冲突" }
+```
+
+```json
+{ "code": 400, "data": null, "msg": "预约名额已满" }
+```
+
+### GET /{id} 获取详情
+
+路径参数 `id`：明细 ID。返回单个明细对象。
+
+### PUT /{id} 更新
+
+路径参数 `id`：明细 ID。请求体为需要更新的字段。
+
+### DELETE /{id} 删除
+
+路径参数 `id`：明细 ID。
 
 ---
 

@@ -361,7 +361,6 @@ interface GetRestaurantsParams {
   name?: string
   cuisine_type?: string
   dining_style?: number
-  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
   page_size?: number
@@ -428,14 +427,6 @@ export async function getRestaurants(params: GetRestaurantsParams): Promise<GetR
   // 用餐方式筛选
   if (params.dining_style !== undefined) {
     filtered = filtered.filter(r => r.dining_style === params.dining_style)
-  }
-
-  // 是否可预约筛选
-  if (params.can_book !== undefined) {
-    filtered = filtered.filter(r => {
-      const canBook = r.booking_hours !== '不能预约'
-      return canBook === params.can_book
-    })
   }
 
   // 距离筛选
@@ -1039,6 +1030,41 @@ export async function getMalls(params: GetMallsParams): Promise<GetMallsResponse
 }
 
 /**
+ * 获取单个商场详情
+ * GET /api/malls/{id}
+ */
+export async function getMallById(id: number): Promise<{ code: number; data: Mall | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const mall = MOCK_MALLS.find(m => m.id === id)
+  if (!mall) return { code: 404, data: null, msg: '商场不存在' }
+  return { code: 0, data: mall, msg: 'success' }
+}
+
+/**
+ * 创建商场
+ * POST /api/malls
+ */
+export async function createMall(data: Omit<Mall, 'id'>): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_MALLS.reduce((max, m) => Math.max(max, m.id), 0)
+  const newMall: Mall = { id: maxId + 1, ...data }
+  MOCK_MALLS.push(newMall)
+  return { code: 0, data: { id: newMall.id }, msg: '创建成功' }
+}
+
+/**
+ * 更新商场
+ * PUT /api/malls/{id}
+ */
+export async function updateMall(id: number, data: Partial<Omit<Mall, 'id'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_MALLS.findIndex(m => m.id === id)
+  if (index === -1) return { code: 404, msg: '商场不存在' }
+  MOCK_MALLS[index] = { ...MOCK_MALLS[index], ...data }
+  return { code: 0, msg: '更新成功' }
+}
+
+/**
  * 删除商场
  * DELETE /api/malls/{id}
  */
@@ -1063,8 +1089,43 @@ export async function deleteRestaurant(id: number): Promise<{ code: number; msg:
 }
 
 /**
+ * 获取单个餐厅详情
+ * GET /api/restaurants/{id}
+ */
+export async function getRestaurantById(id: number): Promise<{ code: number; data: Restaurant | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const restaurant = MOCK_RESTAURANTS.find(r => r.id === id)
+  if (!restaurant) return { code: 404, data: null, msg: '餐厅不存在' }
+  return { code: 0, data: restaurant, msg: 'success' }
+}
+
+/**
+ * 创建餐厅
+ * POST /api/restaurants
+ */
+export async function createRestaurant(data: Omit<Restaurant, 'id'>): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_RESTAURANTS.reduce((max, r) => Math.max(max, r.id), 0)
+  const newRestaurant: Restaurant = { id: maxId + 1, ...data }
+  MOCK_RESTAURANTS.push(newRestaurant)
+  return { code: 0, data: { id: newRestaurant.id }, msg: '创建成功' }
+}
+
+/**
+ * 更新餐厅
+ * PUT /api/restaurants/{id}
+ */
+export async function updateRestaurant(id: number, data: Partial<Omit<Restaurant, 'id'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_RESTAURANTS.findIndex(r => r.id === id)
+  if (index === -1) return { code: 404, msg: '餐厅不存在' }
+  MOCK_RESTAURANTS[index] = { ...MOCK_RESTAURANTS[index], ...data }
+  return { code: 0, msg: '更新成功' }
+}
+
+/**
  * 获取可预约餐厅列表
- * GET /api/get_booking_list?type=restaurant
+ * GET /api/restaurants/get_booking_list
  */
 export async function getBookingRestaurants(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: Restaurant[]; total: number; page: number; page_size: number }; msg: string }> {
   await new Promise(resolve => setTimeout(resolve, 200))
@@ -1109,10 +1170,6 @@ interface GetExhibitionsParams {
   name?: string
   hall_type?: string
   free_entry?: boolean
-  crowd_level?: number
-  can_book?: boolean
-  manual_guide?: number
-  interactive_project?: number
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
   page_size?: number
@@ -1494,7 +1551,7 @@ const MOCK_EXHIBITIONS: ExhibitionHall[] = [
 
 /**
  * 获取展览馆列表
- * GET /api/exhibitions
+ * GET /api/exhibition-halls
  */
 export async function getExhibitions(params: GetExhibitionsParams): Promise<GetExhibitionsResponse> {
   // 模拟网络延迟
@@ -1515,29 +1572,6 @@ export async function getExhibitions(params: GetExhibitionsParams): Promise<GetE
   // 门票类型筛选 (free_entry: true=免费, false=收费)
   if (params.free_entry !== undefined) {
     filtered = filtered.filter(r => r.ticket_type === (params.free_entry ? 0 : 1))
-  }
-
-  // 人流量筛选
-  if (params.crowd_level !== undefined) {
-    filtered = filtered.filter(r => r.crowd_level === params.crowd_level)
-  }
-
-  // 是否可预约
-  if (params.can_book !== undefined) {
-    filtered = filtered.filter(r => {
-      const canBook = r.booking_hours !== '不能预约'
-      return canBook === params.can_book
-    })
-  }
-
-  // 人工讲解
-  if (params.manual_guide !== undefined) {
-    filtered = filtered.filter(r => r.manual_guide === params.manual_guide)
-  }
-
-  // 互动体验
-  if (params.interactive_project !== undefined) {
-    filtered = filtered.filter(r => r.interactive_project === params.interactive_project)
   }
 
   // 距离筛选
@@ -1571,6 +1605,41 @@ export async function getExhibitions(params: GetExhibitionsParams): Promise<GetE
 }
 
 /**
+ * 获取单个展馆详情
+ * GET /api/exhibition-halls/{id}
+ */
+export async function getExhibitionById(id: number): Promise<{ code: number; data: ExhibitionHall | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const hall = MOCK_EXHIBITIONS.find(e => e.id === id)
+  if (!hall) return { code: 404, data: null, msg: '展馆不存在' }
+  return { code: 0, data: hall, msg: 'success' }
+}
+
+/**
+ * 创建展馆
+ * POST /api/exhibition-halls
+ */
+export async function createExhibition(data: Omit<ExhibitionHall, 'id'>): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_EXHIBITIONS.reduce((max, e) => Math.max(max, e.id), 0)
+  const newHall: ExhibitionHall = { id: maxId + 1, ...data }
+  MOCK_EXHIBITIONS.push(newHall)
+  return { code: 0, data: { id: newHall.id }, msg: '创建成功' }
+}
+
+/**
+ * 更新展馆
+ * PUT /api/exhibition-halls/{id}
+ */
+export async function updateExhibition(id: number, data: Partial<Omit<ExhibitionHall, 'id'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_EXHIBITIONS.findIndex(e => e.id === id)
+  if (index === -1) return { code: 404, msg: '展馆不存在' }
+  MOCK_EXHIBITIONS[index] = { ...MOCK_EXHIBITIONS[index], ...data }
+  return { code: 0, msg: '更新成功' }
+}
+
+/**
  * 删除展馆
  * DELETE /api/exhibition-halls/{id}
  */
@@ -1584,7 +1653,7 @@ export async function deleteExhibition(id: number): Promise<{ code: number; msg:
 
 /**
  * 获取可预约展馆列表
- * GET /api/get_booking_list?type=exhibition
+ * GET /api/exhibition-halls/get_booking_list
  */
 export async function getBookingExhibitions(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: ExhibitionHall[]; total: number; page: number; page_size: number }; msg: string }> {
   await new Promise(resolve => setTimeout(resolve, 200))
@@ -1624,7 +1693,6 @@ interface GetAmusementParksParams {
   name?: string
   park_theme?: string
   free_entry?: boolean
-  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
   page_size?: number
@@ -1965,13 +2033,6 @@ export async function getAmusementParks(params: GetAmusementParksParams): Promis
     filtered = filtered.filter(r => params.free_entry ? r.ticket_price === 0 : r.ticket_price > 0)
   }
 
-  if (params.can_book !== undefined) {
-    filtered = filtered.filter(r => {
-      const canBook = r.booking_hours !== '不能预约'
-      return canBook === params.can_book
-    })
-  }
-
   if (params.distance) {
     const { min, max } = parseDistance(params.distance)
     filtered = filtered.filter(r => {
@@ -1996,6 +2057,41 @@ export async function getAmusementParks(params: GetAmusementParksParams): Promis
 }
 
 /**
+ * 获取单个游乐园详情
+ * GET /api/amusement-parks/{id}
+ */
+export async function getAmusementParkById(id: number): Promise<{ code: number; data: AmusementPark | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const park = MOCK_AMUSEMENT_PARKS.find(a => a.id === id)
+  if (!park) return { code: 404, data: null, msg: '乐园不存在' }
+  return { code: 0, data: park, msg: 'success' }
+}
+
+/**
+ * 创建游乐园
+ * POST /api/amusement-parks
+ */
+export async function createAmusementPark(data: Omit<AmusementPark, 'id'>): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_AMUSEMENT_PARKS.reduce((max, a) => Math.max(max, a.id), 0)
+  const newPark: AmusementPark = { id: maxId + 1, ...data }
+  MOCK_AMUSEMENT_PARKS.push(newPark)
+  return { code: 0, data: { id: newPark.id }, msg: '创建成功' }
+}
+
+/**
+ * 更新游乐园
+ * PUT /api/amusement-parks/{id}
+ */
+export async function updateAmusementPark(id: number, data: Partial<Omit<AmusementPark, 'id'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_AMUSEMENT_PARKS.findIndex(a => a.id === id)
+  if (index === -1) return { code: 404, msg: '乐园不存在' }
+  MOCK_AMUSEMENT_PARKS[index] = { ...MOCK_AMUSEMENT_PARKS[index], ...data }
+  return { code: 0, msg: '更新成功' }
+}
+
+/**
  * 删除游乐园
  * DELETE /api/amusement-parks/{id}
  */
@@ -2009,7 +2105,7 @@ export async function deleteAmusementPark(id: number): Promise<{ code: number; m
 
 /**
  * 获取可预约游乐园列表
- * GET /api/get_booking_list?type=amusement_park
+ * GET /api/amusement-parks/get_booking_list
  */
 export async function getBookingAmusementParks(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: AmusementPark[]; total: number; page: number; page_size: number }; msg: string }> {
   await new Promise(resolve => setTimeout(resolve, 200))
@@ -2152,6 +2248,43 @@ export async function getTravelPlans(params: GetTravelPlansParams = {}): Promise
     },
     msg: 'success',
   }
+}
+
+/**
+ * 获取单个计划详情
+ * GET /api/travel-plans/{id}
+ */
+export async function getTravelPlanById(id: number): Promise<{ code: number; data: TravelPlan | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const plan = MOCK_TRAVEL_PLANS.find(p => p.id === id)
+  if (!plan) return { code: 404, data: null, msg: '计划不存在' }
+  return { code: 0, data: plan, msg: 'success' }
+}
+
+/**
+ * 创建计划
+ * POST /api/travel-plans
+ */
+export async function createTravelPlan(data: Omit<TravelPlan, 'id' | 'created_at' | 'updated_at'>): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_TRAVEL_PLANS.reduce((max, p) => Math.max(max, p.id), 0)
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  const newPlan: TravelPlan = { id: maxId + 1, ...data, created_at: now, updated_at: now }
+  MOCK_TRAVEL_PLANS.push(newPlan)
+  return { code: 0, data: { id: newPlan.id }, msg: '创建成功' }
+}
+
+/**
+ * 更新计划
+ * PUT /api/travel-plans/{id}
+ */
+export async function updateTravelPlan(id: number, data: Partial<Omit<TravelPlan, 'id' | 'created_at' | 'updated_at'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_TRAVEL_PLANS.findIndex(p => p.id === id)
+  if (index === -1) return { code: 404, msg: '计划不存在' }
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  MOCK_TRAVEL_PLANS[index] = { ...MOCK_TRAVEL_PLANS[index], ...data, updated_at: now }
+  return { code: 0, msg: '更新成功' }
 }
 
 export async function deleteTravelPlan(id: number): Promise<{ code: number; msg: string }> {
@@ -2297,6 +2430,30 @@ export async function getTravelPlanItems(params: GetTravelPlanItemsParams = {}):
 }
 
 /**
+ * 获取单个明细详情
+ * GET /api/travel-plan-items/{id}
+ */
+export async function getTravelPlanItemById(id: number): Promise<{ code: number; data: TravelPlanItem | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const item = MOCK_TRAVEL_PLAN_ITEMS.find(i => i.id === id)
+  if (!item) return { code: 404, data: null, msg: '明细不存在' }
+  return { code: 0, data: item, msg: 'success' }
+}
+
+/**
+ * 更新计划明细
+ * PUT /api/travel-plan-items/{id}
+ */
+export async function updateTravelPlanItem(id: number, data: Partial<Omit<TravelPlanItem, 'id' | 'created_at' | 'updated_at'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_TRAVEL_PLAN_ITEMS.findIndex(i => i.id === id)
+  if (index === -1) return { code: 404, msg: '明细不存在' }
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  MOCK_TRAVEL_PLAN_ITEMS[index] = { ...MOCK_TRAVEL_PLAN_ITEMS[index], ...data, updated_at: now }
+  return { code: 0, msg: '更新成功' }
+}
+
+/**
  * 删除计划明细
  * DELETE /api/travel-plan-items/{id}
  */
@@ -2395,6 +2552,41 @@ export async function getParks(params: GetParksParams): Promise<GetParksResponse
     },
     msg: 'success',
   }
+}
+
+/**
+ * 获取单个景点详情
+ * GET /api/parks/{id}
+ */
+export async function getParkById(id: number): Promise<{ code: number; data: Park | null; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const park = MOCK_PARKS.find(p => p.id === id)
+  if (!park) return { code: 404, data: null, msg: '景点不存在' }
+  return { code: 0, data: park, msg: 'success' }
+}
+
+/**
+ * 创建景点
+ * POST /api/parks
+ */
+export async function createPark(data: Omit<Park, 'id'>): Promise<{ code: number; data: { id: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const maxId = MOCK_PARKS.reduce((max, p) => Math.max(max, p.id), 0)
+  const newPark: Park = { id: maxId + 1, ...data }
+  MOCK_PARKS.push(newPark)
+  return { code: 0, data: { id: newPark.id }, msg: '创建成功' }
+}
+
+/**
+ * 更新景点
+ * PUT /api/parks/{id}
+ */
+export async function updatePark(id: number, data: Partial<Omit<Park, 'id'>>): Promise<{ code: number; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const index = MOCK_PARKS.findIndex(p => p.id === id)
+  if (index === -1) return { code: 404, msg: '景点不存在' }
+  MOCK_PARKS[index] = { ...MOCK_PARKS[index], ...data }
+  return { code: 0, msg: '更新成功' }
 }
 
 /**

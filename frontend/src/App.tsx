@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Lobby } from './components/lobby'
 import { ManualPlanPage } from './pages/ManualPlanPage'
 import { RestaurantPage } from './pages/RestaurantPage'
@@ -37,11 +37,16 @@ type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibiti
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('lobby')
+  const prevHashRef = useRef('/')
 
   useEffect(() => {
     // 监听 hash 变化
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1)
+      const hash = window.location.hash.slice(1) || '/'
+      // 记录上一个非 travel-plans 页面的 hash，用于从计划页返回
+      if (hash !== '/travel-plans') {
+        prevHashRef.current = hash
+      }
       if (hash === '/manual-plan') {
         setCurrentPage('manual-plan')
       } else if (hash === '/manual-plan/restaurant') {
@@ -106,8 +111,24 @@ function App() {
   }
 
   const handleTravelPlansBack = () => {
-    window.location.hash = '/manual-plan'
-    setCurrentPage('manual-plan')
+    const prev = prevHashRef.current
+    window.location.hash = prev
+    // 手动 setCurrentPage，因为 hash 可能相同不会触发 hashchange
+    if (prev === '/manual-plan') {
+      setCurrentPage('manual-plan')
+    } else if (prev === '/manual-plan/restaurant') {
+      setCurrentPage('restaurant')
+    } else if (prev === '/manual-plan/park') {
+      setCurrentPage('park')
+    } else if (prev === '/manual-plan/mall') {
+      setCurrentPage('mall')
+    } else if (prev === '/manual-plan/exhibition') {
+      setCurrentPage('exhibition')
+    } else if (prev === '/manual-plan/amusement') {
+      setCurrentPage('amusement')
+    } else {
+      setCurrentPage('lobby')
+    }
   }
 
   const handleNavigate = (page: string) => {

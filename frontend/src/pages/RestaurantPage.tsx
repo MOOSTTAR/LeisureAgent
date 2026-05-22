@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
-import { getRestaurants, deleteRestaurant, type Restaurant } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
+import { getRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../mock/api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 const DiningStyle = {
@@ -27,18 +27,18 @@ interface FilterOptions {
   name?: string
   cuisine_type?: CuisineType
   dining_style?: DiningStyleType
-  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
 interface RestaurantCardProps {
   restaurant: Restaurant
   onDelete?: (id: number) => void
+  onEdit?: () => void
   onClick?: () => void
   onAddToPlan?: () => void
 }
 
-function RestaurantCard({ restaurant, onDelete, onClick, onAddToPlan }: RestaurantCardProps) {
+function RestaurantCard({ restaurant, onDelete, onEdit, onClick, onAddToPlan }: RestaurantCardProps) {
   const distance = Math.abs(restaurant.x) + Math.abs(restaurant.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
   const isBookable = restaurant.booking_hours !== '不能预约' && restaurant.booking_hours !== null
@@ -66,6 +66,15 @@ function RestaurantCard({ restaurant, onDelete, onClick, onAddToPlan }: Restaura
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onEdit?.() }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="编辑餐厅"
+            >
+              <PencilSimple size={16} />
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -137,6 +146,184 @@ function RestaurantCard({ restaurant, onDelete, onClick, onAddToPlan }: Restaura
         </button>
       </div>
     </motion.div>
+  )
+}
+
+interface RestaurantFormData {
+  name: string
+  address: string
+  x: number
+  y: number
+  cuisine_type: string | null
+  dining_style: number
+  tags: string[]
+  business_hours: string | null
+  booking_hours: string | null
+  current_booking_count: number
+  max_booking_count: number
+  queue_time: number
+  indoor_env: string | null
+}
+
+function RestaurantFormModal({ isOpen, editItem, onClose, onSaved }: {
+  isOpen: boolean
+  editItem: Restaurant | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [x, setX] = useState(0)
+  const [y, setY] = useState(0)
+  const [cuisineType, setCuisineType] = useState('中餐')
+  const [diningStyle, setDiningStyle] = useState(2)
+  const [tagsStr, setTagsStr] = useState('')
+  const [businessHours, setBusinessHours] = useState('')
+  const [bookingHours, setBookingHours] = useState('')
+  const [currentCount, setCurrentCount] = useState(-1)
+  const [maxCount, setMaxCount] = useState(-1)
+  const [queueTime, setQueueTime] = useState(-1)
+  const [indoorEnv, setIndoorEnv] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editItem) {
+        setName(editItem.name)
+        setAddress(editItem.address)
+        setX(editItem.x)
+        setY(editItem.y)
+        setCuisineType(editItem.cuisine_type || '中餐')
+        setDiningStyle(editItem.dining_style)
+        setTagsStr(editItem.tags.join('，'))
+        setBusinessHours(editItem.business_hours || '')
+        setBookingHours(editItem.booking_hours || '')
+        setCurrentCount(editItem.current_booking_count)
+        setMaxCount(editItem.max_booking_count)
+        setQueueTime(editItem.queue_time)
+        setIndoorEnv(editItem.indoor_env || '')
+      } else {
+        setName(''); setAddress(''); setX(0); setY(0); setCuisineType('中餐'); setDiningStyle(2)
+        setTagsStr(''); setBusinessHours(''); setBookingHours(''); setCurrentCount(-1); setMaxCount(-1)
+        setQueueTime(-1); setIndoorEnv('')
+      }
+    }
+  }, [isOpen, editItem])
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return
+    setSubmitting(true)
+    const data: RestaurantFormData = {
+      name: name.trim(),
+      address: address.trim() || '未知',
+      x, y,
+      cuisine_type: cuisineType || null,
+      dining_style: diningStyle,
+      tags: tagsStr.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+      business_hours: businessHours || null,
+      booking_hours: bookingHours || null,
+      current_booking_count: currentCount,
+      max_booking_count: maxCount,
+      queue_time: queueTime,
+      indoor_env: indoorEnv || null,
+    }
+    if (editItem) {
+      await updateRestaurant(editItem.id, data)
+    } else {
+      await createRestaurant(data)
+    }
+    setSubmitting(false)
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl z-10">
+              <h2 className="text-lg font-medium text-slate-900">{editItem ? '编辑餐厅' : '添加餐厅'}</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100"><X size={20} className="text-slate-400" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">名称 *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">地址</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 X</label>
+                  <input type="number" value={x} onChange={(e) => setX(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 Y</label>
+                  <input type="number" value={y} onChange={(e) => setY(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">菜系</label>
+                  <select value={cuisineType} onChange={(e) => setCuisineType(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                    {CUISINE_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">用餐方式</label>
+                  <select value={diningStyle} onChange={(e) => setDiningStyle(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                    <option value={0}>堂食</option>
+                    <option value={1}>外卖</option>
+                    <option value={2}>均可</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">营业时间</label>
+                  <input type="text" value={businessHours} onChange={(e) => setBusinessHours(e.target.value)} placeholder="10:00-22:00" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">预约时段</label>
+                  <input type="text" value={bookingHours} onChange={(e) => setBookingHours(e.target.value)} placeholder="不能预约" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">当前预约数</label>
+                  <input type="number" value={currentCount} onChange={(e) => setCurrentCount(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">最大预约数</label>
+                  <input type="number" value={maxCount} onChange={(e) => setMaxCount(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">排队时间（分钟，-1=无需排队）</label>
+                <input type="number" value={queueTime} onChange={(e) => setQueueTime(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">标签（用逗号分隔）</label>
+                <input type="text" value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} placeholder="网红店，服务好" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">室内环境</label>
+                <input type="text" value={indoorEnv} onChange={(e) => setIndoorEnv(e.target.value)} placeholder="宽敞明亮" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">取消</button>
+              <button onClick={handleSubmit} disabled={!name.trim() || submitting} className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${name.trim() && !submitting ? 'bg-orange-500 hover:bg-orange-600 shadow-md shadow-orange-200' : 'bg-slate-300 cursor-not-allowed'}`}>
+                {submitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -343,26 +530,6 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">预约</span>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() =>
-                  onFilterChange({
-                    ...filters,
-                    can_book: filters.can_book === true ? undefined : true,
-                  })
-                }
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm ${
-                  filters.can_book === true
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-blue-200'
-                    : 'bg-white text-slate-600 hover:bg-blue-50 border-2 border-slate-200'
-                }`}
-              >
-                可预约
-              </motion.button>
-            </div>
           </div>
         </motion.div>
       </div>
@@ -384,7 +551,23 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Restaurant | null>(null)
+  const [formModalOpen, setFormModalOpen] = useState(false)
+  const [editItem, setEditItem] = useState<Restaurant | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // 从"查看我的计划"返回时恢复弹窗
+  useEffect(() => {
+    const stored = sessionStorage.getItem('returnToAddPlan')
+    if (!stored) return
+    try {
+      const data = JSON.parse(stored)
+      if (data.locationTableName === 'restaurants') {
+        sessionStorage.removeItem('returnToAddPlan')
+        setSelectedItem(data.item)
+        setModalOpen(true)
+      }
+    } catch {}
+  }, [])
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -401,34 +584,26 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
     }
   }
 
-  // 调用 Mock API 获取数据
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      setIsFetching(true)
-      try {
-        const params: any = {
-          page: 1,
-          page_size: 100, // 一次性获取全部数据，由前端 displayCount 控制逐步展示
-        }
-        if (filters.name) params.name = filters.name
-        if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
-        if (filters.dining_style !== undefined) params.dining_style = filters.dining_style
-        if (filters.can_book !== undefined) params.can_book = filters.can_book
-        if (filters.distance) params.distance = filters.distance
-
-        const response = await getRestaurants(params)
-        setRestaurants(response.data.list)
-        setTotal(response.data.total)
-        setDisplayCount(Math.min(5, response.data.list.length))
-      } catch (error) {
-        console.error('Failed to fetch restaurants:', error)
-      } finally {
-        setIsFetching(false)
-      }
+  const fetchRestaurants = async () => {
+    setIsFetching(true)
+    try {
+      const params: any = { page: 1, page_size: 100 }
+      if (filters.name) params.name = filters.name
+      if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
+      if (filters.dining_style !== undefined) params.dining_style = filters.dining_style
+      if (filters.distance) params.distance = filters.distance
+      const response = await getRestaurants(params)
+      setRestaurants(response.data.list)
+      setTotal(response.data.total)
+      setDisplayCount(Math.min(5, response.data.list.length))
+    } catch (error) {
+      console.error('Failed to fetch restaurants:', error)
+    } finally {
+      setIsFetching(false)
     }
+  }
 
-    fetchRestaurants()
-  }, [filters])
+  useEffect(() => { fetchRestaurants() }, [filters])
 
   // 滚动分页
   useEffect(() => {
@@ -481,6 +656,15 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
                 </p>
               </div>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setEditItem(null); setFormModalOpen(true) }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-medium shadow-md shadow-orange-200 hover:bg-orange-600 transition-colors"
+            >
+              <Plus size={18} weight="bold" />
+              添加餐厅
+            </motion.button>
           </div>
         </div>
       </nav>
@@ -506,7 +690,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedRestaurants.map((restaurant) => (
                 <div className={`relative ${deletingId === restaurant.id ? 'pointer-events-none opacity-50' : ''}`}>
-                  <RestaurantCard key={restaurant.id} restaurant={restaurant} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(restaurant); setModalOpen(true) }} />
+                  <RestaurantCard key={restaurant.id} restaurant={restaurant} onDelete={handleDelete} onEdit={() => { setEditItem(restaurant); setFormModalOpen(true) }} onAddToPlan={() => { setSelectedItem(restaurant); setModalOpen(true) }} />
                   {deletingId === restaurant.id && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-sm text-slate-400">删除中...</span>
@@ -560,6 +744,13 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
           theme="orange"
         />
       )}
+
+      <RestaurantFormModal
+        isOpen={formModalOpen}
+        editItem={editItem}
+        onClose={() => { setFormModalOpen(false); setEditItem(null) }}
+        onSaved={fetchRestaurants}
+      />
     </div>
   )
 }

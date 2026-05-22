@@ -2,25 +2,25 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
-import { getAmusementParks, deleteAmusementPark, type AmusementPark } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
+import { getAmusementParks, deleteAmusementPark, createAmusementPark, updateAmusementPark, type AmusementPark } from '../mock/api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {
   name?: string
   park_theme?: string
-  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
 interface AmusementParkCardProps {
   park: AmusementPark
   onDelete?: (id: number) => void
+  onEdit?: () => void
   onClick?: () => void
   onAddToPlan?: () => void
 }
 
-function AmusementParkCard({ park, onDelete, onClick, onAddToPlan }: AmusementParkCardProps) {
+function AmusementParkCard({ park, onDelete, onEdit, onClick, onAddToPlan }: AmusementParkCardProps) {
   const distance = Math.abs(park.x) + Math.abs(park.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
   const canBook = park.booking_hours !== '不能预约'
@@ -46,6 +46,15 @@ function AmusementParkCard({ park, onDelete, onClick, onAddToPlan }: AmusementPa
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onEdit?.() }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="编辑乐园"
+            >
+              <PencilSimple size={16} />
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -99,6 +108,175 @@ function AmusementParkCard({ park, onDelete, onClick, onAddToPlan }: AmusementPa
         </button>
       </div>
     </motion.div>
+  )
+}
+
+interface AmusementParkFormData {
+  name: string
+  address: string
+  x: number
+  y: number
+  business_hours: string | null
+  booking_hours: string | null
+  current_booking_count: number
+  max_booking_count: number
+  park_theme: string | null
+  ticket_price: number
+  queue_time: number
+  performance_info: string | null
+}
+
+function AmusementParkFormModal({ isOpen, editItem, onClose, onSaved }: {
+  isOpen: boolean
+  editItem: AmusementPark | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [x, setX] = useState(0)
+  const [y, setY] = useState(0)
+  const [businessHours, setBusinessHours] = useState('')
+  const [bookingHours, setBookingHours] = useState('')
+  const [currentCount, setCurrentCount] = useState(-1)
+  const [maxCount, setMaxCount] = useState(-1)
+  const [parkTheme, setParkTheme] = useState('童话')
+  const [ticketPrice, setTicketPrice] = useState(0)
+  const [queueTime, setQueueTime] = useState(-1)
+  const [performanceInfo, setPerformanceInfo] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editItem) {
+        setName(editItem.name)
+        setAddress(editItem.address)
+        setX(editItem.x)
+        setY(editItem.y)
+        setBusinessHours(editItem.business_hours || '')
+        setBookingHours(editItem.booking_hours || '')
+        setCurrentCount(editItem.current_booking_count)
+        setMaxCount(editItem.max_booking_count)
+        setParkTheme(editItem.park_theme || '童话')
+        setTicketPrice(editItem.ticket_price)
+        setQueueTime(editItem.queue_time)
+        setPerformanceInfo(editItem.performance_info || '')
+      } else {
+        setName(''); setAddress(''); setX(0); setY(0); setBusinessHours('')
+        setBookingHours(''); setCurrentCount(-1); setMaxCount(-1)
+        setParkTheme('童话'); setTicketPrice(0); setQueueTime(-1); setPerformanceInfo('')
+      }
+    }
+  }, [isOpen, editItem])
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return
+    setSubmitting(true)
+    const data: AmusementParkFormData = {
+      name: name.trim(),
+      address: address.trim() || '未知',
+      x, y,
+      business_hours: businessHours || null,
+      booking_hours: bookingHours || null,
+      current_booking_count: currentCount,
+      max_booking_count: maxCount,
+      park_theme: parkTheme || null,
+      ticket_price: ticketPrice,
+      queue_time: queueTime,
+      performance_info: performanceInfo || null,
+    }
+    if (editItem) {
+      await updateAmusementPark(editItem.id, data)
+    } else {
+      await createAmusementPark(data)
+    }
+    setSubmitting(false)
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl z-10">
+              <h2 className="text-lg font-medium text-slate-900">{editItem ? '编辑乐园' : '添加乐园'}</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100"><X size={20} className="text-slate-400" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">名称 *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">地址</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 X</label>
+                  <input type="number" value={x} onChange={(e) => setX(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 Y</label>
+                  <input type="number" value={y} onChange={(e) => setY(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">主题</label>
+                  <select value={parkTheme} onChange={(e) => setParkTheme(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    <option value="童话">童话</option>
+                    <option value="海洋">海洋</option>
+                    <option value="科幻">科幻</option>
+                    <option value="卡通">卡通</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">门票价格</label>
+                  <input type="number" value={ticketPrice} onChange={(e) => setTicketPrice(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">营业时间</label>
+                  <input type="text" value={businessHours} onChange={(e) => setBusinessHours(e.target.value)} placeholder="09:00-22:00" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">预约时段</label>
+                  <input type="text" value={bookingHours} onChange={(e) => setBookingHours(e.target.value)} placeholder="不能预约" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">当前预约数</label>
+                  <input type="number" value={currentCount} onChange={(e) => setCurrentCount(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">最大预约数</label>
+                  <input type="number" value={maxCount} onChange={(e) => setMaxCount(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">排队时间（分钟，-1=无需排队）</label>
+                <input type="number" value={queueTime} onChange={(e) => setQueueTime(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">演出信息</label>
+                <input type="text" value={performanceInfo} onChange={(e) => setPerformanceInfo(e.target.value)} placeholder="《金面王朝》14:00" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">取消</button>
+              <button onClick={handleSubmit} disabled={!name.trim() || submitting} className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${name.trim() && !submitting ? 'bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-200' : 'bg-slate-300 cursor-not-allowed'}`}>
+                {submitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -289,21 +467,6 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
             />
           </div>
 
-          <button
-            onClick={() =>
-              onFilterChange({
-                ...filters,
-                can_book: filters.can_book ? undefined : true,
-              })
-            }
-            className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-              filters.can_book
-                ? 'bg-amber-50 border-amber-400 text-amber-700'
-                : 'bg-white border-slate-200 text-slate-500 hover:border-amber-300'
-            }`}
-          >
-            可预约
-          </button>
         </motion.div>
         )}
         </AnimatePresence>
@@ -326,7 +489,22 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<AmusementPark | null>(null)
+  const [formModalOpen, setFormModalOpen] = useState(false)
+  const [editItem, setEditItem] = useState<AmusementPark | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('returnToAddPlan')
+    if (!stored) return
+    try {
+      const data = JSON.parse(stored)
+      if (data.locationTableName === 'amusement_parks') {
+        sessionStorage.removeItem('returnToAddPlan')
+        setSelectedItem(data.item)
+        setModalOpen(true)
+      }
+    } catch {}
+  }, [])
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -343,29 +521,25 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
     }
   }
 
-  useEffect(() => {
-    const fetchParks = async () => {
-      setIsFetching(true)
-      try {
-        const params: any = { page: 1, page_size: 100 }
-        if (filters.name) params.name = filters.name
-        if (filters.park_theme) params.park_theme = filters.park_theme
-        if (filters.can_book !== undefined) params.can_book = filters.can_book
-        if (filters.distance) params.distance = filters.distance
-
-        const response = await getAmusementParks(params)
-        setParks(response.data.list)
-        setTotal(response.data.total)
-        setDisplayCount(Math.min(5, response.data.list.length))
-      } catch (error) {
-        console.error('Failed to fetch amusement parks:', error)
-      } finally {
-        setIsFetching(false)
-      }
+  const fetchParks = async () => {
+    setIsFetching(true)
+    try {
+      const params: any = { page: 1, page_size: 100 }
+      if (filters.name) params.name = filters.name
+      if (filters.park_theme) params.park_theme = filters.park_theme
+      if (filters.distance) params.distance = filters.distance
+      const response = await getAmusementParks(params)
+      setParks(response.data.list)
+      setTotal(response.data.total)
+      setDisplayCount(Math.min(5, response.data.list.length))
+    } catch (error) {
+      console.error('Failed to fetch amusement parks:', error)
+    } finally {
+      setIsFetching(false)
     }
+  }
 
-    fetchParks()
-  }, [filters])
+  useEffect(() => { fetchParks() }, [filters])
 
   useEffect(() => {
     const container = containerRef.current
@@ -417,6 +591,15 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
                 </p>
               </div>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setEditItem(null); setFormModalOpen(true) }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-medium shadow-md shadow-amber-200 hover:bg-amber-600 transition-colors"
+            >
+              <Plus size={18} weight="bold" />
+              添加乐园
+            </motion.button>
           </div>
         </div>
       </nav>
@@ -442,7 +625,7 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedParks.map((park) => (
                 <div key={park.id} className={`relative ${deletingId === park.id ? 'pointer-events-none opacity-50' : ''}`}>
-                  <AmusementParkCard park={park} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(park); setModalOpen(true) }} />
+                  <AmusementParkCard park={park} onDelete={handleDelete} onEdit={() => { setEditItem(park); setFormModalOpen(true) }} onAddToPlan={() => { setSelectedItem(park); setModalOpen(true) }} />
                   {deletingId === park.id && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-sm text-slate-400">删除中...</span>
@@ -496,6 +679,13 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
           theme="amber"
         />
       )}
+
+      <AmusementParkFormModal
+        isOpen={formModalOpen}
+        editItem={editItem}
+        onClose={() => { setFormModalOpen(false); setEditItem(null) }}
+        onSaved={fetchParks}
+      />
     </div>
   )
 }

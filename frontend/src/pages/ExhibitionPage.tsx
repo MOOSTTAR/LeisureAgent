@@ -2,29 +2,26 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CaretDown, Trash, Plus } from '@phosphor-icons/react'
-import { getExhibitions, deleteExhibition, type ExhibitionHall } from '../mock/api'
+import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
+import { getExhibitions, deleteExhibition, createExhibition, updateExhibition, type ExhibitionHall } from '../mock/api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {
   name?: string
   hall_type?: string
   free_entry?: boolean
-  crowd_level?: number
-  can_book?: boolean
-  manual_guide?: number
-  interactive_project?: number
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
 interface ExhibitionCardProps {
   hall: ExhibitionHall
   onDelete?: (id: number) => void
+  onEdit?: () => void
   onClick?: () => void
   onAddToPlan?: () => void
 }
 
-function ExhibitionCard({ hall, onDelete, onClick, onAddToPlan }: ExhibitionCardProps) {
+function ExhibitionCard({ hall, onDelete, onEdit, onClick, onAddToPlan }: ExhibitionCardProps) {
   const distance = Math.abs(hall.x) + Math.abs(hall.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
   const canBook = hall.booking_hours !== '不能预约'
@@ -57,6 +54,15 @@ function ExhibitionCard({ hall, onDelete, onClick, onAddToPlan }: ExhibitionCard
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onEdit?.() }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-violet-50 hover:text-violet-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="编辑展馆"
+            >
+              <PencilSimple size={16} />
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -106,6 +112,217 @@ function ExhibitionCard({ hall, onDelete, onClick, onAddToPlan }: ExhibitionCard
         </button>
       </div>
     </motion.div>
+  )
+}
+
+interface ExhibitionFormData {
+  name: string
+  address: string
+  x: number
+  y: number
+  hall_type: string | null
+  business_hours: string | null
+  booking_hours: string | null
+  current_booking_count: number
+  max_booking_count: number
+  exhibition_theme: string | null
+  ticket_type: number
+  ticket_price: number | null
+  manual_guide: number
+  interactive_project: number
+  crowd_level: number
+}
+
+function ExhibitionFormModal({ isOpen, editItem, onClose, onSaved }: {
+  isOpen: boolean
+  editItem: ExhibitionHall | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [x, setX] = useState(0)
+  const [y, setY] = useState(0)
+  const [hallType, setHallType] = useState('历史')
+  const [businessHours, setBusinessHours] = useState('')
+  const [bookingHours, setBookingHours] = useState('')
+  const [currentCount, setCurrentCount] = useState(-1)
+  const [maxCount, setMaxCount] = useState(-1)
+  const [theme, setTheme] = useState('')
+  const [ticketType, setTicketType] = useState(0)
+  const [ticketPrice, setTicketPrice] = useState<number | ''>('')
+  const [manualGuide, setManualGuide] = useState(0)
+  const [interactive, setInteractive] = useState(0)
+  const [crowdLevel, setCrowdLevel] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editItem) {
+        setName(editItem.name)
+        setAddress(editItem.address)
+        setX(editItem.x)
+        setY(editItem.y)
+        setHallType(editItem.hall_type || '历史')
+        setBusinessHours(editItem.business_hours || '')
+        setBookingHours(editItem.booking_hours || '')
+        setCurrentCount(editItem.current_booking_count)
+        setMaxCount(editItem.max_booking_count)
+        setTheme(editItem.exhibition_theme || '')
+        setTicketType(editItem.ticket_type)
+        setTicketPrice(editItem.ticket_price ?? '')
+        setManualGuide(editItem.manual_guide)
+        setInteractive(editItem.interactive_project)
+        setCrowdLevel(editItem.crowd_level)
+      } else {
+        setName(''); setAddress(''); setX(0); setY(0); setHallType('历史')
+        setBusinessHours(''); setBookingHours(''); setCurrentCount(-1); setMaxCount(-1)
+        setTheme(''); setTicketType(0); setTicketPrice(''); setManualGuide(0)
+        setInteractive(0); setCrowdLevel(1)
+      }
+    }
+  }, [isOpen, editItem])
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return
+    setSubmitting(true)
+    const data: ExhibitionFormData = {
+      name: name.trim(),
+      address: address.trim() || '未知',
+      x, y,
+      hall_type: hallType || null,
+      business_hours: businessHours || null,
+      booking_hours: bookingHours || null,
+      current_booking_count: currentCount,
+      max_booking_count: maxCount,
+      exhibition_theme: theme || null,
+      ticket_type: ticketType,
+      ticket_price: ticketPrice === '' ? null : ticketPrice,
+      manual_guide: manualGuide,
+      interactive_project: interactive,
+      crowd_level: crowdLevel,
+    }
+    if (editItem) {
+      await updateExhibition(editItem.id, data)
+    } else {
+      await createExhibition(data)
+    }
+    setSubmitting(false)
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl z-10">
+              <h2 className="text-lg font-medium text-slate-900">{editItem ? '编辑展馆' : '添加展馆'}</h2>
+              <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100"><X size={20} className="text-slate-400" /></button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">名称 *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">地址</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 X</label>
+                  <input type="number" value={x} onChange={(e) => setX(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">坐标 Y</label>
+                  <input type="number" value={y} onChange={(e) => setY(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">展馆类型</label>
+                  <select value={hallType} onChange={(e) => setHallType(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                    <option value="历史">历史</option>
+                    <option value="艺术">艺术</option>
+                    <option value="科技">科技</option>
+                    <option value="自然">自然</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">展览主题</label>
+                  <input type="text" value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="古代中国基本陈列" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">营业时间</label>
+                  <input type="text" value={businessHours} onChange={(e) => setBusinessHours(e.target.value)} placeholder="09:00-17:00" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">预约时段</label>
+                  <input type="text" value={bookingHours} onChange={(e) => setBookingHours(e.target.value)} placeholder="不能预约" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">当前预约数</label>
+                  <input type="number" value={currentCount} onChange={(e) => setCurrentCount(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">最大预约数</label>
+                  <input type="number" value={maxCount} onChange={(e) => setMaxCount(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">门票类型</label>
+                  <select value={ticketType} onChange={(e) => setTicketType(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                    <option value={0}>免费</option>
+                    <option value={1}>收费</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">门票价格</label>
+                  <input type="number" value={ticketPrice} onChange={(e) => setTicketPrice(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">人工讲解</label>
+                  <select value={manualGuide} onChange={(e) => setManualGuide(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                    <option value={0}>无</option>
+                    <option value={1}>有</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">互动体验</label>
+                  <select value={interactive} onChange={(e) => setInteractive(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                    <option value={0}>无</option>
+                    <option value={1}>有</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">人流量（1=人少 2=适中 3=拥挤）</label>
+                <select value={crowdLevel} onChange={(e) => setCrowdLevel(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
+                  <option value={1}>人少</option>
+                  <option value={2}>适中</option>
+                  <option value={3}>拥挤</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">取消</button>
+              <button onClick={handleSubmit} disabled={!name.trim() || submitting} className={`px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${name.trim() && !submitting ? 'bg-violet-500 hover:bg-violet-600 shadow-md shadow-violet-200' : 'bg-slate-300 cursor-not-allowed'}`}>
+                {submitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -213,13 +430,6 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
     { value: 'false', label: '收费' },
   ]
 
-  const crowdOptions: SelectOption[] = [
-    { value: '', label: '全部' },
-    { value: '1', label: '人少' },
-    { value: '2', label: '适中' },
-    { value: '3', label: '拥挤' },
-  ]
-
   const distanceOptions: SelectOption[] = [
     { value: '', label: '全部' },
     { value: '<200m', label: '< 200m' },
@@ -310,20 +520,6 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">人流量</span>
-            <CustomSelect
-              value={filters.crowd_level !== undefined ? String(filters.crowd_level) : ''}
-              options={crowdOptions}
-              onChange={(val) =>
-                onFilterChange({
-                  ...filters,
-                  crowd_level: val !== '' ? Number(val) : undefined,
-                })
-              }
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">距离</span>
             <CustomSelect
               value={filters.distance || ''}
@@ -337,59 +533,6 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                onFilterChange({
-                  ...filters,
-                  can_book: filters.can_book ? undefined : true,
-                })
-              }
-              className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-                filters.can_book
-                  ? 'bg-violet-50 border-violet-400 text-violet-700'
-                  : 'bg-white border-slate-200 text-slate-500 hover:border-violet-300'
-              }`}
-            >
-              可预约
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                onFilterChange({
-                  ...filters,
-                  manual_guide: filters.manual_guide === 1 ? undefined : 1,
-                })
-              }
-              className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-                filters.manual_guide === 1
-                  ? 'bg-violet-50 border-violet-400 text-violet-700'
-                  : 'bg-white border-slate-200 text-slate-500 hover:border-violet-300'
-              }`}
-            >
-              人工讲解
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                onFilterChange({
-                  ...filters,
-                  interactive_project: filters.interactive_project === 1 ? undefined : 1,
-                })
-              }
-              className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-                filters.interactive_project === 1
-                  ? 'bg-violet-50 border-violet-400 text-violet-700'
-                  : 'bg-white border-slate-200 text-slate-500 hover:border-violet-300'
-              }`}
-            >
-              互动体验
-            </button>
-          </div>
         </motion.div>
         )}
         </AnimatePresence>
@@ -412,7 +555,22 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ExhibitionHall | null>(null)
+  const [formModalOpen, setFormModalOpen] = useState(false)
+  const [editItem, setEditItem] = useState<ExhibitionHall | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('returnToAddPlan')
+    if (!stored) return
+    try {
+      const data = JSON.parse(stored)
+      if (data.locationTableName === 'exhibitions') {
+        sessionStorage.removeItem('returnToAddPlan')
+        setSelectedItem(data.item)
+        setModalOpen(true)
+      }
+    } catch {}
+  }, [])
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -429,33 +587,26 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
     }
   }
 
-  useEffect(() => {
-    const fetchHalls = async () => {
-      setIsFetching(true)
-      try {
-        const params: any = { page: 1, page_size: 100 }
-        if (filters.name) params.name = filters.name
-        if (filters.hall_type) params.hall_type = filters.hall_type
-        if (filters.free_entry !== undefined) params.free_entry = filters.free_entry
-        if (filters.crowd_level !== undefined) params.crowd_level = filters.crowd_level
-        if (filters.can_book !== undefined) params.can_book = filters.can_book
-        if (filters.manual_guide !== undefined) params.manual_guide = filters.manual_guide
-        if (filters.interactive_project !== undefined) params.interactive_project = filters.interactive_project
-        if (filters.distance) params.distance = filters.distance
-
-        const response = await getExhibitions(params)
-        setHalls(response.data.list)
-        setTotal(response.data.total)
-        setDisplayCount(Math.min(5, response.data.list.length))
-      } catch (error) {
-        console.error('Failed to fetch exhibitions:', error)
-      } finally {
-        setIsFetching(false)
-      }
+  const fetchHalls = async () => {
+    setIsFetching(true)
+    try {
+      const params: any = { page: 1, page_size: 100 }
+      if (filters.name) params.name = filters.name
+      if (filters.hall_type) params.hall_type = filters.hall_type
+      if (filters.free_entry !== undefined) params.free_entry = filters.free_entry
+      if (filters.distance) params.distance = filters.distance
+      const response = await getExhibitions(params)
+      setHalls(response.data.list)
+      setTotal(response.data.total)
+      setDisplayCount(Math.min(5, response.data.list.length))
+    } catch (error) {
+      console.error('Failed to fetch exhibitions:', error)
+    } finally {
+      setIsFetching(false)
     }
+  }
 
-    fetchHalls()
-  }, [filters])
+  useEffect(() => { fetchHalls() }, [filters])
 
   useEffect(() => {
     const container = containerRef.current
@@ -507,6 +658,15 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
                 </p>
               </div>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setEditItem(null); setFormModalOpen(true) }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-500 text-white text-sm font-medium shadow-md shadow-violet-200 hover:bg-violet-600 transition-colors"
+            >
+              <Plus size={18} weight="bold" />
+              添加展馆
+            </motion.button>
           </div>
         </div>
       </nav>
@@ -532,7 +692,7 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
             <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
               {displayedHalls.map((hall) => (
                 <div className={`relative ${deletingId === hall.id ? 'pointer-events-none opacity-50' : ''}`}>
-                  <ExhibitionCard key={hall.id} hall={hall} onDelete={handleDelete} onAddToPlan={() => { setSelectedItem(hall); setModalOpen(true) }} />
+                  <ExhibitionCard key={hall.id} hall={hall} onDelete={handleDelete} onEdit={() => { setEditItem(hall); setFormModalOpen(true) }} onAddToPlan={() => { setSelectedItem(hall); setModalOpen(true) }} />
                   {deletingId === hall.id && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-sm text-slate-400">删除中...</span>
@@ -586,6 +746,13 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
           theme="violet"
         />
       )}
+
+      <ExhibitionFormModal
+        isOpen={formModalOpen}
+        editItem={editItem}
+        onClose={() => { setFormModalOpen(false); setEditItem(null) }}
+        onSaved={fetchHalls}
+      />
     </div>
   )
 }

@@ -41,6 +41,93 @@ def filter_by_cuisine(cuisine_type: str, limit: int = 20) -> list[dict[str, Any]
     return [dict(r) for r in rows]
 
 
+def search(
+    name: Optional[str] = None,
+    cuisine_type: Optional[str] = None,
+    dining_style: Optional[int] = None,
+    bookable: Optional[bool] = None,
+    distance_min: Optional[int] = None,
+    distance_max: Optional[int] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    conn = get_connection()
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if name:
+        clauses.append("name LIKE ?")
+        params.append(f"%{name}%")
+    if cuisine_type:
+        clauses.append("cuisine_type = ?")
+        params.append(cuisine_type)
+    if dining_style is not None:
+        clauses.append("dining_style = ?")
+        params.append(dining_style)
+    if bookable is not None:
+        if bookable:
+            clauses.append("booking_hours IS NOT NULL AND booking_hours != '不能预约'")
+        else:
+            clauses.append("booking_hours IS NULL OR booking_hours = '不能预约'")
+    if distance_min is not None and distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) BETWEEN ? AND ?")
+        params.extend([distance_min, distance_max])
+    elif distance_min is not None:
+        clauses.append("(ABS(x) + ABS(y)) >= ?")
+        params.append(distance_min)
+    elif distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) <= ?")
+        params.append(distance_max)
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    rows = conn.execute(
+        f"SELECT * FROM restaurant{where} ORDER BY id LIMIT ? OFFSET ?",
+        [*params, limit, offset],
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count(
+    name: Optional[str] = None,
+    cuisine_type: Optional[str] = None,
+    dining_style: Optional[int] = None,
+    bookable: Optional[bool] = None,
+    distance_min: Optional[int] = None,
+    distance_max: Optional[int] = None,
+) -> int:
+    conn = get_connection()
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if name:
+        clauses.append("name LIKE ?")
+        params.append(f"%{name}%")
+    if cuisine_type:
+        clauses.append("cuisine_type = ?")
+        params.append(cuisine_type)
+    if dining_style is not None:
+        clauses.append("dining_style = ?")
+        params.append(dining_style)
+    if bookable is not None:
+        if bookable:
+            clauses.append("booking_hours IS NOT NULL AND booking_hours != '不能预约'")
+        else:
+            clauses.append("booking_hours IS NULL OR booking_hours = '不能预约'")
+    if distance_min is not None and distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) BETWEEN ? AND ?")
+        params.extend([distance_min, distance_max])
+    elif distance_min is not None:
+        clauses.append("(ABS(x) + ABS(y)) >= ?")
+        params.append(distance_min)
+    elif distance_max is not None:
+        clauses.append("(ABS(x) + ABS(y)) <= ?")
+        params.append(distance_max)
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    row = conn.execute(f"SELECT COUNT(*) FROM restaurant{where}", params).fetchone()
+    return row[0]
+
+
 def create(data: dict[str, Any]) -> int:
     conn = get_connection()
     keys = list(data.keys())

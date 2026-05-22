@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from app.api import paginate
 from app.repository import travel_plan_item_repo
 
 
@@ -13,13 +12,16 @@ def get_by_id(id: int) -> Optional[dict[str, Any]]:
 
 
 def list_all(
-    plan_id: Optional[int] = None, page: int = 1, page_size: int = 10
+    plan_id: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 10,
 ) -> tuple[list[dict[str, Any]], int]:
-    if plan_id is not None:
-        items = travel_plan_item_repo.get_by_plan_id(plan_id)
-    else:
-        items = travel_plan_item_repo.get_all(limit=9999)
-    return paginate(items, page, page_size)
+    offset = (page - 1) * page_size
+    items = travel_plan_item_repo.search(
+        plan_id=plan_id, limit=page_size, offset=offset
+    )
+    total = travel_plan_item_repo.count(plan_id=plan_id)
+    return items, total
 
 
 def create(data: dict[str, Any]) -> int:

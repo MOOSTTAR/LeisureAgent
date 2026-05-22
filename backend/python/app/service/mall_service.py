@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from app.api import filter_by_distance, paginate
+from app.api import parse_distance_filter
 from app.repository import mall_repo
 
 
@@ -19,16 +19,24 @@ def list_all(
     page: int = 1,
     page_size: int = 5,
 ) -> tuple[list[dict[str, Any]], int]:
-    items = mall_repo.get_all(limit=9999)
+    offset = (page - 1) * page_size
+    d_min, d_max = parse_distance_filter(distance) if distance else (None, None)
 
-    if has_cinema is not None:
-        items = [i for i in items if (i["cinema_has"] == 1) == has_cinema]
-    if has_supermarket is not None:
-        items = [i for i in items if (i["supermarket_has"] == 1) == has_supermarket]
-    if distance:
-        items = filter_by_distance(items, distance)
-
-    return paginate(items, page, page_size)
+    items = mall_repo.search(
+        has_cinema=has_cinema,
+        has_supermarket=has_supermarket,
+        distance_min=d_min,
+        distance_max=d_max,
+        limit=page_size,
+        offset=offset,
+    )
+    total = mall_repo.count(
+        has_cinema=has_cinema,
+        has_supermarket=has_supermarket,
+        distance_min=d_min,
+        distance_max=d_max,
+    )
+    return items, total
 
 
 def create(data: dict[str, Any]) -> int:

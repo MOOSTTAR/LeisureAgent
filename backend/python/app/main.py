@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.agent.graph import graph
+from app.agent import memory
 from app.agent.state import AgentState
+from app.agent.tools import build_share_payload
 from app.api.amusement_park_api import router as amusement_park_router
 from app.api.exhibition_hall_api import router as exhibition_hall_router
 from app.api.mall_api import router as mall_router
@@ -50,41 +52,43 @@ async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:
     """执行 LangGraph Agent 并以 SSE 格式流式返回。"""
     initial_state: AgentState = {
         "user_input": request.message,
+        "session_id": request.session_id,
+        "auto_execute": request.auto_execute,
         "intent": None,
         "plan": None,
-        "plan_confirmed": False,
         "messages": [{"role": "user", "content": request.message}],
-        "current_step": "analyze",
+        "current_step": "load_session",
         "execution_results": [],
+        "tool_results": [],
         "error": None,
     }
 
     try:
-        async for event in graph.astream_events(initial_state, version="v2"):
-            event_type = event.get("event")
-            name = event.get("name", "")
-            data = event.get("data", {})
+        async for update in graph.astream(initial_state):
+            node_name, payload = next(iter(update.items()))
+            yield _sse(
+                "token",
+                json.dumps(
+                    {
+                        "node": node_name,
+                        "current_step": payload.get("current_step", ""),
+                        "message": (payload.get("messages") or [{}])[-1].get("content", ""),
+                    },
+                    ensure_ascii=False,
+                ),
+            )
 
-            if event_type == "on_chain_start" and name == "LangGraph":
-                yield _sse("token", "正在分析您的需求...")
+            if payload.get("tool_results"):
+                yield _sse(
+                    "tool_result",
+                    json.dumps(payload["tool_results"], ensure_ascii=False, default=_json_default),
+                )
 
-            elif event_type == "on_chat_model_stream":
-                chunk = data.get("chunk", "")
-                if chunk and hasattr(chunk, "content"):
-                    content = chunk.content
-                    if content:
-                        yield _sse("token", content)
-
-            elif event_type == "on_tool_start":
-                yield _sse("tool_call", json.dumps({"tool": name, "input": data.get("input", {})}))
-
-            elif event_type == "on_tool_end":
-                yield _sse("tool_result", json.dumps({"tool": name, "output": data.get("output", "")}))
-
-            elif name == "finalize_node" and event_type == "on_chain_end":
-                plan = data.get("output", {}).get("plan", {})
-                if plan:
-                    yield _sse("plan", json.dumps(plan, ensure_ascii=False))
+            if payload.get("plan"):
+                yield _sse(
+                    "plan",
+                    json.dumps(payload["plan"], ensure_ascii=False, default=_json_default),
+                )
 
         yield _sse("done", json.dumps({"message": "完成"}))
 
@@ -122,18 +126,61 @@ async def chat_stream(request: ChatRequest):
 async def chat(request: ChatRequest):
     initial_state: AgentState = {
         "user_input": request.message,
+        "session_id": request.session_id,
+        "auto_execute": request.auto_execute,
         "intent": None,
         "plan": None,
-        "plan_confirmed": False,
         "messages": [{"role": "user", "content": request.message}],
-        "current_step": "analyze",
+        "current_step": "load_session",
         "execution_results": [],
+        "tool_results": [],
         "error": None,
     }
 
     result = await graph.ainvoke(initial_state)
+    plan = result.get("plan")
+    plan_data = plan.model_dump() if hasattr(plan, "model_dump") else plan
     return {
-        "reply": result.get("messages", [{}])[-1].get("content", ""),
-        "plan": result.get("plan"),
+        "session_id": result.get("session_id", ""),
+        "reply": result.get("share_text") or result.get("messages", [{}])[-1].get("content", ""),
+        "plan": plan_data,
+        "tool_results": result.get("tool_results", []),
+        "share_text": result.get("share_text", ""),
+        "share_url": result.get("share_url", ""),
         "current_step": result.get("current_step"),
     }
+
+
+@app.get("/api/agent/sessions")
+async def list_agent_sessions():
+    sessions = memory.list_sessions()
+    return {"code": 0, "data": {"list": sessions, "total": len(sessions)}, "msg": "success"}
+
+
+@app.get("/api/agent/sessions/{session_id}")
+async def get_agent_session(session_id: str):
+    session = memory.get_session(session_id)
+    if not session:
+        return {"code": 404, "data": None, "msg": "会话不存在"}
+    return {"code": 0, "data": session, "msg": "success"}
+
+
+@app.delete("/api/agent/sessions/{session_id}")
+async def delete_agent_session(session_id: str):
+    if not memory.delete_session(session_id):
+        return {"code": 404, "data": None, "msg": "会话不存在"}
+    return {"code": 0, "data": None, "msg": "删除成功"}
+
+
+@app.get("/api/agent/plans/{plan_id}/share")
+async def share_agent_plan(plan_id: int):
+    payload = build_share_payload(plan_id)
+    if not payload:
+        return {"code": 404, "data": None, "msg": "方案不存在"}
+    return {"code": 0, "data": payload, "msg": "success"}
+
+
+def _json_default(obj):
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    raise TypeError(f"Object of type {type(obj)!r} is not JSON serializable")

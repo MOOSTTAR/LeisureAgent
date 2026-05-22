@@ -359,7 +359,7 @@ function ConversationSidebar({
 
   return (
     <motion.div
-      className="h-full border-r border-slate-200/50 bg-white/60 backdrop-blur-sm flex flex-col shrink-0 overflow-hidden"
+      className="h-full border-r-2 border-emerald-400/60 bg-white/60 backdrop-blur-sm flex flex-col shrink-0 overflow-hidden"
       animate={{ width: isOpen ? 260 : 0 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
     >
@@ -454,7 +454,7 @@ function ChatInput() {
   const [input, setInput] = useState('')
 
   return (
-    <div className="border-t border-slate-200/50 bg-white/60 backdrop-blur-sm px-4 py-4">
+    <div className="border-t-2 border-emerald-400/60 bg-white/60 backdrop-blur-sm px-4 py-4">
       <div className="max-w-xl mx-auto flex items-center gap-3">
         <input
           value={input}
@@ -500,10 +500,10 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
       <div className="relative z-10 flex flex-col h-full">
         {/* 顶部导航 — 从上方滑入 */}
         <motion.nav
-          className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm shrink-0"
+          className="border-b-2 border-emerald-400/60 bg-white/80 backdrop-blur-sm shrink-0"
           initial={{ y: -60, opacity: 0 }}
           animate={ready ? { y: 0, opacity: 1 } : { y: -60, opacity: 0 }}
-          transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 0.61, 0.36, 1] }}
+          transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
         >
           <div className="px-4 py-3 flex items-center gap-3">
             <button
@@ -522,7 +522,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           <motion.div
             initial={{ x: -280, opacity: 0 }}
             animate={ready ? { x: 0, opacity: 1 } : { x: -280, opacity: 0 }}
-            transition={{ duration: 0.45, delay: 0.25, ease: [0.22, 0.61, 0.36, 1] }}
+            transition={{ duration: 0.45, delay: 0.35, ease: [0.22, 0.61, 0.36, 1] }}
           >
             <ConversationSidebar isOpen={sidebarOpen} />
           </motion.div>
@@ -534,7 +534,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
             animate={{ left: sideLeft, opacity: ready ? 1 : 0 }}
             transition={{
               left: { duration: 0.25, ease: 'easeInOut' },
-              opacity: { duration: 0.3, delay: 0.3 },
+              opacity: { duration: 0.3, delay: 0.5 },
             }}
           >
             <button
@@ -552,7 +552,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
               className="flex-1 flex flex-col min-h-0"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4, delay: 0.35, ease: [0.22, 0.61, 0.36, 1] }}
+              transition={{ duration: 0.4, delay: 0.65, ease: [0.22, 0.61, 0.36, 1] }}
             >
               <ChatArea messages={[]} entranceReady={ready} />
             </motion.div>
@@ -561,7 +561,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
             <motion.div
               initial={{ y: 40, opacity: 0 }}
               animate={ready ? { y: 0, opacity: 1 } : { y: 40, opacity: 0 }}
-              transition={{ duration: 0.4, delay: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
+              transition={{ duration: 0.4, delay: 0.8, ease: [0.22, 0.61, 0.36, 1] }}
             >
               <ChatInput />
             </motion.div>

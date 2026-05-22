@@ -1,30 +1,33 @@
 from __future__ import annotations
 
 import operator
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 
-from app.models.schemas import ActivityPlan, UserIntent
+from app.models.schemas import AgentPlan, UserIntent
 
 
-class AgentState(TypedDict):
-    """LangGraph Agent 的全局状态"""
+class AgentState(TypedDict, total=False):
+    """LangGraph Agent 全局状态。"""
 
-    # 用户输入
     user_input: str
+    session_id: str
+    auto_execute: bool
+
     intent: UserIntent | None
+    scenario: str
+    constraints: dict[str, Any]
 
-    # 计划状态
-    plan: ActivityPlan | None
-    plan_confirmed: bool
+    session_messages: list[dict[str, Any]]
+    messages: Annotated[list[dict[str, str]], operator.add]
 
-    # 对话历史（消息列表，每条是 {"role": ..., "content": ...}）
-    messages: Annotated[list[dict], operator.add]
+    candidates: dict[str, list[dict[str, Any]]]
+    selected_items: list[dict[str, Any]]
+    plan: AgentPlan | None
+    plan_id: int | None
 
-    # 当前步骤
-    current_step: str  # analyze / search / plan / confirm / execute / done
+    tool_results: list[dict[str, Any]]
+    share_text: str
+    share_url: str
 
-    # 执行结果
-    execution_results: list[dict]
-
-    # 错误信息
+    current_step: str
     error: str | None

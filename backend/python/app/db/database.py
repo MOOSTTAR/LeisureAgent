@@ -157,6 +157,54 @@ CREATE TABLE IF NOT EXISTS travel_plan_item (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP -- 更新时间
 );
 
+/* Agent 会话表 - 多会话管理 */
+CREATE TABLE IF NOT EXISTS agent_session (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    last_message TEXT NOT NULL DEFAULT '',
+    current_plan_id INTEGER DEFAULT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (current_plan_id) REFERENCES travel_plan(id)
+);
+
+/* Agent 消息表 - 单会话短期记忆 */
+CREATE TABLE IF NOT EXISTS agent_message (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    metadata TEXT DEFAULT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES agent_session(id) ON DELETE CASCADE
+);
+
+/* Agent 执行动作表 - Mock 预约/下单/取号记录 */
+CREATE TABLE IF NOT EXISTS agent_order (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    session_id TEXT NOT NULL,
+    plan_id INTEGER DEFAULT NULL,
+    plan_item_id INTEGER DEFAULT NULL,
+    order_type TEXT NOT NULL,
+    target_table TEXT NOT NULL,
+    target_id INTEGER NOT NULL,
+    target_name TEXT NOT NULL,
+    order_details TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'success',
+    external_reference TEXT DEFAULT NULL,
+    error_message TEXT DEFAULT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES agent_session(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id) REFERENCES travel_plan(id),
+    FOREIGN KEY (plan_item_id) REFERENCES travel_plan_item(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_message_session ON agent_message(session_id);
+CREATE INDEX IF NOT EXISTS idx_agent_order_session ON agent_order(session_id);
+CREATE INDEX IF NOT EXISTS idx_agent_order_plan ON agent_order(plan_id);
+
 
 """
 
@@ -259,6 +307,7 @@ def reset_db() -> None:
     """清空全部数据并重新初始化（开发/测试用）。"""
     conn = get_connection()
     for table in (
+        "agent_order", "agent_message", "agent_session",
         "travel_plan_item", "travel_plan", "exhibition_hall",
         "scenic_spot", "amusement_park", "mall", "restaurant",
     ):

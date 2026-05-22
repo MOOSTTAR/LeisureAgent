@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -55,6 +55,7 @@ class ChatRequest(BaseModel):
     """聊天请求"""
     message: str = Field(min_length=1, max_length=2000)
     session_id: str = Field(default="")
+    auto_execute: bool = Field(default=True)
 
 
 class ChatEvent(BaseModel):
@@ -97,3 +98,67 @@ class BookingResult(BaseModel):
     success: bool
     booking_id: str = Field(default="")
     message: str = Field(default="")
+
+
+class AgentPlanItem(BaseModel):
+    """Agent 生成的单个行程步骤"""
+    step_order: int
+    activity_type: str
+    location_table_name: str
+    location_id: int
+    location_name: str
+    address: str = ""
+    arrive_time: str
+    leave_time: str
+    stay_minute: int
+    remark: str = ""
+    estimated_cost: float = 0
+
+
+class AgentOrder(BaseModel):
+    """Agent 执行的 Mock 订单/预约/取号动作"""
+    id: int | None = None
+    order_type: str
+    target_table: str
+    target_id: int
+    target_name: str
+    order_details: dict[str, Any] = Field(default_factory=dict)
+    status: str = "success"
+    external_reference: str | None = None
+    error_message: str | None = None
+
+
+class AgentPlan(BaseModel):
+    """Agent 返回给前端的完整方案"""
+    id: int | None = None
+    title: str
+    description: str
+    scenario: str
+    travel_type: str
+    total_cost: float
+    items: list[AgentPlanItem] = Field(default_factory=list)
+    orders: list[AgentOrder] = Field(default_factory=list)
+    share_text: str = ""
+    share_url: str = ""
+
+
+class AgentSessionSummary(BaseModel):
+    """会话列表项"""
+    id: str
+    title: str
+    last_message: str
+    current_plan_id: int | None = None
+    status: str = "active"
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class ChatResponse(BaseModel):
+    """聊天响应"""
+    session_id: str
+    reply: str
+    plan: AgentPlan | None = None
+    tool_results: list[dict[str, Any]] = Field(default_factory=list)
+    share_text: str = ""
+    share_url: str = ""
+    current_step: str = "done"

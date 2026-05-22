@@ -1,14 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { LobbyCard } from './LobbyCard'
 import { Sparkle, SlidersHorizontal } from '@phosphor-icons/react'
 
-export function Lobby() {
+export function Lobby({ onAICardClick }: { onAICardClick?: (rect: DOMRect) => void }) {
   const [isImgHovered, setIsImgHovered] = useState(false)
+  const aiCardRef = useRef<HTMLDivElement>(null)
+
   const handleManualPlanClick = () => {
     window.location.hash = '/manual-plan'
+  }
+
+  const handleAIPlanClick = () => {
+    if (onAICardClick && aiCardRef.current) {
+      const rect = aiCardRef.current.getBoundingClientRect()
+      onAICardClick(rect)
+    } else {
+      window.location.hash = '/ai-plan'
+    }
   }
 
   return (
@@ -80,6 +91,7 @@ export function Lobby() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
             {/* AI 列 */}
             <motion.div
+              ref={aiCardRef}
               className="flex flex-col items-center"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -90,6 +102,7 @@ export function Lobby() {
                 title="AI 一键规划"
                 description="用自然语言描述你的需求，AI 智能体自动规划完整活动方案。"
                 icon={<Sparkle weight="fill" size={32} />}
+                onClick={handleAIPlanClick}
               />
             </motion.div>
 

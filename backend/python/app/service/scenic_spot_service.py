@@ -52,3 +52,13 @@ def update(id: int, data: dict[str, Any]) -> bool:
 
 def delete(id: int) -> bool:
     return scenic_spot_repo.delete(id)
+
+
+def get_booking_list(
+    page: int = 1,
+    page_size: int = 5,
+) -> tuple[list[dict[str, Any]], int]:
+    offset = (page - 1) * page_size
+    items = scenic_spot_repo.search(bookable=True, limit=page_size, offset=offset)
+    total = scenic_spot_repo.count(bookable=True)
+    return items, total

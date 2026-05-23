@@ -17,7 +17,7 @@ def list_travel_plans(
     travel_type: str = Query(None, description="游玩类型：亲子/美食/逛街/风景/人文"),
     travel_date: str = Query(None, description="出行日期：YYYY-MM-DD"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = travel_plan_service.list_all(
         title=title,

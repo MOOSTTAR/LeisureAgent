@@ -18,7 +18,7 @@ def list_exhibition_halls(
     free_entry: bool = Query(None, description="是否免费"),
     distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = exhibition_hall_service.list_all(
         name=name,
@@ -34,7 +34,7 @@ def list_exhibition_halls(
 @router.get("/get_booking_list")
 def get_booking_list(
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = exhibition_hall_service.get_booking_list(page=page, page_size=page_size)
     return success(paged(items, total, page, page_size))

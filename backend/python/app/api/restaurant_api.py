@@ -18,7 +18,7 @@ def list_restaurants(
     dining_style: int = Query(None, description="用餐方式：0 堂食/1 外卖/2 均可"),
     distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(5, ge=1, le=50, description="每页数量"),
+    page_size: int = Query(9999, ge=1, le=9999, description="每页数量"),
 ):
     items, total = restaurant_service.list_all(
         name=name,
@@ -34,7 +34,7 @@ def list_restaurants(
 @router.get("/get_booking_list")
 def get_booking_list(
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = restaurant_service.get_booking_list(
         page=page,

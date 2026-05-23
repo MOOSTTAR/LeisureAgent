@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/travel-plan-items", tags=["旅行方案明细"])
 def list_travel_plan_items(
     plan_id: int = Query(None, description="关联方案 ID"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = travel_plan_item_service.list_all(
         plan_id=plan_id, page=page, page_size=page_size

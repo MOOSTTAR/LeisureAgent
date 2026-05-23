@@ -18,7 +18,7 @@ def list_malls(
     has_supermarket: bool = Query(None, description="是否有大型超市"),
     distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = mall_service.list_all(
         has_cinema=has_cinema,

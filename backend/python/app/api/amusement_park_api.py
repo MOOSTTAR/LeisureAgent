@@ -18,7 +18,7 @@ def list_amusement_parks(
     free_entry: bool = Query(None, description="是否免费入园"),
     distance: str = Query(None, description="距离筛选：<200m/<500m/<1.0km/<2.0km/other"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=9999),
 ):
     items, total = amusement_park_service.list_all(
         name=name,
@@ -33,7 +33,7 @@ def list_amusement_parks(
 @router.get("/get_booking_list")
 def get_booking_list(
     page: int = Query(1, ge=1),
-    page_size: int = Query(5, ge=1, le=50),
+    page_size: int = Query(9999, ge=1, le=50),
 ):
     items, total = amusement_park_service.get_booking_list(
         page=page,

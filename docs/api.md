@@ -14,6 +14,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/restaurants/{id}` | DELETE | 删除餐厅 |
 | `/api/parks` | GET | 获取户外景点列表 |
 | `/api/parks` | POST | 创建景点 |
+| `/api/parks/get_booking_list` | GET | 获取可预约户外景点列表 |
 | `/api/parks/{id}` | GET | 获取单个景点详情 |
 | `/api/parks/{id}` | PUT | 更新景点信息 |
 | `/api/parks/{id}` | DELETE | 删除景点 |
@@ -223,6 +224,10 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ### GET/POST/PUT/DELETE
 同餐厅接口模式。
+
+### GET /get_booking_list 获取可预约户外景点
+
+筛选 `booking_hours` 不为空且不等于"不能预约"的景点列表。查询参数同餐厅 `get_booking_list`。
 
 ---
 

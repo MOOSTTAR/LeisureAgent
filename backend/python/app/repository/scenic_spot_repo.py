@@ -52,6 +52,7 @@ def search(
     name: Optional[str] = None,
     spot_type: Optional[str] = None,
     crowd_level: Optional[int] = None,
+    bookable: Optional[bool] = None,
     distance_min: Optional[int] = None,
     distance_max: Optional[int] = None,
     limit: int = 20,
@@ -70,6 +71,11 @@ def search(
     if crowd_level is not None:
         clauses.append("crowd_density = ?")
         params.append(crowd_level)
+    if bookable is not None:
+        if bookable:
+            clauses.append("booking_hours IS NOT NULL AND booking_hours != '不能预约'")
+        else:
+            clauses.append("booking_hours IS NULL OR booking_hours = '不能预约'")
     if distance_min is not None and distance_max is not None:
         clauses.append("(ABS(x) + ABS(y)) BETWEEN ? AND ?")
         params.extend([distance_min, distance_max])
@@ -92,6 +98,7 @@ def count(
     name: Optional[str] = None,
     spot_type: Optional[str] = None,
     crowd_level: Optional[int] = None,
+    bookable: Optional[bool] = None,
     distance_min: Optional[int] = None,
     distance_max: Optional[int] = None,
 ) -> int:
@@ -108,6 +115,11 @@ def count(
     if crowd_level is not None:
         clauses.append("crowd_density = ?")
         params.append(crowd_level)
+    if bookable is not None:
+        if bookable:
+            clauses.append("booking_hours IS NOT NULL AND booking_hours != '不能预约'")
+        else:
+            clauses.append("booking_hours IS NULL OR booking_hours = '不能预约'")
     if distance_min is not None and distance_max is not None:
         clauses.append("(ABS(x) + ABS(y)) BETWEEN ? AND ?")
         params.extend([distance_min, distance_max])

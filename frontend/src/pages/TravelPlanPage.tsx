@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple, Share } from '@phosphor-icons/react'
-import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
+import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, confirmBooking, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
 import { ShareModal } from '../components/ShareModal'
 import { encodePlanId } from '../utils/shareCode'
 import { toast } from '../components/Toast'
@@ -66,10 +66,10 @@ function TravelPlanCard({ plan, onDelete, onShare, onClick }: { plan: TravelPlan
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onDelete(plan.id) }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
               title="删除计划"
             >
-              <Trash size={16} />
+              <Trash size={17} />
             </motion.button>
             {plan.travel_type && (
               <span className={`px-2.5 py-1 text-xs font-medium rounded-lg whitespace-nowrap ${typeColor}`}>
@@ -584,6 +584,7 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null)
+  const [confirmingItemId, setConfirmingItemId] = useState<number | null>(null)
   const [editItemModal, setEditItemModal] = useState<TravelPlanItem | null>(null)
   const [planData, setPlanData] = useState(plan)
 
@@ -629,6 +630,24 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
     }
   }
 
+  const handleConfirmBooking = async (itemId: number) => {
+    setConfirmingItemId(itemId)
+    try {
+      const result = await confirmBooking(itemId)
+      if (result.code === 0) {
+        setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_had_booking: 1 } : i))
+        toast.success('预约成功')
+      } else {
+        toast.error(result.msg || '预约失败，请重试')
+      }
+    } catch (error) {
+      console.error('Failed to confirm booking:', error)
+      toast.error('预约失败，请重试')
+    } finally {
+      setConfirmingItemId(null)
+    }
+  }
+
   const handlePlanUpdated = async () => {
     const res = await getTravelPlanById(plan.id)
     if (res.data) setPlanData(res.data)
@@ -668,10 +687,10 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setEditModalOpen(true)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-blue-500"
+              className="p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-500 hover:text-blue-500"
               title="编辑计划"
             >
-              <PencilSimple size={16} />
+              <PencilSimple size={17} />
             </motion.button>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 ml-11">
@@ -772,23 +791,23 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                                       whileHover={{ scale: 1.1 }}
                                       whileTap={{ scale: 0.9 }}
                                       onClick={() => setEditItemModal(item)}
-                                      className="p-1.5 rounded-lg text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                                      className="p-2 rounded-lg text-slate-500 hover:text-blue-500 hover:bg-blue-50 transition-colors"
                                       title="编辑行程"
                                     >
-                                      <PencilSimple size={14} />
+                                      <PencilSimple size={15} />
                                     </motion.button>
                                     <motion.button
                                       whileHover={{ scale: 1.1 }}
                                       whileTap={{ scale: 0.9 }}
                                       onClick={() => handleDeleteItem(item.id)}
                                       disabled={deletingItemId === item.id}
-                                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                      className="p-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors"
                                       title="删除此行程"
                                     >
                                       {deletingItemId === item.id ? (
                                         <span className="text-xs text-slate-400">...</span>
                                       ) : (
-                                        <Trash size={14} />
+                                        <Trash size={15} />
                                       )}
                                     </motion.button>
                                   </div>
@@ -810,7 +829,16 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                               </p>
                             )}
                             {item.is_need_booking === 1 && (
-                              <div className="flex justify-end mt-2 pt-2 border-t border-slate-100">
+                              <div className="flex justify-end mt-2 pt-2 border-t border-slate-100 items-center gap-2">
+                                {item.is_had_booking === 0 && (
+                                  <button
+                                    onClick={() => handleConfirmBooking(item.id)}
+                                    disabled={confirmingItemId === item.id}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600 active:scale-95 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                                  >
+                                    {confirmingItemId === item.id ? '预约中...' : (<><CaretRight size={14} weight="fill" className="shrink-0" /> 预约</>)}
+                                  </button>
+                                )}
                                 <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${
                                   item.is_had_booking === 1
                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'

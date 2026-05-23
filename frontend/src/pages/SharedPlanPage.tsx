@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CalendarBlank, Clock, MapPin } from '@phosphor-icons/react'
-import { getTravelPlanById, getTravelPlanItems, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
+import { ArrowLeft, CalendarBlank, CaretRight, Clock, MapPin } from '@phosphor-icons/react'
+import { toast } from '../components/Toast'
+import { getTravelPlanById, getTravelPlanItems, confirmBooking, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
 import { decodeShareCode } from '../utils/shareCode'
 
 interface SharedPlanPageProps {
@@ -37,6 +38,7 @@ export function SharedPlanPage({ shareCode, onBack }: SharedPlanPageProps) {
   const [locations, setLocations] = useState<Map<number, ResolvedLocation | null>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingItemId, setConfirmingItemId] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -80,6 +82,23 @@ export function SharedPlanPage({ shareCode, onBack }: SharedPlanPageProps) {
     load()
     return () => { cancelled = true }
   }, [shareCode])
+
+  const handleConfirmBooking = async (itemId: number) => {
+    setConfirmingItemId(itemId)
+    try {
+      const result = await confirmBooking(itemId)
+      if (result.code === 0) {
+        setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_had_booking: 1 } : i))
+        toast.success('预约成功')
+      } else {
+        toast.error(result.msg || '预约失败，请重试')
+      }
+    } catch {
+      toast.error('预约失败，请重试')
+    } finally {
+      setConfirmingItemId(null)
+    }
+  }
 
   const groupedByDay = new Map<number, TravelPlanItem[]>()
   for (const item of items) {
@@ -238,7 +257,16 @@ export function SharedPlanPage({ shareCode, onBack }: SharedPlanPageProps) {
                                   </p>
                                 )}
                                 {item.is_need_booking === 1 && (
-                                  <div className="flex justify-end mt-2 pt-2 border-t border-slate-100">
+                                  <div className="flex justify-end mt-2 pt-2 border-t border-slate-100 items-center gap-2">
+                                    {item.is_had_booking === 0 && (
+                                      <button
+                                        onClick={() => handleConfirmBooking(item.id)}
+                                        disabled={confirmingItemId === item.id}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600 active:scale-95 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                                      >
+                                        {confirmingItemId === item.id ? '预约中...' : (<><CaretRight size={14} weight="fill" className="shrink-0" /> 预约</>)}
+                                      </button>
+                                    )}
                                     <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${
                                       item.is_had_booking === 1
                                         ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'

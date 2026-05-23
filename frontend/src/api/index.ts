@@ -390,6 +390,10 @@ export async function deleteTravelPlanItem(id: number): Promise<UpdateDeleteResp
   return del<UpdateDeleteResponse>(`${TPI}/${id}`)
 }
 
+export async function confirmBooking(itemId: number): Promise<UpdateDeleteResponse> {
+  return post<UpdateDeleteResponse>(`/api/booking/confirm/${itemId}`)
+}
+
 // ==================== resolveLocation (async) ====================
 
 const TABLE_NAME_LABELS: Record<string, { typeLabel: string; theme: ResolvedLocation['theme'] }> = {

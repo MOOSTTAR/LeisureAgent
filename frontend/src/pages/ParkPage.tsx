@@ -75,19 +75,19 @@ function ParkCard({ park, onDelete, onEdit, onClick, onAddToPlan }: ParkCardProp
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onEdit?.() }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-500 transition-colors opacity-0 group-hover:opacity-100"
               title="编辑景点"
             >
-              <PencilSimple size={16} />
+              <PencilSimple size={17} />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onDelete?.(park.id) }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
               title="删除景点"
             >
-              <Trash size={16} />
+              <Trash size={17} />
             </motion.button>
             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-lg whitespace-nowrap">
               {distanceText}

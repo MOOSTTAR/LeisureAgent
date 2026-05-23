@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from app.api import parse_distance_filter, parse_tags
@@ -43,12 +44,18 @@ def list_all(
     return [_format(i) for i in items], total
 
 
+def _prepare(data: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(data.get("tags"), list):
+        data["tags"] = json.dumps(data["tags"], ensure_ascii=False)
+    return data
+
+
 def create(data: dict[str, Any]) -> int:
-    return restaurant_repo.create(data)
+    return restaurant_repo.create(_prepare(data))
 
 
 def update(id: int, data: dict[str, Any]) -> bool:
-    return restaurant_repo.update(id, data)
+    return restaurant_repo.update(id, _prepare(data))
 
 
 def delete(id: int) -> bool:

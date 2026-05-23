@@ -755,15 +755,6 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                                           {loc.subtypeLabel}
                                         </span>
                                       )}
-                                      {item.is_need_booking === 1 && (
-                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${
-                                          item.is_had_booking === 1
-                                            ? 'bg-emerald-50 text-emerald-600'
-                                            : 'bg-amber-50 text-amber-600'
-                                        }`}>
-                                          {item.is_had_booking === 1 ? '已预约' : '未预约'}
-                                        </span>
-                                      )}
                                     </div>
                                     <h4 className="text-base font-medium text-slate-900">{loc.name}</h4>
                                   </div>
@@ -808,6 +799,17 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                               <p className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 leading-relaxed">
                                 {item.remark}
                               </p>
+                            )}
+                            {item.is_need_booking === 1 && (
+                              <div className="flex justify-end mt-2 pt-2 border-t border-slate-100">
+                                <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${
+                                  item.is_had_booking === 1
+                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                    : 'bg-amber-50 text-amber-600 border border-amber-200'
+                                }`}>
+                                  {item.is_had_booking === 1 ? '已预约' : '未预约'}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </motion.div>

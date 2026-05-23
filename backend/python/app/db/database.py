@@ -145,8 +145,8 @@ CREATE TABLE IF NOT EXISTS travel_plan_item (
     location_table_name TEXT NOT NULL, -- 关联场所表的名称
     location_id INTEGER NOT NULL, -- 该场所表中的具体id
     day_num INTEGER DEFAULT 1, -- 第几天行程
-    is_need_booking INTEGER NOT NULL, -- 是否需要预约
-    is_had_booking INTEGER NOT NULL DEFAULT 0, -- 是否已经预约
+    is_need_booking INTEGER NOT NULL, -- 是否需要预约,0 不需要， 1 需要
+    is_had_booking INTEGER NOT NULL DEFAULT 0, -- 是否已经预约 0 未预约,1 已预约
     arrive_time TEXT DEFAULT NULL, -- 预计到达时间
     leave_time TEXT DEFAULT NULL, -- 预计离开时间
     stay_minute INTEGER DEFAULT 0, -- 停留时长(分钟)

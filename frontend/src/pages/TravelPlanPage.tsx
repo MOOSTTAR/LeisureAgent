@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple } from '@phosphor-icons/react'
+import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple, Share } from '@phosphor-icons/react'
 import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
+import { ShareModal } from '../components/ShareModal'
+import { encodePlanId } from '../utils/shareCode'
 
 interface TravelPlanPageProps {
   onBack: () => void
@@ -29,7 +31,7 @@ const THEME_COLORS: Record<ResolvedLocation['theme'], { bg: string; text: string
   amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', dot: 'bg-amber-400' },
 }
 
-function TravelPlanCard({ plan, onDelete, onClick }: { plan: TravelPlan; onDelete: (id: number) => void; onClick: () => void }) {
+function TravelPlanCard({ plan, onDelete, onShare, onClick }: { plan: TravelPlan; onDelete: (id: number) => void; onShare: (id: number) => void; onClick: () => void }) {
   const typeColor = TRAVEL_TYPE_COLORS[plan.travel_type || ''] || 'bg-slate-50 text-slate-500'
   const typeIcon = TRAVEL_TYPE_ICONS[plan.travel_type || ''] || '📋'
 
@@ -50,6 +52,15 @@ function TravelPlanCard({ plan, onDelete, onClick }: { plan: TravelPlan; onDelet
             </h3>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => { e.stopPropagation(); onShare(plan.id) }}
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100"
+              title="分享计划"
+            >
+              <Share size={16} />
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -835,6 +846,7 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
   const [selectedPlan, setSelectedPlan] = useState<TravelPlan | null>(null)
   const [pageSize, setPageSize] = useState(5)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [sharePlanId, setSharePlanId] = useState<number | null>(null)
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -943,7 +955,7 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
                   <div className="max-w-3xl mx-auto w-full px-4 py-4 space-y-4">
                     {plans.map((plan) => (
                       <div key={plan.id} className={`relative ${deletingId === plan.id ? 'pointer-events-none opacity-50' : ''}`}>
-                        <TravelPlanCard plan={plan} onDelete={handleDelete} onClick={() => setSelectedPlan(plan)} />
+                        <TravelPlanCard plan={plan} onDelete={handleDelete} onShare={(id) => setSharePlanId(id)} onClick={() => setSelectedPlan(plan)} />
                         {deletingId === plan.id && (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <span className="text-sm text-slate-400">删除中...</span>
@@ -1038,6 +1050,13 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreated={fetchPlans}
+      />
+
+      <ShareModal
+        isOpen={sharePlanId !== null}
+        onClose={() => setSharePlanId(null)}
+        planTitle={plans.find(p => p.id === sharePlanId)?.plan_title || ''}
+        shareUrl={sharePlanId !== null ? `${window.location.origin}${window.location.pathname}#/travel-plans/${encodePlanId(sharePlanId)}` : ''}
       />
     </div>
   )

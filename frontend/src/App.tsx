@@ -8,6 +8,7 @@ import { ExhibitionPage } from './pages/ExhibitionPage'
 import { AmusementParkPage } from './pages/AmusementParkPage'
 import { TravelPlanPage } from './pages/TravelPlanPage'
 import { AIPlanPage } from './pages/AIPlanPage'
+import { SharedPlanPage } from './pages/SharedPlanPage'
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import { Sparkle } from '@phosphor-icons/react'
 import './index.css'
@@ -35,7 +36,7 @@ function CursorCircle() {
   )
 }
 
-type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibition' | 'amusement' | 'travel-plans' | 'ai-plan'
+type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibition' | 'amusement' | 'travel-plans' | 'ai-plan' | 'shared-plan'
 type ExpandPhase = 'idle' | 'dimming' | 'expanding' | 'pausing'
 
 interface CardRect {
@@ -47,6 +48,7 @@ interface CardRect {
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('lobby')
+  const [sharedPlanCode, setSharedPlanCode] = useState('')
   const prevHashRef = useRef('/')
   const [cardRect, setCardRect] = useState<CardRect | null>(null)
   const [expandPhase, setExpandPhase] = useState<ExpandPhase>('idle')
@@ -65,8 +67,16 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) || '/'
-      if (hash !== '/travel-plans') {
+      if (hash !== '/travel-plans' && !hash.startsWith('/travel-plans/')) {
         prevHashRef.current = hash
+      }
+      if (hash.startsWith('/travel-plans/')) {
+        const code = hash.slice('/travel-plans/'.length)
+        if (code) {
+          setSharedPlanCode(code)
+          setCurrentPage('shared-plan')
+          return
+        }
       }
       if (hash === '/manual-plan') {
         setCurrentPage('manual-plan')
@@ -131,6 +141,7 @@ function App() {
     setCurrentPage('manual-plan')
   }
   const handleAIPlanBack = () => backToLobby()
+  const handleSharedPlanBack = () => backToLobby()
 
   const handleTravelPlansBack = () => {
     const prev = prevHashRef.current
@@ -415,6 +426,17 @@ function App() {
             className="h-full"
           >
             <TravelPlanPage onBack={handleTravelPlansBack} />
+          </motion.div>
+        ) : currentPage === 'shared-plan' ? (
+          <motion.div
+            key="shared-plan"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="h-full"
+          >
+            <SharedPlanPage shareCode={sharedPlanCode} onBack={handleSharedPlanBack} />
           </motion.div>
         ) : null}
       </AnimatePresence>

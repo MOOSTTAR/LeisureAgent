@@ -3,7 +3,20 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${url}`, options)
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    let detail = ''
+    try {
+      const body = await res.json()
+      if (body.detail) {
+        if (Array.isArray(body.detail)) {
+          detail = body.detail.map((d: { loc?: string[]; msg?: string }) => d.msg || JSON.stringify(d)).join('; ')
+        } else {
+          detail = String(body.detail)
+        }
+      } else if (body.msg) {
+        detail = body.msg
+      }
+    } catch { /* ignore */ }
+    throw new Error(detail || `HTTP ${res.status}: ${res.statusText}`)
   }
   return res.json()
 }

@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../api'
+import { getRestaurants, getBookingRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
+import { CustomSelect, type SelectOption } from '../components/CustomSelect'
 
 const DiningStyle = {
   DINE_IN: 0,
@@ -27,6 +28,7 @@ interface FilterOptions {
   name?: string
   cuisine_type?: CuisineType
   dining_style?: DiningStyleType
+  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
@@ -268,17 +270,11 @@ function RestaurantFormModal({ isOpen, editItem, onClose, onSaved }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">菜系</label>
-                  <select value={cuisineType} onChange={(e) => setCuisineType(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                    {CUISINE_TYPES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <CustomSelect theme="orange" value={cuisineType} options={CUISINE_TYPES.map(c => ({ value: c, label: c }))} onChange={(v) => setCuisineType(v)} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">用餐方式</label>
-                  <select value={diningStyle} onChange={(e) => setDiningStyle(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                    <option value={0}>堂食</option>
-                    <option value={1}>外卖</option>
-                    <option value={2}>均可</option>
-                  </select>
+                  <CustomSelect theme="orange" value={String(diningStyle)} options={[{ value: '0', label: '堂食' }, { value: '1', label: '外卖' }, { value: '2', label: '均可' }]} onChange={(v) => setDiningStyle(Number(v))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -333,82 +329,6 @@ interface FilterBarProps {
   resultCount: number
 }
 
-interface SelectOption {
-  value: string
-  label: string
-}
-
-interface CustomSelectProps {
-  value: string
-  options: SelectOption[]
-  onChange: (value: string) => void
-}
-
-function CustomSelect({ value, options, onChange }: CustomSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const selectedLabel = options.find(opt => opt.value === value)?.label || '全部'
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
-          isOpen
-            ? 'border-orange-400 ring-2 ring-orange-400/20'
-            : 'border-slate-200 hover:border-orange-300'
-        }`}
-      >
-        <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
-        <CaretDown
-          size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-orange-500' : 'text-slate-400'}`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-orange-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
-          >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  value === option.value
-                    ? 'bg-orange-50 text-orange-700 font-medium'
-                    : 'text-slate-600 hover:bg-slate-50'
-                } first:rounded-t-xl last:rounded-b-xl`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   const handleReset = () => {
     onFilterChange({})
@@ -456,11 +376,12 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           <div className="relative">
             <input
               type="text"
-              placeholder="🔍 搜索餐厅名字..."
+              placeholder="搜索餐厅名字..."
               value={filters.name || ''}
               onChange={(e) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   name: e.target.value || undefined,
                 })
               }
@@ -482,20 +403,24 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           )}
         </div>
 
+        <AnimatePresence>
+        {!collapsed && (
         <motion.div
-          animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className={collapsed ? 'overflow-hidden' : ''}
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-orange-100"
         >
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-orange-100">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">菜系</span>
-              <CustomSelect
+              <CustomSelect theme="orange"
                 value={filters.cuisine_type || ''}
                 options={cuisineOptions}
                 onChange={(val) =>
                   onFilterChange({
                     ...filters,
+                    can_book: undefined,
                     cuisine_type: val ? (val as CuisineType) : undefined,
                   })
                 }
@@ -504,12 +429,13 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">用餐方式</span>
-              <CustomSelect
+              <CustomSelect theme="orange"
                 value={filters.dining_style !== undefined ? String(filters.dining_style) : ''}
                 options={diningStyleOptions}
                 onChange={(val) =>
                   onFilterChange({
                     ...filters,
+                    can_book: undefined,
                     dining_style: val ? Number(val) as DiningStyleType : undefined,
                   })
                 }
@@ -518,20 +444,33 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">距离</span>
-              <CustomSelect
+              <CustomSelect theme="orange"
                 value={filters.distance || ''}
                 options={distanceOptions}
                 onChange={(val) =>
                   onFilterChange({
                     ...filters,
+                    can_book: undefined,
                     distance: val ? (val as FilterOptions['distance']) : undefined,
                   })
                 }
               />
             </div>
 
-          </div>
+            <button
+              onClick={() => onFilterChange(filters.can_book ? {} : { can_book: true })}
+              className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
+                filters.can_book
+                  ? 'bg-orange-50 border-orange-400 text-orange-700'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-orange-300'
+              }`}
+            >
+              可预约
+            </button>
+
         </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -587,12 +526,17 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
   const fetchRestaurants = async () => {
     setIsFetching(true)
     try {
-      const params: any = { page: 1, page_size: 100 }
-      if (filters.name) params.name = filters.name
-      if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
-      if (filters.dining_style !== undefined) params.dining_style = filters.dining_style
-      if (filters.distance) params.distance = filters.distance
-      const response = await getRestaurants(params)
+      let response
+      if (filters.can_book) {
+        response = await getBookingRestaurants({ page: 1, page_size: 100 })
+      } else {
+        const params: any = { page: 1, page_size: 100 }
+        if (filters.name) params.name = filters.name
+        if (filters.cuisine_type) params.cuisine_type = filters.cuisine_type
+        if (filters.dining_style !== undefined) params.dining_style = filters.dining_style
+        if (filters.distance) params.distance = filters.distance
+        response = await getRestaurants(params)
+      }
       setRestaurants(response.data.list)
       setTotal(response.data.total)
       setDisplayCount(Math.min(5, response.data.list.length))

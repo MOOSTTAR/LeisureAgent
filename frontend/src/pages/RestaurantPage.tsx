@@ -101,7 +101,7 @@ function RestaurantCard({ restaurant, onDelete, onEdit, onClick, onAddToPlan }: 
           </span>
           {isBookable && (
             <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-md whitespace-nowrap">
-              可预约
+              需要预约
             </span>
           )}
           {restaurant.tags.slice(0, 3).map((tag: string, i: number) => (
@@ -465,7 +465,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   : 'bg-white border-slate-200 text-slate-500 hover:border-orange-300'
               }`}
             >
-              可预约
+              需要预约
             </button>
 
         </motion.div>

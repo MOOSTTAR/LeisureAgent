@@ -102,7 +102,7 @@ function ExhibitionCard({ hall, onDelete, onEdit, onClick, onAddToPlan }: Exhibi
           </span>
           {hall.manual_guide === 1 && <span>有人工讲解</span>}
           {hall.interactive_project === 1 && <span>有互动体验</span>}
-          {canBook && <span>可预约（{hall.current_booking_count}/{hall.max_booking_count}）</span>}
+          {canBook && <span>需要预约（{hall.current_booking_count}/{hall.max_booking_count}）</span>}
         </div>
 
         <button
@@ -453,7 +453,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   : 'bg-white border-slate-200 text-slate-500 hover:border-violet-300'
               }`}
             >
-              可预约
+              需要预约
             </button>
 
         </motion.div>

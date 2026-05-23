@@ -105,7 +105,7 @@ function ParkCard({ park, onDelete, onEdit, onClick, onAddToPlan }: ParkCardProp
           </span>
           {canBook ? (
             <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-emerald-50 text-emerald-600">
-              可预约（{park.current_booking_count}/{park.max_booking_count}）
+              需要预约（{park.current_booking_count}/{park.max_booking_count}）
             </span>
           ) : (
             <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-slate-50 text-slate-400">
@@ -428,7 +428,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                 : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-300'
             }`}
           >
-              可预约
+              需要预约
           </button>
         </motion.div>
         )}

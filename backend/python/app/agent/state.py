@@ -11,7 +11,6 @@ class AgentState(TypedDict, total=False):
 
     user_input: str
     session_id: str
-    auto_execute: bool
 
     intent: UserIntent | None
     scenario: str
@@ -25,7 +24,6 @@ class AgentState(TypedDict, total=False):
     plan: AgentPlan | None
     plan_id: int | None
 
-    tool_results: list[dict[str, Any]]
     share_text: str
     share_url: str
 

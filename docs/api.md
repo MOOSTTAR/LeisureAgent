@@ -46,6 +46,13 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/travel-plan-items/{id}` | PUT | 更新计划明细信息 |
 | `/api/travel-plan-items/{id}` | DELETE | 删除明细 |
 | `/api/booking/confirm/{item_id}` | POST | 确认预约地点 |
+| `/chat/stream` | POST | SSE 流式聊天（Agent 核心入口） |
+| `/chat` | POST | 同步聊天（非流式） |
+| `/api/agent/sessions` | GET | 列出所有会话 |
+| `/api/agent/sessions/{session_id}` | GET | 获取会话详情 |
+| `/api/agent/sessions/{session_id}` | DELETE | 删除会话 |
+| `/api/agent/plans/{plan_id}/share` | GET | 获取方案分享数据 |
+| `/api/agent/plans/{plan_id}/execute` | POST | 用户确认后执行预约 |
 
 ---
 
@@ -466,41 +473,387 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ---
 
-## `/api/booking` - 预约确认
+---
 
-### POST /confirm/{item_id} 确认预约
+## Agent 接口
 
-确认某个方案地点的预约。前端传入 `travel_plan_item_id`，后端自动处理预约状态更新和场所预约数递增。
+以下接口为 LeisureAgent 智能规划核心流程提供支持，基于 LangGraph 工作流编排，支持 LLM 驱动或规则驱动（可通过环境变量切换）。
 
-**路径参数：**
+### 核心流程
+
+```
+用户输入 → 解析意图 → 搜索候选 → 生成方案 → 持久化 → 返回方案 → 用户确认 → 执行预约
+```
+
+---
+
+## `/chat/stream` - SSE 流式聊天
+
+Agent 核心入口。接收用户输入，执行完整规划流程，以 SSE（Server-Sent Events）格式流式返回中间状态和最终方案。
+
+### POST
+
+**请求体：**
 
 | 参数 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| `item_id` | integer | 是 | 方案明细 ID |
+| `message` | string | 是 | 用户输入消息（1-2000 字符） |
+| `session_id` | string | 否 | 会话 ID，空字符串表示创建新会话 |
 
-**业务逻辑（按顺序执行）：**
+**SSE 事件类型：**
 
-1. **明细存在性检查**：`item_id` 对应的明细不存在，返回 `{ code: 404, msg: "明细不存在" }`
-2. **是否需要预约**：`is_need_booking = 0` 时直接返回 `{ code: 200, msg: "该地点无需预约" }`
-3. **重复预约检测**：`is_had_booking = 1` 时返回 `{ code: 400, msg: "已经预约，无法重复预约" }`
-4. **场所存在性检查**：根据 `location_table_name` 和 `location_id` 查不到对应场所，返回 `{ code: 404, msg: "关联场所不存在" }`
-5. **预约名额检查**：有 `current_booking_count` 字段的表，若 `current_booking_count >= max_booking_count` 返回 `{ code: 400, msg: "预约名额已满" }`
-6. **事务性更新**：在一个事务中完成 `is_had_booking` 置 1 和 `current_booking_count + 1`（mall 表无该字段，跳过递增）
-7. 任一更新失败则事务回滚
+| 事件 | 描述 |
+|------|------|
+| `token` | 节点执行进度，包含当前节点名称、步骤状态、消息内容 |
+| `plan` | 完整方案 JSON，生成后推送 |
+| `done` | 流程完成 |
+| `error` | 执行异常 |
 
-**成功响应：**
-
-```json
-{ "code": 0, "data": null, "msg": "预约成功" }
-```
-
-**错误响应示例：**
+**`token` 事件数据格式：**
 
 ```json
-{ "code": 400, "msg": "已经预约，无法重复预约" }
-{ "code": 400, "msg": "预约名额已满" }
-{ "code": 200, "msg": "该地点无需预约" }
+{
+  "node": "compose_plan",
+  "current_step": "persist",
+  "message": "已找到候选地点：..."
+}
 ```
+
+**`plan` 事件数据格式：**
+
+```json
+{
+  "id": 52,
+  "title": "家庭亲子半日可执行方案",
+  "description": "按亲子友好...",
+  "scenario": "family",
+  "travel_type": "亲子",
+  "total_cost": 1596.0,
+  "items": [
+    {
+      "step_order": 1,
+      "activity_type": "play",
+      "location_table_name": "amusement_park",
+      "location_id": 39,
+      "location_name": "童话峡谷",
+      "address": "石景山区...",
+      "arrive_time": "14:00",
+      "leave_time": "15:40",
+      "stay_minute": 100,
+      "remark": "亲子友好，适合 5 岁孩子...",
+      "estimated_cost": 1196.0
+    }
+  ],
+  "share_text": "搞定了，14:00 出发...",
+  "share_url": "/api/agent/plans/52/share"
+}
+```
+
+**前端接入示例：**
+
+```javascript
+const eventSource = new EventSource('/chat/stream', {
+  method: 'POST',
+  body: JSON.stringify({ message: '下午带老婆孩子出去玩', session_id: '' })
+});
+
+eventSource.addEventListener('token', (e) => {
+  const data = JSON.parse(e.data);
+  console.log('节点:', data.node, '步骤:', data.current_step);
+});
+
+eventSource.addEventListener('plan', (e) => {
+  const plan = JSON.parse(e.data);
+  // 展示方案，显示确认按钮
+});
+
+eventSource.addEventListener('done', () => {
+  eventSource.close();
+});
+```
+
+---
+
+## `/chat` - 同步聊天
+
+与 `/chat/stream` 相同流程，但以同步 JSON 响应返回完整结果，适合不需要流式体验的场景。
+
+### POST
+
+**请求体：** 同 `/chat/stream`
+
+**响应：**
+
+```json
+{
+  "session_id": "abc123",
+  "reply": "搞定了，14:00 出发...",
+  "plan": { ... },
+  "share_text": "搞定了，14:00 出发...",
+  "share_url": "/api/agent/plans/52/share",
+  "current_step": "done"
+}
+```
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `session_id` | string | 会话 ID |
+| `reply` | string | 最终回复文本 |
+| `plan` | object | 完整方案对象（同 SSE plan 事件） |
+| `share_text` | string | 分享文案 |
+| `share_url` | string | 分享链接 |
+| `current_step` | string | 当前步骤状态 |
+
+---
+
+## `/api/agent/sessions` - 会话列表
+
+### GET
+
+获取所有会话列表，按更新时间倒序排列。
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": "abc123",
+        "title": "下午带老婆孩子出去玩",
+        "last_message": "搞定了，14:00 出发...",
+        "current_plan_id": 52,
+        "status": 0,
+        "created_at": "2025-05-23 14:00:00",
+        "updated_at": "2025-05-23 14:05:00"
+      }
+    ],
+    "total": 1
+  },
+  "msg": "success"
+}
+```
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `id` | string | 会话 ID（UUID） |
+| `title` | string | 会话标题（取首条消息前 24 字） |
+| `last_message` | string | 最后一条消息内容 |
+| `current_plan_id` | integer | 当前关联的方案 ID |
+| `status` | integer | 会话状态：0 = active（进行中）/ 1 = completed（已生成方案）|
+| `created_at` | string | 创建时间 |
+| `updated_at` | string | 更新时间 |
+
+---
+
+## `/api/agent/sessions/{session_id}` - 会话详情
+
+### GET
+
+获取单个会话的完整信息，包含历史消息。
+
+**路径参数：** `session_id` - 会话 ID
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": "abc123",
+    "title": "下午带老婆孩子出去玩",
+    "last_message": "搞定了...",
+    "current_plan_id": 52,
+    "status": "active",
+    "created_at": "2025-05-23 14:00:00",
+    "updated_at": "2025-05-23 14:05:00",
+    "messages": [
+      {
+        "role": "user",
+        "content": "下午带老婆孩子出去玩",
+        "metadata": {},
+        "created_at": "2025-05-23 14:00:00"
+      },
+      {
+        "role": "assistant",
+        "content": "搞定了，14:00 出发...",
+        "metadata": {
+          "plan_id": 52,
+          "share_url": "/api/agent/plans/52/share"
+        },
+        "created_at": "2025-05-23 14:05:00"
+      }
+    ]
+  },
+  "msg": "success"
+}
+```
+
+**消息字段：**
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `role` | string | user / assistant |
+| `content` | string | 消息正文 |
+| `metadata` | object | 元数据，assistant 消息包含 plan_id 和 share_url |
+| `created_at` | string | 创建时间 |
+
+---
+
+## `/api/agent/sessions/{session_id}` - 删除会话
+
+### DELETE
+
+删除会话及其关联消息（级联删除）。
+
+**路径参数：** `session_id` - 会话 ID
+
+**响应：**
+
+```json
+{ "code": 0, "data": null, "msg": "删除成功" }
+```
+
+---
+
+## `/api/agent/plans/{plan_id}/share` - 方案分享
+
+### GET
+
+获取方案的完整分享数据，用于生成分享页面或文案。
+
+**路径参数：** `plan_id` - 方案 ID
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "plan": {
+      "id": 52,
+      "plan_title": "家庭亲子半日可执行方案",
+      "plan_desc": "...",
+      "total_cost": 1596.0
+    },
+    "items": [
+      {
+        "arrive_time": "14:00",
+        "leave_time": "15:40",
+        "location_table_name": "amusement_park",
+        "location_id": 39,
+        "stay_minute": 100,
+        "remark": "..."
+      }
+    ],
+    "share_text": "搞定了，14:00 出发...",
+    "share_url": "/api/agent/plans/52/share"
+  },
+  "msg": "success"
+}
+```
+
+---
+
+## `/api/agent/plans/{plan_id}/execute` - 执行预约
+
+用户在前端确认方案后，调用此接口执行预约操作。
+
+**预约逻辑：** 遍历方案中的每个地点，检查 `current_booking_count < max_booking_count`，满足则 `current_booking_count += 1`。
+
+**不创建订单记录，不涉及金钱。**
+
+### POST
+
+**路径参数：** `plan_id` - 方案 ID
+
+**请求体：** 无
+
+**响应：**
+
+```json
+{
+  "code": 0,
+  "data": [
+    {
+      "location_table_name": "amusement_park",
+      "location_id": 39,
+      "location_name": "童话峡谷",
+      "status": "success",
+      "message": "预约成功"
+    },
+    {
+      "location_table_name": "mall",
+      "location_id": 39,
+      "location_name": "万达广场",
+      "status": "failed",
+      "message": "已约满或不可预约"
+    }
+  ],
+  "msg": "全部预约成功"
+}
+```
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| `location_table_name` | string | 业务表名 |
+| `location_id` | integer | 地点 ID |
+| `location_name` | string | 地点名称 |
+| `status` | string | success / failed |
+| `message` | string | 结果说明 |
+
+**状态码：**
+
+| code | 说明 |
+|------|------|
+| 0 | 全部预约成功 |
+| 1 | 部分或全部预约失败 |
+
+---
+
+## Agent 状态说明
+
+### 会话状态
+
+| 状态 | 说明 |
+|------|------|
+| `0` | 会话进行中（active） |
+| `1` | 已生成方案（completed） |
+
+### LangGraph 节点流程
+
+```
+load_session → analyze_goal → search_candidates → compose_plan → persist_plan → finalize
+```
+
+| 节点 | 说明 |
+|------|------|
+| `load_session` | 加载/创建会话，保存用户消息 |
+| `analyze_goal` | 解析用户意图（LLM 或规则） |
+| `search_candidates` | 搜索本地候选地点 |
+| `compose_plan` | 生成方案（LLM 或规则） |
+| `persist_plan` | 持久化方案到数据库 |
+| `finalize` | 生成分享文本，保存 assistant 消息 |
+
+### LLM 配置
+
+通过环境变量 `.env` 配置：
+
+```bash
+# Provider 选择
+LLM_PROVIDER=openai
+
+# OpenAI
+OPENAI_API_KEY=sk-xxx
+OPENAI_MODEL=gpt-4o-mini
+
+# 功能开关
+USE_LLM_FOR_INTENT=true
+USE_LLM_FOR_PLAN=true
+```
+
+当未配置 API key 或 LLM 调用失败时，自动降级到规则逻辑，不影响流程。
 
 ---
 
@@ -508,4 +861,9 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ```
 /api/* (FastAPI Router) → app/service/* (业务层) → app/repository/* (数据层) → SQLite
+
+Agent 层：
+/chat/stream → app/agent/graph.py (LangGraph) → app/agent/planner.py (节点)
+                                      ↓
+                         app/llm/provider.py (LLM 封装)
 ```

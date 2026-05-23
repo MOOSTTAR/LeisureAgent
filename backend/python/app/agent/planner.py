@@ -9,15 +9,18 @@ from app.agent.state import AgentState
 from app.agent.tools import (
     add_minutes,
     build_share_text,
-    execute_plan_actions,
     persist_agent_plan,
     search_local_candidates,
 )
+from app.config.llm_config import get_llm_settings
+from app.llm.prompts import format_analyze_prompt, format_compose_prompt
+from app.llm.schemas import IntentAnalysisOutput, PlanOutput
+from app.llm.structured import invoke_structured
 from app.models.schemas import AgentPlan, AgentPlanItem, UserIntent
 
 
 def load_session_node(state: AgentState) -> dict[str, Any]:
-    session_id = memory.ensure_session(state.get("session_id", ""), state["user_input"])
+    session_id = memory.ensure_session(state.get("session_id", 0) or None, state["user_input"])
     history = memory.load_messages(session_id)
     memory.append_message(session_id, "user", state["user_input"])
     return {
@@ -28,6 +31,53 @@ def load_session_node(state: AgentState) -> dict[str, Any]:
 
 
 def analyze_goal_node(state: AgentState) -> dict[str, Any]:
+    settings = get_llm_settings()
+    if not settings.use_llm_for_intent:
+        return _analyze_goal_rule_based(state)
+    try:
+        return _analyze_goal_with_llm(state)
+    except Exception as e:
+        print(f"LLM intent analysis failed: {e}, falling back to rule-based")
+        return _analyze_goal_rule_based(state)
+
+
+def _analyze_goal_with_llm(state: AgentState) -> dict[str, Any]:
+    system_prompt, user_prompt = format_analyze_prompt(
+        user_input=state["user_input"],
+        history=state.get("session_messages", []),
+    )
+    result: IntentAnalysisOutput = invoke_structured(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        output_schema=IntentAnalysisOutput,
+    )
+    intent = UserIntent(
+        raw_input=state["user_input"],
+        time_slot=result.time_slot,
+        companion=result.companion,
+        location_preference=result.location_preference,
+        budget_hint=result.budget_hint,
+        special_requirements=result.special_requirements,
+    )
+    constraints = {
+        "start_time": result.start_time,
+        "nearby": result.location_preference == "nearby",
+        "max_distance": result.max_distance,
+        "duration_hours": result.duration_hours,
+        "party_size": result.party_size,
+        "child_age": result.child_age,
+        "requirements": result.special_requirements,
+    }
+    return {
+        "intent": intent,
+        "scenario": result.scenario,
+        "constraints": constraints,
+        "current_step": "search",
+        "messages": [{"role": "assistant", "content": f"已理解需求：{result.companion}，{result.time_slot}，{result.scenario}场景。"}],
+    }
+
+
+def _analyze_goal_rule_based(state: AgentState) -> dict[str, Any]:
     text = state["user_input"]
     scenario = _detect_scenario(text, state.get("session_messages", []))
     constraints = _extract_constraints(text, scenario)
@@ -63,6 +113,44 @@ def search_candidates_node(state: AgentState) -> dict[str, Any]:
 
 
 def compose_plan_node(state: AgentState) -> dict[str, Any]:
+    settings = get_llm_settings()
+    if not settings.use_llm_for_plan:
+        return _compose_plan_rule_based(state)
+    try:
+        return _compose_plan_with_llm(state)
+    except Exception as e:
+        print(f"LLM plan composition failed: {e}, falling back to rule-based")
+        return _compose_plan_rule_based(state)
+
+
+def _compose_plan_with_llm(state: AgentState) -> dict[str, Any]:
+    system_prompt, user_prompt = format_compose_prompt(
+        scenario=state["scenario"],
+        intent=state.get("intent"),
+        constraints=state["constraints"],
+        candidates=state["candidates"],
+    )
+    plan_output: PlanOutput = invoke_structured(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        output_schema=PlanOutput,
+    )
+    plan = AgentPlan(
+        title=plan_output.title,
+        description=plan_output.description,
+        scenario=plan_output.scenario,
+        travel_type=plan_output.travel_type,
+        total_cost=plan_output.total_cost,
+        items=[AgentPlanItem(**item.model_dump()) for item in plan_output.items],
+    )
+    return {
+        "plan": plan,
+        "current_step": "persist",
+        "messages": [{"role": "assistant", "content": plan.description}],
+    }
+
+
+def _compose_plan_rule_based(state: AgentState) -> dict[str, Any]:
     scenario = state["scenario"]
     constraints = state["constraints"]
     candidates = state["candidates"]
@@ -93,23 +181,6 @@ def persist_plan_node(state: AgentState) -> dict[str, Any]:
     }
 
 
-def execute_actions_node(state: AgentState) -> dict[str, Any]:
-    plan = state.get("plan")
-    if not plan:
-        return {"error": "没有可执行的方案", "current_step": "error"}
-    if not state.get("auto_execute", True):
-        return {"tool_results": [], "current_step": "finalize"}
-
-    orders = execute_plan_actions(state["session_id"], plan)
-    plan = plan.model_copy(update={"orders": orders})
-    tool_results = [order.model_dump() for order in orders]
-    return {
-        "plan": plan,
-        "tool_results": tool_results,
-        "current_step": "finalize",
-    }
-
-
 def finalize_node(state: AgentState) -> dict[str, Any]:
     plan = state.get("plan")
     if not plan:
@@ -125,7 +196,6 @@ def finalize_node(state: AgentState) -> dict[str, Any]:
         metadata={
             "plan_id": plan.id,
             "share_url": share_url,
-            "orders": [order.model_dump() for order in plan.orders],
         },
     )
     return {

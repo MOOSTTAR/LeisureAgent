@@ -125,13 +125,11 @@ CREATE TABLE IF NOT EXISTS exhibition_hall (
     crowd_level INTEGER DEFAULT 2 -- 人流量 1偏少2适中3拥挤
 );
 
-
-
 /* 游玩规划方案表 - 用户行程规划 */
 CREATE TABLE IF NOT EXISTS travel_plan (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 方案ID
     plan_title TEXT NOT NULL, -- 方案标题（如：周末亲子一日游）
-    plan_desc TEXT DEFAULT NULL, -- 方案简介/备注
+    plan_desc TEXT DEFAULT NULL,   -- 方案简介/备注
     travel_days INTEGER DEFAULT 1, -- 行程天数
     travel_type TEXT DEFAULT NULL, -- 游玩类型 亲子/美食/逛街/风景/人文
     travel_date TEXT DEFAULT NULL, -- 计划出行日期
@@ -140,8 +138,6 @@ CREATE TABLE IF NOT EXISTS travel_plan (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP -- 更新时间
 );
 
-
-
 /* 规划方案详情明细表（每日行程地点） */
 CREATE TABLE IF NOT EXISTS travel_plan_item (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 明细ID
@@ -149,6 +145,8 @@ CREATE TABLE IF NOT EXISTS travel_plan_item (
     location_table_name TEXT NOT NULL, -- 关联场所表的名称
     location_id INTEGER NOT NULL, -- 该场所表中的具体id
     day_num INTEGER DEFAULT 1, -- 第几天行程
+    is_need_booking INTEGER NOT NULL, -- 是否需要预约
+    is_had_booking INTEGER NOT NULL DEFAULT 0, -- 是否已经预约
     arrive_time TEXT DEFAULT NULL, -- 预计到达时间
     leave_time TEXT DEFAULT NULL, -- 预计离开时间
     stay_minute INTEGER DEFAULT 0, -- 停留时长(分钟)
@@ -159,51 +157,26 @@ CREATE TABLE IF NOT EXISTS travel_plan_item (
 
 /* Agent 会话表 - 多会话管理 */
 CREATE TABLE IF NOT EXISTS agent_session (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL DEFAULT '',
-    last_message TEXT NOT NULL DEFAULT '',
-    current_plan_id INTEGER DEFAULT NULL,
-    status TEXT NOT NULL DEFAULT 'active',
+    id INTEGER PRIMARY KEY  AUTOINCREMENT NOT NULL, -- 会话ID
+    title TEXT NOT NULL DEFAULT '新对话', -- 会话标题,默认第一句话
+    travel_plan_id INTEGER DEFAULT '0', -- 规划方案ID
+    status INTEGER NOT NULL DEFAULT '0', -- 0: active 1: completed 等
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (current_plan_id) REFERENCES travel_plan(id)
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 /* Agent 消息表 - 单会话短期记忆 */
 CREATE TABLE IF NOT EXISTS agent_message (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    session_id TEXT NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    metadata TEXT DEFAULT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES agent_session(id) ON DELETE CASCADE
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, -- 单个消息的id
+    agent_session_id TEXT NOT NULL, -- 逻辑外键，关联多会话管理
+    role INTEGER NOT NULL DEFAULT '0', -- 身份字段 1: assistant, 2: user
+    content TEXT NOT NULL, -- 内容字段
+    metadata TEXT DEFAULT NULL, -- 存结构化附加数据
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-/* Agent 执行动作表 - Mock 预约/下单/取号记录 */
-CREATE TABLE IF NOT EXISTS agent_order (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    session_id TEXT NOT NULL,
-    plan_id INTEGER DEFAULT NULL,
-    plan_item_id INTEGER DEFAULT NULL,
-    order_type TEXT NOT NULL,
-    target_table TEXT NOT NULL,
-    target_id INTEGER NOT NULL,
-    target_name TEXT NOT NULL,
-    order_details TEXT NOT NULL DEFAULT '{}',
-    status TEXT NOT NULL DEFAULT 'success',
-    external_reference TEXT DEFAULT NULL,
-    error_message TEXT DEFAULT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES agent_session(id) ON DELETE CASCADE,
-    FOREIGN KEY (plan_id) REFERENCES travel_plan(id),
-    FOREIGN KEY (plan_item_id) REFERENCES travel_plan_item(id)
-);
 
-CREATE INDEX IF NOT EXISTS idx_agent_message_session ON agent_message(session_id);
-CREATE INDEX IF NOT EXISTS idx_agent_order_session ON agent_order(session_id);
-CREATE INDEX IF NOT EXISTS idx_agent_order_plan ON agent_order(plan_id);
+CREATE INDEX IF NOT EXISTS idx_agent_message_session ON agent_message(agent_session_id);
 
 
 """

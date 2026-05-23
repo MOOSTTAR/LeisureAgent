@@ -300,6 +300,8 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
         leave_time: adjustedLeaveTime,
         stay_minute: stayMinute,
         remark: finalRemark,
+        is_need_booking: item.booking_hours && item.booking_hours !== '不能预约' ? 1 : 0,
+        is_had_booking: 0,
       })
       onClose()
     } catch (err: any) {

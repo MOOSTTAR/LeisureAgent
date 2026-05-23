@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 interface FilterOptions {
   name?: string
@@ -143,14 +144,21 @@ function MallFormModal({ isOpen, editItem, onClose, onSaved }: {
     if (!name.trim()) return
     setSubmitting(true)
     const data: MallFormData = { name: name.trim(), address: address.trim() || '未知', x, y, cinema_has: cinemaHas, supermarket_has: supermarketHas }
-    if (editItem) {
-      await updateMall(editItem.id, data)
-    } else {
-      await createMall(data)
+    try {
+      if (editItem) {
+        await updateMall(editItem.id, data)
+        toast.success('商场更新成功')
+      } else {
+        await createMall(data)
+        toast.success('商场创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -374,9 +382,11 @@ export function MallPage({ onBack }: MallPageProps) {
       if (result.code === 0) {
         setMalls(prev => prev.filter(m => m.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('商场已删除')
       }
     } catch (error) {
       console.error('Failed to delete mall:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

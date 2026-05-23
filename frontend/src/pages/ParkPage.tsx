@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getParks, getBookingParks, deletePark, createPark, updatePark, type Park } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 const CrowdDensity = {
   LOW: 1,      // 稀少
@@ -201,14 +202,21 @@ function ParkFormModal({ isOpen, editItem, onClose, onSaved }: {
       max_booking_count: maxCount,
       crowd_density: crowdDensity,
     }
-    if (editItem) {
-      await updatePark(editItem.id, data)
-    } else {
-      await createPark(data)
+    try {
+      if (editItem) {
+        await updatePark(editItem.id, data)
+        toast.success('景点更新成功')
+      } else {
+        await createPark(data)
+        toast.success('景点创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -476,9 +484,11 @@ export function ParkPage({ onBack }: ParkPageProps) {
       if (result.code === 0) {
         setParks(prev => prev.filter(p => p.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('景点已删除')
       }
     } catch (error) {
       console.error('Failed to delete park:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

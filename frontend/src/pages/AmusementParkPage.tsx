@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getAmusementParks, getBookingAmusementParks, deleteAmusementPark, createAmusementPark, updateAmusementPark, type AmusementPark } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 interface FilterOptions {
   name?: string
@@ -188,14 +189,21 @@ function AmusementParkFormModal({ isOpen, editItem, onClose, onSaved }: {
       queue_time: queueTime,
       performance_info: performanceInfo || null,
     }
-    if (editItem) {
-      await updateAmusementPark(editItem.id, data)
-    } else {
-      await createAmusementPark(data)
+    try {
+      if (editItem) {
+        await updateAmusementPark(editItem.id, data)
+        toast.success('乐园更新成功')
+      } else {
+        await createAmusementPark(data)
+        toast.success('乐园创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -468,9 +476,11 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
       if (result.code === 0) {
         setParks(prev => prev.filter(p => p.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('乐园已删除')
       }
     } catch (error) {
       console.error('Failed to delete amusement park:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getExhibitions, getBookingExhibitions, deleteExhibition, createExhibition, updateExhibition, type ExhibitionHall } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 interface FilterOptions {
   name?: string
@@ -204,14 +205,21 @@ function ExhibitionFormModal({ isOpen, editItem, onClose, onSaved }: {
       interactive_project: interactive,
       crowd_level: crowdLevel,
     }
-    if (editItem) {
-      await updateExhibition(editItem.id, data)
-    } else {
-      await createExhibition(data)
+    try {
+      if (editItem) {
+        await updateExhibition(editItem.id, data)
+        toast.success('展馆更新成功')
+      } else {
+        await createExhibition(data)
+        toast.success('展馆创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -502,9 +510,11 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
       if (result.code === 0) {
         setHalls(prev => prev.filter(h => h.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('展馆已删除')
       }
     } catch (error) {
       console.error('Failed to delete exhibition:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, 
 import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
 import { ShareModal } from '../components/ShareModal'
 import { encodePlanId } from '../utils/shareCode'
+import { toast } from '../components/Toast'
 
 interface TravelPlanPageProps {
   onBack: () => void
@@ -139,9 +140,11 @@ function CreatePlanModal({ isOpen, onClose, onCreated }: CreatePlanModalProps) {
         setTravelDate('')
         setTravelDays(1)
         setTotalCost('')
+        toast.success('计划创建成功')
       }
     } catch (error) {
       console.error('Failed to create plan:', error)
+      toast.error('创建失败，请重试')
     } finally {
       setIsSubmitting(false)
     }
@@ -305,10 +308,12 @@ function EditItemModal({ item, isOpen, onClose, onUpdated }: EditItemModalProps)
         stay_minute: stayMinute,
         remark: remark || null,
       })
+      toast.success('行程更新成功')
       onUpdated()
       onClose()
     } catch (error) {
       console.error('Failed to update item:', error)
+      toast.error('更新失败，请重试')
     } finally {
       setIsSubmitting(false)
     }
@@ -434,10 +439,12 @@ function EditPlanModal({ plan, isOpen, onClose, onUpdated }: EditPlanModalProps)
         travel_days: travelDays,
         total_cost: totalCost === '' ? 0 : totalCost,
       })
+      toast.success('计划更新成功')
       onUpdated()
       onClose()
     } catch (error) {
       console.error('Failed to update plan:', error)
+      toast.error('更新失败，请重试')
     } finally {
       setIsSubmitting(false)
     }
@@ -612,9 +619,11 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
       if (result.code === 0) {
         setItems(prev => prev.filter(i => i.id !== itemId))
         setLocations(prev => { const next = new Map(prev); next.delete(itemId); return next })
+        toast.success('行程已删除')
       }
     } catch (error) {
       console.error('Failed to delete item:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingItemId(null)
     }
@@ -866,9 +875,11 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
       if (result.code === 0) {
         setPlans(prev => prev.filter(p => p.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('计划已删除')
       }
     } catch (error) {
       console.error('Failed to delete travel plan:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

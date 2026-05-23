@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getRestaurants, getBookingRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 const DiningStyle = {
   DINE_IN: 0,
@@ -229,14 +230,21 @@ function RestaurantFormModal({ isOpen, editItem, onClose, onSaved }: {
       queue_time: queueTime,
       indoor_env: indoorEnv || null,
     }
-    if (editItem) {
-      await updateRestaurant(editItem.id, data)
-    } else {
-      await createRestaurant(data)
+    try {
+      if (editItem) {
+        await updateRestaurant(editItem.id, data)
+        toast.success('餐厅更新成功')
+      } else {
+        await createRestaurant(data)
+        toast.success('餐厅创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -515,9 +523,11 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
       if (result.code === 0) {
         setRestaurants(prev => prev.filter(r => r.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('餐厅已删除')
       }
     } catch (error) {
       console.error('Failed to delete restaurant:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

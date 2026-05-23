@@ -498,7 +498,7 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'amusement_parks') {
+      if (data.locationTableName === 'amusement_park') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -675,7 +675,7 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
             max_booking_count: selectedItem.max_booking_count,
             queue_time: selectedItem.queue_time,
           }}
-          locationTableName="amusement_parks"
+          locationTableName="amusement_park"
           theme="amber"
         />
       )}

@@ -564,7 +564,7 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'exhibitions') {
+      if (data.locationTableName === 'exhibition_hall') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -742,7 +742,7 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
             max_booking_count: selectedItem.max_booking_count,
             queue_time: undefined,
           }}
-          locationTableName="exhibitions"
+          locationTableName="exhibition_hall"
           theme="violet"
         />
       )}

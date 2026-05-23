@@ -561,7 +561,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'restaurants') {
+      if (data.locationTableName === 'restaurant') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -740,7 +740,7 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
             max_booking_count: selectedItem.max_booking_count,
             queue_time: selectedItem.queue_time,
           }}
-          locationTableName="restaurants"
+          locationTableName="restaurant"
           theme="orange"
         />
       )}

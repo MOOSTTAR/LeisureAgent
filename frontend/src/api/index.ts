@@ -389,11 +389,11 @@ export async function deleteTravelPlanItem(id: number): Promise<UpdateDeleteResp
 // ==================== resolveLocation (async) ====================
 
 const TABLE_NAME_LABELS: Record<string, { typeLabel: string; theme: ResolvedLocation['theme'] }> = {
-  restaurants: { typeLabel: '餐厅', theme: 'orange' },
-  parks: { typeLabel: '景点', theme: 'emerald' },
-  malls: { typeLabel: '商场', theme: 'pink' },
-  exhibitions: { typeLabel: '展馆', theme: 'violet' },
-  amusement_parks: { typeLabel: '乐园', theme: 'amber' },
+  restaurant: { typeLabel: '餐厅', theme: 'orange' },
+  scenic_spot: { typeLabel: '景点', theme: 'emerald' },
+  mall: { typeLabel: '商场', theme: 'pink' },
+  exhibition_hall: { typeLabel: '展馆', theme: 'violet' },
+  amusement_park: { typeLabel: '乐园', theme: 'amber' },
 }
 
 export async function resolveLocation(tableName: string, locationId: number): Promise<ResolvedLocation | null> {
@@ -403,35 +403,35 @@ export async function resolveLocation(tableName: string, locationId: number): Pr
   let found: { name: string; address: string; subtypeLabel?: string } | null = null
 
   switch (tableName) {
-    case 'restaurants': {
+    case 'restaurant': {
       const res = await getRestaurantById(locationId)
       if (res.code === 0 && res.data) {
         found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.cuisine_type ?? undefined }
       }
       break
     }
-    case 'parks': {
+    case 'scenic_spot': {
       const res = await getParkById(locationId)
       if (res.code === 0 && res.data) {
         found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.spot_type ?? undefined }
       }
       break
     }
-    case 'malls': {
+    case 'mall': {
       const res = await getMallById(locationId)
       if (res.code === 0 && res.data) {
         found = { name: res.data.name, address: res.data.address }
       }
       break
     }
-    case 'exhibitions': {
+    case 'exhibition_hall': {
       const res = await getExhibitionById(locationId)
       if (res.code === 0 && res.data) {
         found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.hall_type ?? undefined }
       }
       break
     }
-    case 'amusement_parks': {
+    case 'amusement_park': {
       const res = await getAmusementParkById(locationId)
       if (res.code === 0 && res.data) {
         found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.park_theme ?? undefined }

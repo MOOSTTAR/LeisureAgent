@@ -436,7 +436,7 @@ export function MallPage({ onBack }: MallPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'malls') {
+      if (data.locationTableName === 'mall') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -611,7 +611,7 @@ export function MallPage({ onBack }: MallPageProps) {
             name: selectedItem.name,
             address: selectedItem.address,
           }}
-          locationTableName="malls"
+          locationTableName="mall"
           theme="pink"
         />
       )}

@@ -540,7 +540,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'parks') {
+      if (data.locationTableName === 'scenic_spot') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -720,7 +720,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
             max_booking_count: selectedItem.max_booking_count,
             queue_time: undefined,
           }}
-          locationTableName="parks"
+          locationTableName="scenic_spot"
           theme="emerald"
         />
       )}

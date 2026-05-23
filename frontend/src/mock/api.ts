@@ -2328,6 +2328,8 @@ export interface TravelPlanItem {
   leave_time: string | null
   stay_minute: number
   remark: string | null
+  is_need_booking: number
+  is_had_booking: number
   created_at: string
   updated_at: string
 }
@@ -2342,26 +2344,26 @@ export interface ResolvedLocation {
 
 const MOCK_TRAVEL_PLAN_ITEMS: TravelPlanItem[] = [
   // Plan 1: 周末亲子一日游
-  { id: 1, plan_id: 1, location_table_name: 'amusement_parks', location_id: 20, day_num: 1, arrive_time: '09:00', leave_time: '11:30', stay_minute: 150, remark: '看动物表演 11:00 场次', created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
-  { id: 2, plan_id: 1, location_table_name: 'restaurants', location_id: 1, day_num: 1, arrive_time: '12:00', leave_time: '13:30', stay_minute: 90, remark: '提前预约包间', created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
-  { id: 3, plan_id: 1, location_table_name: 'amusement_parks', location_id: 1, day_num: 1, arrive_time: '14:30', leave_time: '18:00', stay_minute: 210, remark: '看《金面王朝》16:00 场', created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
+  { id: 1, plan_id: 1, location_table_name: 'amusement_parks', location_id: 20, day_num: 1, arrive_time: '09:00', leave_time: '11:30', stay_minute: 150, remark: '看动物表演 11:00 场次', is_need_booking: 1, is_had_booking: 0, created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
+  { id: 2, plan_id: 1, location_table_name: 'restaurants', location_id: 1, day_num: 1, arrive_time: '12:00', leave_time: '13:30', stay_minute: 90, remark: '提前预约包间', is_need_booking: 1, is_had_booking: 1, created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
+  { id: 3, plan_id: 1, location_table_name: 'amusement_parks', location_id: 1, day_num: 1, arrive_time: '14:30', leave_time: '18:00', stay_minute: 210, remark: '看《金面王朝》16:00 场', is_need_booking: 1, is_had_booking: 0, created_at: '2026-05-20 14:30:00', updated_at: '2026-05-20 14:30:00' },
 
   // Plan 2: 朋友聚会吃饭逛街
-  { id: 4, plan_id: 2, location_table_name: 'restaurants', location_id: 8, day_num: 1, arrive_time: '18:00', leave_time: '20:00', stay_minute: 120, remark: '提前取号避免排队', created_at: '2026-05-21 09:15:00', updated_at: '2026-05-21 09:15:00' },
-  { id: 5, plan_id: 2, location_table_name: 'malls', location_id: 4, day_num: 1, arrive_time: '20:15', leave_time: '22:00', stay_minute: 105, remark: '逛三里屯，看电影', created_at: '2026-05-21 09:15:00', updated_at: '2026-05-21 09:15:00' },
+  { id: 4, plan_id: 2, location_table_name: 'restaurants', location_id: 8, day_num: 1, arrive_time: '18:00', leave_time: '20:00', stay_minute: 120, remark: '提前取号避免排队', is_need_booking: 1, is_had_booking: 1, created_at: '2026-05-21 09:15:00', updated_at: '2026-05-21 09:15:00' },
+  { id: 5, plan_id: 2, location_table_name: 'malls', location_id: 4, day_num: 1, arrive_time: '20:15', leave_time: '22:00', stay_minute: 105, remark: '逛三里屯，看电影', is_need_booking: 0, is_had_booking: 0, created_at: '2026-05-21 09:15:00', updated_at: '2026-05-21 09:15:00' },
 
   // Plan 3: 独自散心文化之旅
-  { id: 6, plan_id: 3, location_table_name: 'exhibitions', location_id: 1, day_num: 1, arrive_time: '09:00', leave_time: '11:30', stay_minute: 150, remark: '古代中国基本陈列', created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
-  { id: 7, plan_id: 3, location_table_name: 'parks', location_id: 6, day_num: 1, arrive_time: '13:30', leave_time: '15:30', stay_minute: 120, remark: '湖边散步放松', created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
-  { id: 8, plan_id: 3, location_table_name: 'restaurants', location_id: 9, day_num: 1, arrive_time: '16:00', leave_time: '17:00', stay_minute: 60, remark: '喝杯咖啡休息', created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
+  { id: 6, plan_id: 3, location_table_name: 'exhibitions', location_id: 1, day_num: 1, arrive_time: '09:00', leave_time: '11:30', stay_minute: 150, remark: '古代中国基本陈列', is_need_booking: 0, is_had_booking: 0, created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
+  { id: 7, plan_id: 3, location_table_name: 'parks', location_id: 6, day_num: 1, arrive_time: '13:30', leave_time: '15:30', stay_minute: 120, remark: '湖边散步放松', is_need_booking: 0, is_had_booking: 0, created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
+  { id: 8, plan_id: 3, location_table_name: 'restaurants', location_id: 9, day_num: 1, arrive_time: '16:00', leave_time: '17:00', stay_minute: 60, remark: '喝杯咖啡休息', is_need_booking: 1, is_had_booking: 0, created_at: '2026-05-19 16:00:00', updated_at: '2026-05-22 08:00:00' },
 
   // Plan 4: 约会浪漫行程
-  { id: 9, plan_id: 4, location_table_name: 'amusement_parks', location_id: 2, day_num: 1, arrive_time: '09:00', leave_time: '17:00', stay_minute: 480, remark: '霍格沃茨灯光秀 19:30', created_at: '2026-05-18 20:45:00', updated_at: '2026-05-18 20:45:00' },
-  { id: 10, plan_id: 4, location_table_name: 'restaurants', location_id: 13, day_num: 1, arrive_time: '18:30', leave_time: '20:30', stay_minute: 120, remark: '窗边位置预约', created_at: '2026-05-18 20:45:00', updated_at: '2026-05-18 20:45:00' },
+  { id: 9, plan_id: 4, location_table_name: 'amusement_parks', location_id: 2, day_num: 1, arrive_time: '09:00', leave_time: '17:00', stay_minute: 480, remark: '霍格沃茨灯光秀 19:30', is_need_booking: 1, is_had_booking: 0, created_at: '2026-05-18 20:45:00', updated_at: '2026-05-18 20:45:00' },
+  { id: 10, plan_id: 4, location_table_name: 'restaurants', location_id: 13, day_num: 1, arrive_time: '18:30', leave_time: '20:30', stay_minute: 120, remark: '窗边位置预约', is_need_booking: 1, is_had_booking: 1, created_at: '2026-05-18 20:45:00', updated_at: '2026-05-18 20:45:00' },
 
   // Plan 5: 周末放松半日游
-  { id: 11, plan_id: 5, location_table_name: 'parks', location_id: 4, day_num: 1, arrive_time: '14:00', leave_time: '16:00', stay_minute: 120, remark: '南园散步，北园看花', created_at: '2026-05-22 11:00:00', updated_at: '2026-05-22 11:00:00' },
-  { id: 12, plan_id: 5, location_table_name: 'malls', location_id: 5, day_num: 1, arrive_time: '16:30', leave_time: '18:30', stay_minute: 120, remark: '逛商场 + 晚餐', created_at: '2026-05-22 11:00:00', updated_at: '2026-05-22 11:00:00' },
+  { id: 11, plan_id: 5, location_table_name: 'parks', location_id: 4, day_num: 1, arrive_time: '14:00', leave_time: '16:00', stay_minute: 120, remark: '南园散步，北园看花', is_need_booking: 0, is_had_booking: 0, created_at: '2026-05-22 11:00:00', updated_at: '2026-05-22 11:00:00' },
+  { id: 12, plan_id: 5, location_table_name: 'malls', location_id: 5, day_num: 1, arrive_time: '16:30', leave_time: '18:30', stay_minute: 120, remark: '逛商场 + 晚餐', is_need_booking: 0, is_had_booking: 0, created_at: '2026-05-22 11:00:00', updated_at: '2026-05-22 11:00:00' },
 ]
 
 const TABLE_NAME_LABELS: Record<string, { typeLabel: string; theme: ResolvedLocation['theme'] }> = {
@@ -2491,6 +2493,8 @@ export async function addTravelPlanItem(params: {
   leave_time?: string | null
   stay_minute?: number
   remark?: string | null
+  is_need_booking?: number
+  is_had_booking?: number
 }): Promise<{ code: number; data: { id: number }; msg: string }> {
   await new Promise(resolve => setTimeout(resolve, 200))
   const maxId = MOCK_TRAVEL_PLAN_ITEMS.reduce((max, i) => Math.max(max, i.id), 0)
@@ -2505,6 +2509,8 @@ export async function addTravelPlanItem(params: {
     leave_time: params.leave_time ?? null,
     stay_minute: params.stay_minute ?? 0,
     remark: params.remark ?? null,
+    is_need_booking: params.is_need_booking ?? 0,
+    is_had_booking: params.is_had_booking ?? 0,
     created_at: now,
     updated_at: now,
   }

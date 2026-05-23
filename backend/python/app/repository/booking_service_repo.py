@@ -43,3 +43,26 @@ def confirm_booking(item_id: int, table_name: str | None, location_id: int | Non
     except Exception:
         conn.rollback()
         return False
+
+
+def cancel_booking(item_id: int, table_name: str | None, location_id: int | None) -> bool:
+    """事务性取消预约：更新 is_had_booking 并递减场所预约数。"""
+    conn = get_connection()
+    try:
+        conn.execute("BEGIN")
+        cur = conn.execute(
+            "UPDATE travel_plan_item SET is_had_booking=0 WHERE id=?", (item_id,)
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            return False
+        if table_name and location_id and table_name in BOOKING_TABLES:
+            conn.execute(
+                f"UPDATE {table_name} SET current_booking_count = current_booking_count - 1 WHERE id=? AND current_booking_count > 0",
+                (location_id,),
+            )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False

@@ -42,3 +42,5 @@ class Err:
     BOOKING_ALREADY_CONFIRMED = ("已经预约，无法重复预约", 400)
     BOOKING_NOT_NEEDED = ("该地点无需预约", 200)
     BOOKING_VENUE_NOT_FOUND = ("关联场所不存在", 404)
+    BOOKING_NOT_BOOKED = ("未预约，无法取消", 400)
+    BOOKING_CANCEL_NOT_NEEDED = ("该地点无需预约，无法取消", 400)

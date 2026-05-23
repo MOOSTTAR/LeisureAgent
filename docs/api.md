@@ -46,6 +46,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/travel-plan-items/{id}` | PUT | 更新计划明细信息 |
 | `/api/travel-plan-items/{id}` | DELETE | 删除明细 |
 | `/api/booking/confirm/{item_id}` | POST | 确认预约地点 |
+| `/api/booking/cancel/{item_id}` | POST | 取消预约 |
 | `/api/chat/stream` | POST | SSE 流式聊天（Agent 核心入口） |
 | `/api/chat` | POST | 同步聊天（非流式） |
 | `/api/agent/sessions` | GET | 列出所有会话 |
@@ -471,7 +472,80 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 路径参数 `id`：明细 ID。
 
+**业务逻辑：**
+1. 明细不存在 → 返回 `{ code: 404, msg: "明细不存在" }`
+2. 若该明细 `is_had_booking = 1`（已预约），在一个事务中完成：
+   - 对应场所的 `current_booking_count - 1`（仅 count > 0 时递减，避免 -1 被误减）
+   - 删除明细记录
+3. 若未预约，直接删除
+
 ---
+
+## `/api/booking` - 预约确认
+
+### POST /confirm/{item_id} 确认预约
+
+确认某个方案地点的预约。前端传入 `travel_plan_item_id`，后端自动处理预约状态更新和场所预约数递增。
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `item_id` | integer | 是 | 方案明细 ID |
+
+**业务逻辑（按顺序执行）：**
+
+1. **明细存在性检查**：`item_id` 对应的明细不存在，返回 `{ code: 404, msg: "明细不存在" }`
+2. **是否需要预约**：`is_need_booking = 0` 时直接返回 `{ code: 200, msg: "该地点无需预约" }`
+3. **重复预约检测**：`is_had_booking = 1` 时返回 `{ code: 400, msg: "已经预约，无法重复预约" }`
+4. **场所存在性检查**：根据 `location_table_name` 和 `location_id` 查不到对应场所，返回 `{ code: 404, msg: "关联场所不存在" }`
+5. **预约名额检查**：有 `current_booking_count` 字段的表，若 `current_booking_count >= max_booking_count` 返回 `{ code: 400, msg: "预约名额已满" }`
+6. **事务性更新**：在一个事务中完成 `is_had_booking` 置 1 和 `current_booking_count + 1`（mall 表无该字段，跳过递增）
+
+**成功响应：**
+
+```json
+{ "code": 0, "data": null, "msg": "预约成功" }
+```
+
+**错误响应示例：**
+
+```json
+{ "code": 400, "msg": "已经预约，无法重复预约" }
+{ "code": 400, "msg": "预约名额已满" }
+{ "code": 200, "msg": "该地点无需预约" }
+```
+
+### POST /cancel/{item_id} 取消预约
+
+取消已确认的预约，回退预约状态和场所预约数。
+
+**路径参数：**
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `item_id` | integer | 是 | 方案明细 ID |
+
+**业务逻辑（按顺序执行）：**
+
+1. **明细存在性检查**：`item_id` 对应的明细不存在，返回 `{ code: 404, msg: "明细不存在" }`
+2. **是否需要预约**：`is_need_booking = 0` 时返回 `{ code: 400, msg: "该地点无需预约，无法取消" }`
+3. **取消条件检查**：`is_had_booking = 0` 时返回 `{ code: 400, msg: "未预约，无法取消" }`
+4. **场所存在性检查**：查不到对应场所，返回 `{ code: 404, msg: "关联场所不存在" }`
+5. **事务性回退**：`is_had_booking` 置 0，`current_booking_count - 1`（仅 count > 0 时递减，避免 -1 被误减）
+
+**成功响应：**
+
+```json
+{ "code": 0, "data": null, "msg": "取消预约成功" }
+```
+
+**错误响应示例：**
+
+```json
+{ "code": 400, "msg": "未预约，无法取消" }
+{ "code": 400, "msg": "该地点无需预约，无法取消" }
+```
 
 ---
 

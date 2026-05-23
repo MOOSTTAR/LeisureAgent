@@ -107,4 +107,14 @@ def update(id: int, data: dict[str, Any]) -> bool:
 
 
 def delete(id: int) -> bool:
+    item = travel_plan_item_repo.get_by_id(id)
+    if not item:
+        return False
+
+    if item["is_had_booking"] == 1:
+        venue = _get_location(item["location_table_name"], item["location_id"])
+        table_name = item["location_table_name"] if venue and "current_booking_count" in venue else None
+        location_id = item["location_id"] if table_name else None
+        return travel_plan_item_repo.delete_with_booking_release(id, table_name, location_id)
+
     return travel_plan_item_repo.delete(id)

@@ -17,3 +17,11 @@ def confirm_booking(item_id: int):
     if not ok:
         return error(*err)
     return success(None, "预约成功")
+
+
+@router.post("/cancel/{item_id}")
+def cancel_booking(item_id: int):
+    ok, err = booking_service.cancel_booking(item_id)
+    if not ok:
+        return error(*err)
+    return success(None, "取消预约成功")

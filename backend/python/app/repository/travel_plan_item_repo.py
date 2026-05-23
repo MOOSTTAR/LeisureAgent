@@ -101,3 +101,28 @@ def delete(id: int) -> bool:
     cur = conn.execute("DELETE FROM travel_plan_item WHERE id=?", (id,))
     conn.commit()
     return cur.rowcount > 0
+
+
+def delete_with_booking_release(
+    item_id: int, table_name: str | None, location_id: int | None
+) -> bool:
+    """事务性删除明细并释放场所预约数。"""
+    conn = get_connection()
+    try:
+        conn.execute("BEGIN")
+        # 释放预约数（仅对有该字段且 count > 0 的表）
+        if table_name and location_id:
+            conn.execute(
+                f"UPDATE {table_name} SET current_booking_count = current_booking_count - 1 WHERE id=? AND current_booking_count > 0",
+                (location_id,),
+            )
+        # 删除明细
+        cur = conn.execute("DELETE FROM travel_plan_item WHERE id=?", (item_id,))
+        if cur.rowcount == 0:
+            conn.rollback()
+            return False
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False

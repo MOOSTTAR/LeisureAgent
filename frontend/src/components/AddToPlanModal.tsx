@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Clock, CalendarBlank, CaretDown } from '@phosphor-icons/react'
-import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../mock/api'
+import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../api'
 
 interface AddToPlanModalProps {
   isOpen: boolean
@@ -148,6 +148,7 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
   const [endHour, setEndHour] = useState('16')
   const [endMin, setEndMin] = useState('00')
   const [dayNum, setDayNum] = useState(1)
+  const [remark, setRemark] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -192,6 +193,7 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
       setEndHour('16')
       setEndMin('00')
       setDayNum(1)
+      setRemark('')
       setError(null)
       setConflict(null)
       setSubmitting(false)
@@ -245,14 +247,15 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
     : userArriveTime
   const adjustedLeaveTime = userLeaveTime
 
-  const checkConflict = () => {
-    if (!userArriveTime || !userLeaveTime) return
-    if (timeToMinutes(adjustedArriveTime) >= timeToMinutes(adjustedLeaveTime)) return
+  const checkConflict = async () => {
+    if (!userArriveTime || !userLeaveTime) { setConflict(null); return }
+    if (timeToMinutes(userArriveTime) >= timeToMinutes(userLeaveTime)) { setConflict(null); return }
+    if (timeToMinutes(adjustedArriveTime) >= timeToMinutes(adjustedLeaveTime)) { setConflict(null); return }
 
     for (const pi of planItems) {
       if (!pi.arrive_time || !pi.leave_time) continue
       if (isOverlapping(adjustedArriveTime, adjustedLeaveTime, pi.arrive_time, pi.leave_time)) {
-        const loc = resolveLocation(pi.location_table_name, pi.location_id)
+        const loc = await resolveLocation(pi.location_table_name, pi.location_id)
         setConflict({
           locationName: loc?.name || '未知场所',
           arriveTime: pi.arrive_time,
@@ -276,7 +279,7 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
     item.max_booking_count > 0 &&
     item.current_booking_count >= item.max_booking_count
 
-  const timeInvalid = timeToMinutes(adjustedArriveTime) >= timeToMinutes(adjustedLeaveTime)
+  const timeInvalid = timeToMinutes(userArriveTime) >= timeToMinutes(userLeaveTime)
   const canSubmit = selectedPlanId !== null && !bookingFull && !conflict && !timeInvalid && !submitting
 
   const handleSubmit = async () => {
@@ -286,6 +289,8 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
     setError(null)
     try {
       const stayMinute = timeToMinutes(adjustedLeaveTime) - timeToMinutes(adjustedArriveTime)
+      const queueRemark = queueTime > 0 ? `排队约${queueTime}分钟` : ''
+      const finalRemark = [queueRemark, remark].filter(Boolean).join('；')
       await addTravelPlanItem({
         plan_id: selectedPlanId,
         location_table_name: locationTableName,
@@ -294,11 +299,11 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
         arrive_time: adjustedArriveTime,
         leave_time: adjustedLeaveTime,
         stay_minute: stayMinute,
-        remark: queueTime > 0 ? `排队约${queueTime}分钟` : null,
+        remark: finalRemark,
       })
       onClose()
-    } catch {
-      setError('添加失败，请重试')
+    } catch (err: any) {
+      setError(err?.message || '添加失败，请重试')
     } finally {
       setSubmitting(false)
     }
@@ -501,6 +506,24 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
                       theme={c}
                     />
                     <label className="text-xs font-medium text-slate-500">天</label>
+                  </div>
+
+                  {/* Remark */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-500 mb-1.5 block">
+                      备注
+                      {queueTime > 0 && (
+                        <span className="text-amber-600 ml-1">（已自动记录排队 {queueTime} 分钟）</span>
+                      )}
+                    </label>
+                    <textarea
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
+                      placeholder="添加备注..."
+                      rows={2}
+                      maxLength={200}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 resize-none transition-all focus:outline-none focus:border-slate-300 hover:border-slate-300"
+                    />
                   </div>
                 </>
               )}

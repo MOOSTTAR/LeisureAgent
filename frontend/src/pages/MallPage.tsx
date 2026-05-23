@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../mock/api'
+import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
+import { CustomSelect, type SelectOption } from '../components/CustomSelect'
 
 interface FilterOptions {
   name?: string
@@ -21,7 +22,7 @@ interface MallCardProps {
   onAddToPlan?: () => void
 }
 
-function MallCard({ mall, onDelete, onClick, onAddToPlan }: MallCardProps) {
+function MallCard({ mall, onDelete, onEdit, onClick, onAddToPlan }: MallCardProps) {
   const distance = Math.abs(mall.x) + Math.abs(mall.y)
   const distanceText = distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`
 
@@ -183,17 +184,11 @@ function MallFormModal({ isOpen, editItem, onClose, onSaved }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">影院</label>
-                  <select value={cinemaHas} onChange={(e) => setCinemaHas(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
-                    <option value={1}>有影院</option>
-                    <option value={0}>无影院</option>
-                  </select>
+                  <CustomSelect theme="pink" value={String(cinemaHas)} options={[{ value: '1', label: '有影院' }, { value: '0', label: '无影院' }]} onChange={(v) => setCinemaHas(Number(v))} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">大型超市</label>
-                  <select value={supermarketHas} onChange={(e) => setSupermarketHas(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
-                    <option value={1}>有超市</option>
-                    <option value={0}>无超市</option>
-                  </select>
+                  <CustomSelect theme="pink" value={String(supermarketHas)} options={[{ value: '1', label: '有超市' }, { value: '0', label: '无超市' }]} onChange={(v) => setSupermarketHas(Number(v))} />
                 </div>
               </div>
             </div>
@@ -214,82 +209,6 @@ interface FilterBarProps {
   filters: FilterOptions
   onFilterChange: (filters: FilterOptions) => void
   resultCount: number
-}
-
-interface SelectOption {
-  value: string
-  label: string
-}
-
-interface CustomSelectProps {
-  value: string
-  options: SelectOption[]
-  onChange: (value: string) => void
-}
-
-function CustomSelect({ value, options, onChange }: CustomSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const selectedLabel = options.find(opt => opt.value === value)?.label || '全部'
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
-          isOpen
-            ? 'border-pink-400 ring-2 ring-pink-400/20'
-            : 'border-slate-200 hover:border-pink-300'
-        }`}
-      >
-        <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
-        <CaretDown
-          size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-pink-500' : 'text-slate-400'}`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-pink-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
-          >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  value === option.value
-                    ? 'bg-pink-50 text-pink-700 font-medium'
-                    : 'text-slate-600 hover:bg-slate-50'
-                } first:rounded-t-xl last:rounded-b-xl`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
 }
 
 function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
@@ -359,15 +278,18 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           )}
         </div>
 
+        <AnimatePresence>
+        {!collapsed && (
         <motion.div
-          animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className={collapsed ? 'overflow-hidden' : ''}
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-pink-100"
         >
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-pink-100">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">影院</span>
-              <CustomSelect
+              <CustomSelect theme="pink"
                 value={filters.has_cinema !== undefined ? String(filters.has_cinema) : ''}
                 options={yesNoOptions}
                 onChange={(val) =>
@@ -381,7 +303,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">大型超市</span>
-              <CustomSelect
+              <CustomSelect theme="pink"
                 value={filters.has_supermarket !== undefined ? String(filters.has_supermarket) : ''}
                 options={yesNoOptions}
                 onChange={(val) =>
@@ -395,7 +317,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-medium">距离</span>
-              <CustomSelect
+              <CustomSelect theme="pink"
                 value={filters.distance || ''}
                 options={distanceOptions}
                 onChange={(val) =>
@@ -406,8 +328,9 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                 }
               />
             </div>
-          </div>
         </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -436,7 +359,7 @@ export function MallPage({ onBack }: MallPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'malls') {
+      if (data.locationTableName === 'mall') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -611,7 +534,7 @@ export function MallPage({ onBack }: MallPageProps) {
             name: selectedItem.name,
             address: selectedItem.address,
           }}
-          locationTableName="malls"
+          locationTableName="mall"
           theme="pink"
         />
       )}

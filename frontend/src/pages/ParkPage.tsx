@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getParks, deletePark, createPark, updatePark, type Park } from '../mock/api'
+import { getParks, getBookingParks, deletePark, createPark, updatePark, type Park } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
+import { CustomSelect, type SelectOption } from '../components/CustomSelect'
 
 const CrowdDensity = {
   LOW: 1,      // 稀少
@@ -240,12 +241,7 @@ function ParkFormModal({ isOpen, editItem, onClose, onSaved }: {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">景点类型</label>
-                <select value={spotType} onChange={(e) => setSpotType(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                  <option value="山水">山水</option>
-                  <option value="古迹">古迹</option>
-                  <option value="人文">人文</option>
-                  <option value="溶洞">溶洞</option>
-                </select>
+                <CustomSelect theme="emerald" value={spotType} options={[{ value: '山水', label: '山水' }, { value: '古迹', label: '古迹' }, { value: '人文', label: '人文' }, { value: '溶洞', label: '溶洞' }]} onChange={(v) => setSpotType(v)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -268,12 +264,8 @@ function ParkFormModal({ isOpen, editItem, onClose, onSaved }: {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">人流量（1=稀少 2=适中 3=拥挤）</label>
-                <select value={crowdDensity} onChange={(e) => setCrowdDensity(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                  <option value={1}>稀少</option>
-                  <option value={2}>适中</option>
-                  <option value={3}>拥挤</option>
-                </select>
+                <label className="block text-xs font-medium text-slate-500 mb-1">人流量</label>
+                <CustomSelect theme="emerald" value={String(crowdDensity)} options={[{ value: '1', label: '稀少' }, { value: '2', label: '适中' }, { value: '3', label: '拥挤' }]} onChange={(v) => setCrowdDensity(Number(v))} />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
@@ -293,82 +285,6 @@ interface FilterBarProps {
   filters: FilterOptions
   onFilterChange: (filters: FilterOptions) => void
   resultCount: number
-}
-
-interface SelectOption {
-  value: string
-  label: string
-}
-
-interface CustomSelectProps {
-  value: string
-  options: SelectOption[]
-  onChange: (value: string) => void
-}
-
-function CustomSelect({ value, options, onChange }: CustomSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const selectedLabel = options.find(opt => opt.value === value)?.label || '全部'
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
-          isOpen
-            ? 'border-emerald-400 ring-2 ring-emerald-400/20'
-            : 'border-slate-200 hover:border-emerald-300'
-        }`}
-      >
-        <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
-        <CaretDown
-          size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-emerald-500' : 'text-slate-400'}`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-emerald-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
-          >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  value === option.value
-                    ? 'bg-emerald-50 text-emerald-700 font-medium'
-                    : 'text-slate-600 hover:bg-slate-50'
-                } first:rounded-t-xl last:rounded-b-xl`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
 }
 
 function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
@@ -426,6 +342,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               onChange={(e) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   name: e.target.value || undefined,
                 })
               }
@@ -447,20 +364,24 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           )}
         </div>
 
+        <AnimatePresence>
+        {!collapsed && (
         <motion.div
-          animate={{ maxHeight: collapsed ? 0 : 500, opacity: collapsed ? 0 : 1 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className={collapsed ? 'overflow-hidden' : ''}
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-emerald-100"
         >
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-emerald-100">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">景点类型</span>
-            <CustomSelect
+            <CustomSelect theme="emerald"
               value={filters.spot_type || ''}
               options={spotTypeOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   spot_type: val || undefined,
                 })
               }
@@ -469,12 +390,13 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">人流量</span>
-            <CustomSelect
+            <CustomSelect theme="emerald"
               value={filters.crowd_level !== undefined ? String(filters.crowd_level) : ''}
               options={crowdDensityOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   crowd_level: val ? Number(val) as CrowdDensityType : undefined,
                 })
               }
@@ -483,12 +405,13 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">距离</span>
-            <CustomSelect
+            <CustomSelect theme="emerald"
               value={filters.distance || ''}
               options={distanceOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   distance: val ? (val as FilterOptions['distance']) : undefined,
                 })
               }
@@ -497,10 +420,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
           <button
             onClick={() =>
-              onFilterChange({
-                ...filters,
-                can_book: filters.can_book ? undefined : true,
-              })
+              onFilterChange(filters.can_book ? {} : { can_book: true })
             }
             className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
               filters.can_book
@@ -510,8 +430,9 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           >
               可预约
           </button>
-            </div>
         </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -540,7 +461,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'parks') {
+      if (data.locationTableName === 'scenic_spot') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -566,13 +487,17 @@ export function ParkPage({ onBack }: ParkPageProps) {
   const fetchParks = async () => {
     setIsFetching(true)
     try {
-      const params: any = { page: 1, page_size: 100 }
-      if (filters.name) params.name = filters.name
-      if (filters.spot_type) params.spot_type = filters.spot_type
-      if (filters.crowd_level !== undefined) params.crowd_level = filters.crowd_level
-      if (filters.can_book !== undefined) params.can_book = filters.can_book
-      if (filters.distance) params.distance = filters.distance
-      const response = await getParks(params)
+      let response
+      if (filters.can_book) {
+        response = await getBookingParks({ page: 1, page_size: 100 })
+      } else {
+        const params: any = { page: 1, page_size: 100 }
+        if (filters.name) params.name = filters.name
+        if (filters.spot_type) params.spot_type = filters.spot_type
+        if (filters.crowd_level !== undefined) params.crowd_level = filters.crowd_level
+        if (filters.distance) params.distance = filters.distance
+        response = await getParks(params)
+      }
       setParks(response.data.list)
       setTotal(response.data.total)
       setDisplayCount(Math.min(5, response.data.list.length))
@@ -720,7 +645,7 @@ export function ParkPage({ onBack }: ParkPageProps) {
             max_booking_count: selectedItem.max_booking_count,
             queue_time: undefined,
           }}
-          locationTableName="parks"
+          locationTableName="scenic_spot"
           theme="emerald"
         />
       )}

@@ -146,7 +146,7 @@ def _gen_booking_limit() -> tuple[int, int]:
 
 
 def _gen_coord(base_x: int, base_y: int) -> tuple[int, int]:
-    return base_x + random.randint(-3, 3), base_y + random.randint(-3, 3)
+    return random.randint(-1200, 1200), random.randint(-1200, 1200)
 
 
 # ═══════════════════════════════════════════
@@ -304,6 +304,8 @@ for i in range(1, 51):
         "location_table_name": random.choice(_LOCATION_TABLES),
         "location_id": random.randint(1, 50),
         "day_num": random.choice([1, 1, 1, 1, 2, 2, 3]),
+        "is_need_booking": random.choice([0, 1]),
+        "is_had_booking": 0,
         "arrive_time": f"{arrive_h}:{random.choice(['00', '15', '30', '45'])}",
         "leave_time": f"{leave_h}:{random.choice(['00', '15', '30', '45'])}",
         "stay_minute": random.choice([30, 45, 60, 90, 120, 150, 180, 240]),

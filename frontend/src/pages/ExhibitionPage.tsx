@@ -3,13 +3,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getExhibitions, deleteExhibition, createExhibition, updateExhibition, type ExhibitionHall } from '../mock/api'
+import { getExhibitions, getBookingExhibitions, deleteExhibition, createExhibition, updateExhibition, type ExhibitionHall } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
+import { CustomSelect, type SelectOption } from '../components/CustomSelect'
 
 interface FilterOptions {
   name?: string
   hall_type?: string
   free_entry?: boolean
+  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
 }
 
@@ -243,12 +245,7 @@ function ExhibitionFormModal({ isOpen, editItem, onClose, onSaved }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">展馆类型</label>
-                  <select value={hallType} onChange={(e) => setHallType(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
-                    <option value="历史">历史</option>
-                    <option value="艺术">艺术</option>
-                    <option value="科技">科技</option>
-                    <option value="自然">自然</option>
-                  </select>
+                  <CustomSelect theme="violet" value={hallType} options={[{ value: '历史', label: '历史' }, { value: '艺术', label: '艺术' }, { value: '科技', label: '科技' }, { value: '自然', label: '自然' }]} onChange={(v) => setHallType(v)} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">展览主题</label>
@@ -278,10 +275,7 @@ function ExhibitionFormModal({ isOpen, editItem, onClose, onSaved }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">门票类型</label>
-                  <select value={ticketType} onChange={(e) => setTicketType(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
-                    <option value={0}>免费</option>
-                    <option value={1}>收费</option>
-                  </select>
+                  <CustomSelect theme="violet" value={String(ticketType)} options={[{ value: '0', label: '免费' }, { value: '1', label: '收费' }]} onChange={(v) => setTicketType(Number(v))} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">门票价格</label>
@@ -291,26 +285,16 @@ function ExhibitionFormModal({ isOpen, editItem, onClose, onSaved }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">人工讲解</label>
-                  <select value={manualGuide} onChange={(e) => setManualGuide(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
-                    <option value={0}>无</option>
-                    <option value={1}>有</option>
-                  </select>
+                  <CustomSelect theme="violet" value={String(manualGuide)} options={[{ value: '0', label: '无' }, { value: '1', label: '有' }]} onChange={(v) => setManualGuide(Number(v))} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">互动体验</label>
-                  <select value={interactive} onChange={(e) => setInteractive(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
-                    <option value={0}>无</option>
-                    <option value={1}>有</option>
-                  </select>
+                  <CustomSelect theme="violet" value={String(interactive)} options={[{ value: '0', label: '无' }, { value: '1', label: '有' }]} onChange={(v) => setInteractive(Number(v))} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">人流量（1=人少 2=适中 3=拥挤）</label>
-                <select value={crowdLevel} onChange={(e) => setCrowdLevel(Number(e.target.value))} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400">
-                  <option value={1}>人少</option>
-                  <option value={2}>适中</option>
-                  <option value={3}>拥挤</option>
-                </select>
+                <label className="block text-xs font-medium text-slate-500 mb-1">人流量</label>
+                <CustomSelect theme="violet" value={String(crowdLevel)} options={[{ value: '1', label: '人少' }, { value: '2', label: '适中' }, { value: '3', label: '拥挤' }]} onChange={(v) => setCrowdLevel(Number(v))} />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 bg-white rounded-b-2xl">
@@ -330,82 +314,6 @@ interface FilterBarProps {
   filters: FilterOptions
   onFilterChange: (filters: FilterOptions) => void
   resultCount: number
-}
-
-interface SelectOption {
-  value: string
-  label: string
-}
-
-interface CustomSelectProps {
-  value: string
-  options: SelectOption[]
-  onChange: (value: string) => void
-}
-
-function CustomSelect({ value, options, onChange }: CustomSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const selectedLabel = options.find(opt => opt.value === value)?.label || '全部'
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-3 py-2 bg-white border-2 rounded-xl text-sm font-medium transition-all cursor-pointer min-w-[100px] flex items-center gap-2 ${
-          isOpen
-            ? 'border-violet-400 ring-2 ring-violet-400/20'
-            : 'border-slate-200 hover:border-violet-300'
-        }`}
-      >
-        <span className={value ? 'text-slate-700' : 'text-slate-400'}>{selectedLabel}</span>
-        <CaretDown
-          size={16}
-          className={`transition-transform ${isOpen ? 'rotate-180 text-violet-500' : 'text-slate-400'}`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-violet-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] py-1 z-50 min-w-[120px]"
-          >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  value === option.value
-                    ? 'bg-violet-50 text-violet-700 font-medium'
-                    : 'text-slate-600 hover:bg-slate-50'
-                } first:rounded-t-xl last:rounded-b-xl`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
 }
 
 function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
@@ -462,6 +370,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
               onChange={(e) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   name: e.target.value || undefined,
                 })
               }
@@ -493,12 +402,13 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
           className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-violet-100">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">展馆类型</span>
-            <CustomSelect
+            <CustomSelect theme="violet"
               value={filters.hall_type || ''}
               options={hallTypeOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   hall_type: val || undefined,
                 })
               }
@@ -507,12 +417,13 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">门票</span>
-            <CustomSelect
+            <CustomSelect theme="violet"
               value={filters.free_entry !== undefined ? String(filters.free_entry) : ''}
               options={ticketOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   free_entry: val !== '' ? val === 'true' : undefined,
                 })
               }
@@ -521,17 +432,29 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-medium">距离</span>
-            <CustomSelect
+            <CustomSelect theme="violet"
               value={filters.distance || ''}
               options={distanceOptions}
               onChange={(val) =>
                 onFilterChange({
                   ...filters,
+                  can_book: undefined,
                   distance: val ? (val as FilterOptions['distance']) : undefined,
                 })
               }
             />
           </div>
+
+            <button
+              onClick={() => onFilterChange(filters.can_book ? {} : { can_book: true })}
+              className={`px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
+                filters.can_book
+                  ? 'bg-violet-50 border-violet-400 text-violet-700'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-violet-300'
+              }`}
+            >
+              可预约
+            </button>
 
         </motion.div>
         )}
@@ -564,7 +487,7 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
     if (!stored) return
     try {
       const data = JSON.parse(stored)
-      if (data.locationTableName === 'exhibitions') {
+      if (data.locationTableName === 'exhibition_hall') {
         sessionStorage.removeItem('returnToAddPlan')
         setSelectedItem(data.item)
         setModalOpen(true)
@@ -590,12 +513,17 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
   const fetchHalls = async () => {
     setIsFetching(true)
     try {
-      const params: any = { page: 1, page_size: 100 }
-      if (filters.name) params.name = filters.name
-      if (filters.hall_type) params.hall_type = filters.hall_type
-      if (filters.free_entry !== undefined) params.free_entry = filters.free_entry
-      if (filters.distance) params.distance = filters.distance
-      const response = await getExhibitions(params)
+      let response
+      if (filters.can_book) {
+        response = await getBookingExhibitions({ page: 1, page_size: 100 })
+      } else {
+        const params: any = { page: 1, page_size: 100 }
+        if (filters.name) params.name = filters.name
+        if (filters.hall_type) params.hall_type = filters.hall_type
+        if (filters.free_entry !== undefined) params.free_entry = filters.free_entry
+        if (filters.distance) params.distance = filters.distance
+        response = await getExhibitions(params)
+      }
       setHalls(response.data.list)
       setTotal(response.data.total)
       setDisplayCount(Math.min(5, response.data.list.length))
@@ -742,7 +670,7 @@ export function ExhibitionPage({ onBack }: ExhibitionPageProps) {
             max_booking_count: selectedItem.max_booking_count,
             queue_time: undefined,
           }}
-          locationTableName="exhibitions"
+          locationTableName="exhibition_hall"
           theme="violet"
         />
       )}

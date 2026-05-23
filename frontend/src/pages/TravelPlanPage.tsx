@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple, Share } from '@phosphor-icons/react'
-import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, confirmBooking, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
+import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, confirmBooking, cancelBooking, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
 import { ShareModal } from '../components/ShareModal'
 import { encodePlanId } from '../utils/shareCode'
 import { toast } from '../components/Toast'
@@ -585,6 +585,7 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null)
   const [confirmingItemId, setConfirmingItemId] = useState<number | null>(null)
+  const [cancellingItemId, setCancellingItemId] = useState<number | null>(null)
   const [editItemModal, setEditItemModal] = useState<TravelPlanItem | null>(null)
   const [planData, setPlanData] = useState(plan)
 
@@ -645,6 +646,23 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
       toast.error('预约失败，请重试')
     } finally {
       setConfirmingItemId(null)
+    }
+  }
+
+  const handleCancelBooking = async (itemId: number) => {
+    setCancellingItemId(itemId)
+    try {
+      const result = await cancelBooking(itemId)
+      if (result.code === 0) {
+        setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_had_booking: 0 } : i))
+        toast.success('已取消预约')
+      } else {
+        toast.error(result.msg || '取消预约失败，请重试')
+      }
+    } catch {
+      toast.error('取消预约失败，请重试')
+    } finally {
+      setCancellingItemId(null)
     }
   }
 
@@ -837,6 +855,15 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600 active:scale-95 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                                   >
                                     {confirmingItemId === item.id ? '预约中...' : (<><CaretRight size={14} weight="fill" className="shrink-0" /> 预约</>)}
+                                  </button>
+                                )}
+                                {item.is_had_booking === 1 && (
+                                  <button
+                                    onClick={() => handleCancelBooking(item.id)}
+                                    disabled={cancellingItemId === item.id}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                                  >
+                                    {cancellingItemId === item.id ? '取消中...' : (<><X size={14} weight="bold" className="shrink-0" /> 取消预约</>)}
                                   </button>
                                 )}
                                 <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${

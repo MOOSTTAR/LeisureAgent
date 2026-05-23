@@ -25,10 +25,10 @@ def ensure_session(session_id: int | None, first_message: str) -> int:
             conn.execute(
                 """
                 UPDATE agent_session
-                SET last_message=?, updated_at=CURRENT_TIMESTAMP
+                SET updated_at=CURRENT_TIMESTAMP
                 WHERE id=?
                 """,
-                (first_message, sid),
+                (sid,),
             )
             conn.commit()
             return sid
@@ -36,10 +36,10 @@ def ensure_session(session_id: int | None, first_message: str) -> int:
     # 创建新会话（自增 ID）
     cur = conn.execute(
         """
-        INSERT INTO agent_session (title, last_message, status)
-        VALUES (?, ?, 0)
+        INSERT INTO agent_session (title, status)
+        VALUES (?, 0)
         """,
-        (title, first_message),
+        (title,),
     )
     conn.commit()
     return int(cur.lastrowid)
@@ -69,10 +69,10 @@ def append_message(
     conn.execute(
         """
         UPDATE agent_session
-        SET last_message=?, updated_at=CURRENT_TIMESTAMP
+        SET updated_at=CURRENT_TIMESTAMP
         WHERE id=?
         """,
-        (content, agent_session_id),
+        (agent_session_id,),
     )
     conn.commit()
 
@@ -113,9 +113,12 @@ def list_sessions(limit: int = 50) -> list[dict[str, Any]]:
     conn = get_connection()
     rows = conn.execute(
         """
-        SELECT id, title, last_message, travel_plan_id, status, created_at, updated_at
-        FROM agent_session
-        ORDER BY updated_at DESC
+        SELECT s.id, s.title,
+               (SELECT m.content FROM agent_message m
+                WHERE m.agent_session_id = s.id ORDER BY m.id DESC LIMIT 1) as last_message,
+               s.travel_plan_id, s.status, s.created_at, s.updated_at
+        FROM agent_session s
+        ORDER BY s.updated_at DESC
         LIMIT ?
         """,
         (limit,),
@@ -127,9 +130,12 @@ def get_session(session_id: int) -> dict[str, Any] | None:
     conn = get_connection()
     row = conn.execute(
         """
-        SELECT id, title, last_message, travel_plan_id, status, created_at, updated_at
-        FROM agent_session
-        WHERE id=?
+        SELECT s.id, s.title,
+               (SELECT m.content FROM agent_message m
+                WHERE m.agent_session_id = s.id ORDER BY m.id DESC LIMIT 1) as last_message,
+               s.travel_plan_id, s.status, s.created_at, s.updated_at
+        FROM agent_session s
+        WHERE s.id=?
         """,
         (session_id,),
     ).fetchone()

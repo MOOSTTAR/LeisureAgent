@@ -414,9 +414,9 @@ function ConversationSidebar({
                       e.stopPropagation()
                       handleStartRename(conv)
                     }}
-                    className="p-1 rounded hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="p-1.5 rounded hover:bg-slate-200/60 text-slate-500 hover:text-slate-600 transition-colors"
                   >
-                    <PencilSimple size={12} />
+                    <PencilSimple size={13} />
                   </button>
                   <button
                     onClick={(e) => {
@@ -434,9 +434,9 @@ function ConversationSidebar({
                       e.stopPropagation()
                       handleDelete(conv.id)
                     }}
-                    className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                    className="p-1.5 rounded hover:bg-red-50 text-slate-500 hover:text-red-500 transition-colors"
                   >
-                    <Trash size={12} />
+                    <Trash size={13} />
                   </button>
                 </div>
               </div>

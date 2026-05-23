@@ -56,6 +56,14 @@ def _has_time_conflict(plan_id: int, new_start: str, new_end: str) -> bool:
     return False
 
 
+def _resolve_need_booking(venue: dict[str, Any]) -> int:
+    """根据场地 booking_hours 判断是否需要预约。"""
+    booking_hours = venue.get("booking_hours")
+    if booking_hours and booking_hours != "不能预约":
+        return 1
+    return 0
+
+
 def create(data: dict[str, Any]) -> tuple[Optional[int], Optional[str]]:
     arrive = data.get("arrive_time", "")
     leave = data.get("leave_time", "")
@@ -70,19 +78,21 @@ def create(data: dict[str, Any]) -> tuple[Optional[int], Optional[str]]:
 
     # Rule 1 + 2: 场馆信息查询
     venue = _get_location(table_name, location_id)
+    if venue is None:
+        return None, Err.BOOKING_VENUE_NOT_FOUND[0]
 
-    if venue is not None:
-        current = venue.get("current_booking_count", -1)
-        maximum = venue.get("max_booking_count", -1)
-        # Rule 1: 预约名额检查
-        if current >= 0 and maximum >= 0 and current >= maximum:
-            return None, Err.ITEM_BOOKING_FULL[0]
+    current = venue.get("current_booking_count", -1)
+    maximum = venue.get("max_booking_count", -1)
+    # Rule 1: 预约名额检查
+    if current >= 0 and maximum >= 0 and current >= maximum:
+        return None, Err.ITEM_BOOKING_FULL[0]
 
-        # Rule 2: 排队时间调整（仅用于冲突检测），将到达时间提前
-        queue = venue.get("queue_time", -1)
-        adjusted_arrive = add_minutes(arrive, -queue) if queue > 0 and arrive else arrive
-    else:
-        adjusted_arrive = arrive
+    # Rule 2: 排队时间调整（仅用于冲突检测），将到达时间提前
+    queue = venue.get("queue_time", -1)
+    adjusted_arrive = add_minutes(arrive, -queue) if queue > 0 and arrive else arrive
+
+    # 自动推断 is_need_booking
+    data["is_need_booking"] = _resolve_need_booking(venue)
 
     # Rule 3: 时间段冲突检测
     if adjusted_arrive and leave and _has_time_conflict(plan_id, adjusted_arrive, leave):

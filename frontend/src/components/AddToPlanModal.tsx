@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Clock, CalendarBlank, CaretDown } from '@phosphor-icons/react'
 import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../api'
+import { toast } from './Toast'
 
 interface AddToPlanModalProps {
   isOpen: boolean
@@ -300,10 +301,14 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
         leave_time: adjustedLeaveTime,
         stay_minute: stayMinute,
         remark: finalRemark,
+        is_need_booking: item.booking_hours && item.booking_hours !== '不能预约' ? 1 : 0,
+        is_had_booking: 0,
       })
+      toast.success('已添加到计划')
       onClose()
     } catch (err: any) {
       setError(err?.message || '添加失败，请重试')
+      toast.error('添加失败，请重试')
     } finally {
       setSubmitting(false)
     }

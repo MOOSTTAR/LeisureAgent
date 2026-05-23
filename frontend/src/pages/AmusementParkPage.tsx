@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getAmusementParks, getBookingAmusementParks, deleteAmusementPark, createAmusementPark, updateAmusementPark, type AmusementPark } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 interface FilterOptions {
   name?: string
@@ -53,19 +54,19 @@ function AmusementParkCard({ park, onDelete, onEdit, onClick, onAddToPlan }: Amu
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onEdit?.() }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-amber-50 hover:text-amber-500 transition-colors opacity-0 group-hover:opacity-100"
               title="编辑乐园"
             >
-              <PencilSimple size={16} />
+              <PencilSimple size={17} />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onDelete?.(park.id) }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
               title="删除乐园"
             >
-              <Trash size={16} />
+              <Trash size={17} />
             </motion.button>
             <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-xs font-medium rounded-lg whitespace-nowrap">
               {distanceText}
@@ -84,7 +85,7 @@ function AmusementParkCard({ park, onDelete, onEdit, onClick, onAddToPlan }: Amu
           </span>
           {canBook && (
             <span className="px-2 py-0.5 text-xs rounded-md whitespace-nowrap bg-blue-50 text-blue-600">
-              可预约（{park.current_booking_count}/{park.max_booking_count}）
+              需要预约（{park.current_booking_count}/{park.max_booking_count}）
             </span>
           )}
           {hasQueue && (
@@ -188,14 +189,21 @@ function AmusementParkFormModal({ isOpen, editItem, onClose, onSaved }: {
       queue_time: queueTime,
       performance_info: performanceInfo || null,
     }
-    if (editItem) {
-      await updateAmusementPark(editItem.id, data)
-    } else {
-      await createAmusementPark(data)
+    try {
+      if (editItem) {
+        await updateAmusementPark(editItem.id, data)
+        toast.success('乐园更新成功')
+      } else {
+        await createAmusementPark(data)
+        toast.success('乐园创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -419,7 +427,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   : 'bg-white border-slate-200 text-slate-500 hover:border-amber-300'
               }`}
             >
-              可预约
+              需要预约
             </button>
 
         </motion.div>
@@ -468,9 +476,11 @@ export function AmusementParkPage({ onBack }: AmusementParkPageProps) {
       if (result.code === 0) {
         setParks(prev => prev.filter(p => p.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('乐园已删除')
       }
     } catch (error) {
       console.error('Failed to delete amusement park:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

@@ -11,6 +11,7 @@ import { AIPlanPage } from './pages/AIPlanPage'
 import { SharedPlanPage } from './pages/SharedPlanPage'
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import { Sparkle } from '@phosphor-icons/react'
+import { ToastContainer } from './components/Toast'
 import './index.css'
 
 function CursorCircle() {
@@ -214,6 +215,7 @@ function App() {
   return (
     <div className="h-[100dvh]">
       <CursorCircle />
+      <ToastContainer />
 
       {/* ====== 转场覆盖层 ====== */}
       <AnimatePresence>

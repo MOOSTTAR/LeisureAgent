@@ -6,6 +6,7 @@ import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-ic
 import { getRestaurants, getBookingRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 import { CustomSelect, type SelectOption } from '../components/CustomSelect'
+import { toast } from '../components/Toast'
 
 const DiningStyle = {
   DINE_IN: 0,
@@ -72,19 +73,19 @@ function RestaurantCard({ restaurant, onDelete, onEdit, onClick, onAddToPlan }: 
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onEdit?.() }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-orange-50 hover:text-orange-500 transition-colors opacity-0 group-hover:opacity-100"
               title="编辑餐厅"
             >
-              <PencilSimple size={16} />
+              <PencilSimple size={17} />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onDelete?.(restaurant.id) }}
-              className="p-1.5 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
               title="删除餐厅"
             >
-              <Trash size={16} />
+              <Trash size={17} />
             </motion.button>
             <span className="px-2.5 py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-lg whitespace-nowrap">
               {distanceText}
@@ -101,7 +102,7 @@ function RestaurantCard({ restaurant, onDelete, onEdit, onClick, onAddToPlan }: 
           </span>
           {isBookable && (
             <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-md whitespace-nowrap">
-              可预约
+              需要预约
             </span>
           )}
           {restaurant.tags.slice(0, 3).map((tag: string, i: number) => (
@@ -229,14 +230,21 @@ function RestaurantFormModal({ isOpen, editItem, onClose, onSaved }: {
       queue_time: queueTime,
       indoor_env: indoorEnv || null,
     }
-    if (editItem) {
-      await updateRestaurant(editItem.id, data)
-    } else {
-      await createRestaurant(data)
+    try {
+      if (editItem) {
+        await updateRestaurant(editItem.id, data)
+        toast.success('餐厅更新成功')
+      } else {
+        await createRestaurant(data)
+        toast.success('餐厅创建成功')
+      }
+      onSaved()
+      onClose()
+    } catch {
+      toast.error('保存失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
-    onSaved()
-    onClose()
   }
 
   return (
@@ -465,7 +473,7 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
                   : 'bg-white border-slate-200 text-slate-500 hover:border-orange-300'
               }`}
             >
-              可预约
+              需要预约
             </button>
 
         </motion.div>
@@ -515,9 +523,11 @@ export function RestaurantPage({ onBack }: RestaurantPageProps) {
       if (result.code === 0) {
         setRestaurants(prev => prev.filter(r => r.id !== id))
         setTotal(prev => prev - 1)
+        toast.success('餐厅已删除')
       }
     } catch (error) {
       console.error('Failed to delete restaurant:', error)
+      toast.error('删除失败，请重试')
     } finally {
       setDeletingId(null)
     }

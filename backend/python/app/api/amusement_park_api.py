@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Query
 
 from app.api import error, paged, success
+from app.constant.error_code import Err
 from app.service import amusement_park_service
 
 router = APIRouter(prefix="/api/amusement-parks", tags=["游乐园"])
@@ -46,7 +47,7 @@ def get_booking_list(
 def get_amusement_park(id: int):
     row = amusement_park_service.get_by_id(id)
     if not row:
-        return error("游乐园不存在", 404)
+        return error(*Err.AMUSEMENT_NOT_FOUND)
     return success(row)
 
 
@@ -60,7 +61,7 @@ def create_amusement_park(data: dict = Body(...)):
 def update_amusement_park(id: int, data: dict = Body(...)):
     ok = amusement_park_service.update(id, data)
     if not ok:
-        return error("游乐园不存在或未修改", 404)
+        return error(*Err.AMUSEMENT_NOT_FOUND_OR_UNCHANGED)
     return success(None, "更新成功")
 
 
@@ -68,5 +69,5 @@ def update_amusement_park(id: int, data: dict = Body(...)):
 def delete_amusement_park(id: int):
     ok = amusement_park_service.delete(id)
     if not ok:
-        return error("游乐园不存在", 404)
+        return error(*Err.AMUSEMENT_NOT_FOUND)
     return success(None, "删除成功")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 
@@ -78,3 +79,9 @@ def paginate(
     start = (page - 1) * page_size
     end = start + page_size
     return items[start:end], total
+
+
+def add_minutes(time_text: str, minutes: int) -> str:
+    """ 给 HH:MM 时间字符串增加指定分钟数。"""
+    dt = datetime.strptime(time_text, "%H:%M") + timedelta(minutes=minutes)
+    return dt.strftime("%H:%M")

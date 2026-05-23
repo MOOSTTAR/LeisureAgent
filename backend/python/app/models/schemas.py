@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ActivityType(str, Enum):
@@ -162,3 +162,24 @@ class ChatResponse(BaseModel):
     share_text: str = ""
     share_url: str = ""
     current_step: str = "done"
+
+
+class TravelPlanItemCreate(BaseModel):
+    """创建方案明细请求体"""
+    plan_id: int
+    location_table_name: str
+    location_id: int
+    day_num: int = Field(default=1, ge=1)
+    arrive_time: str = Field(default="", pattern=r"^\d{1,2}:\d{2}$")
+    leave_time: str = Field(default="", pattern=r"^\d{1,2}:\d{2}$")
+    stay_minute: int = Field(default=0, ge=0)
+    remark: str = Field(default="")
+
+    @field_validator("arrive_time", "leave_time", mode="before")
+    @classmethod
+    def normalize_time(cls, v: str) -> str:
+        """将 '8:06' 统一转为 '08:06' 以确保服务层字符串比较正确"""
+        if v and ":" in v:
+            parts = v.split(":")
+            return f"{int(parts[0]):02d}:{parts[1]}"
+        return v

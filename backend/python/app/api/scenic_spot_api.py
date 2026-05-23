@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Query
 
 from app.api import error, paged, success
+from app.constant.error_code import Err
 from app.service import scenic_spot_service
 
 router = APIRouter(prefix="/api/parks", tags=["景点/公园"])
@@ -34,7 +35,7 @@ def list_parks(
 def get_park(id: int):
     row = scenic_spot_service.get_by_id(id)
     if not row:
-        return error("景点不存在", 404)
+        return error(*Err.SCENIC_SPOT_NOT_FOUND)
     return success(row)
 
 
@@ -48,7 +49,7 @@ def create_park(data: dict = Body(...)):
 def update_park(id: int, data: dict = Body(...)):
     ok = scenic_spot_service.update(id, data)
     if not ok:
-        return error("景点不存在或未修改", 404)
+        return error(*Err.SCENIC_SPOT_NOT_FOUND_OR_UNCHANGED)
     return success(None, "更新成功")
 
 
@@ -56,5 +57,5 @@ def update_park(id: int, data: dict = Body(...)):
 def delete_park(id: int):
     ok = scenic_spot_service.delete(id)
     if not ok:
-        return error("景点不存在", 404)
+        return error(*Err.SCENIC_SPOT_NOT_FOUND)
     return success(None, "删除成功")

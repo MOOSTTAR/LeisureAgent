@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from app.api import add_minutes
+from app.constant.error_code import Err
 from app.repository import travel_plan_item_repo
+from app.service import (
+    amusement_park_service,
+    exhibition_hall_service,
+    mall_service,
+    restaurant_service,
+    scenic_spot_service,
+)
 
 
 def get_by_id(id: int) -> Optional[dict[str, Any]]:
@@ -24,8 +33,63 @@ def list_all(
     return items, total
 
 
-def create(data: dict[str, Any]) -> int:
-    return travel_plan_item_repo.create(data)
+def _get_location(table_name: str, location_id: int) -> Optional[dict[str, Any]]:
+    service_map = {
+        "restaurant": restaurant_service,
+        "mall": mall_service,
+        "amusement_park": amusement_park_service,
+        "scenic_spot": scenic_spot_service,
+        "exhibition_hall": exhibition_hall_service,
+    }
+    svc = service_map.get(table_name)
+    return svc.get_by_id(location_id) if svc else None
+
+
+def _has_time_conflict(plan_id: int, new_start: str, new_end: str) -> bool:
+    # 时间冲突判断，看整个方案中具体的这个项和别的时间的有没有交集
+    existing = travel_plan_item_repo.get_by_plan_id(plan_id)
+    for item in existing:
+        exist_start = item["arrive_time"]
+        exist_end = item["leave_time"]
+        if not (new_end <= exist_start or new_start >= exist_end):
+            return True
+    return False
+
+
+def create(data: dict[str, Any]) -> tuple[Optional[int], Optional[str]]:
+    arrive = data.get("arrive_time", "")
+    leave = data.get("leave_time", "")
+
+    # Rule 4: 时间合法性
+    if arrive and leave and arrive >= leave:
+        return None, Err.ITEM_TIME_INVALID[0]
+
+    plan_id = data["plan_id"]
+    table_name = data["location_table_name"]
+    location_id = data["location_id"]
+
+    # Rule 1 + 2: 场馆信息查询
+    venue = _get_location(table_name, location_id)
+
+    if venue is not None:
+        current = venue.get("current_booking_count", -1)
+        maximum = venue.get("max_booking_count", -1)
+        # Rule 1: 预约名额检查
+        if current >= 0 and maximum >= 0 and current >= maximum:
+            return None, Err.ITEM_BOOKING_FULL[0]
+
+        # Rule 2: 排队时间调整（仅用于冲突检测），将到达时间提前
+        queue = venue.get("queue_time", -1)
+        adjusted_arrive = add_minutes(arrive, -queue) if queue > 0 and arrive else arrive
+    else:
+        adjusted_arrive = arrive
+
+    # Rule 3: 时间段冲突检测
+    if adjusted_arrive and leave and _has_time_conflict(plan_id, adjusted_arrive, leave):
+        return None, Err.ITEM_TIME_CONFLICT[0]
+
+    new_id = travel_plan_item_repo.create(data)
+    return new_id, None
 
 
 def update(id: int, data: dict[str, Any]) -> bool:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Query
 
 from app.api import error, paged, success
+from app.constant.error_code import Err
 from app.service import exhibition_hall_service
 
 router = APIRouter(prefix="/api/exhibition-halls", tags=["展馆"])
@@ -43,7 +44,7 @@ def get_booking_list(
 def get_exhibition_hall(id: int):
     row = exhibition_hall_service.get_by_id(id)
     if not row:
-        return error("展馆不存在", 404)
+        return error(*Err.EXHIBITION_NOT_FOUND)
     return success(row)
 
 
@@ -57,7 +58,7 @@ def create_exhibition_hall(data: dict = Body(...)):
 def update_exhibition_hall(id: int, data: dict = Body(...)):
     ok = exhibition_hall_service.update(id, data)
     if not ok:
-        return error("展馆不存在或未修改", 404)
+        return error(*Err.EXHIBITION_NOT_FOUND_OR_UNCHANGED)
     return success(None, "更新成功")
 
 
@@ -65,5 +66,5 @@ def update_exhibition_hall(id: int, data: dict = Body(...)):
 def delete_exhibition_hall(id: int):
     ok = exhibition_hall_service.delete(id)
     if not ok:
-        return error("展馆不存在", 404)
+        return error(*Err.EXHIBITION_NOT_FOUND)
     return success(None, "删除成功")

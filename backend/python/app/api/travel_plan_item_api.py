@@ -5,6 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Query
 
 from app.api import error, paged, success
+from app.constant.error_code import Err
+from app.models.schemas import TravelPlanItemCreate
 from app.service import travel_plan_item_service
 
 router = APIRouter(prefix="/api/travel-plan-items", tags=["旅行方案明细"])
@@ -26,13 +28,16 @@ def list_travel_plan_items(
 def get_travel_plan_item(id: int):
     row = travel_plan_item_service.get_by_id(id)
     if not row:
-        return error("明细不存在", 404)
+        return error(*Err.ITEM_NOT_FOUND)
     return success(row)
 
 
 @router.post("")
-def create_travel_plan_item(data: dict = Body(...)):
-    iid = travel_plan_item_service.create(data)
+def create_travel_plan_item(data: TravelPlanItemCreate):
+    iid, err_msg = travel_plan_item_service.create(data.model_dump())
+    if err_msg:
+        code = 409 if err_msg == Err.ITEM_TIME_CONFLICT[0] else 400
+        return error(err_msg, code)
     return success({"id": iid}, "创建成功")
 
 
@@ -40,7 +45,7 @@ def create_travel_plan_item(data: dict = Body(...)):
 def update_travel_plan_item(id: int, data: dict = Body(...)):
     ok = travel_plan_item_service.update(id, data)
     if not ok:
-        return error("明细不存在或未修改", 404)
+        return error(*Err.ITEM_NOT_FOUND_OR_UNCHANGED)
     return success(None, "更新成功")
 
 
@@ -48,5 +53,5 @@ def update_travel_plan_item(id: int, data: dict = Body(...)):
 def delete_travel_plan_item(id: int):
     ok = travel_plan_item_service.delete(id)
     if not ok:
-        return error("明细不存在", 404)
+        return error(*Err.ITEM_NOT_FOUND)
     return success(None, "删除成功")

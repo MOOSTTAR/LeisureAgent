@@ -94,6 +94,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 |--------|------|
 | 400 | 请求参数错误 |
 | 404 | 资源不存在 |
+| 409 | 时间段冲突 |
 | 500 | 服务器内部错误 |
 
 ---
@@ -234,7 +235,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | 参数                | 类型      | 必填 | 描述                 |
 |-------------------|---------|------|--------------------|
 | `has_cinema`      | boolean | 否 | 是否有影院：true/false   |
-| `name`            | str     | 否 | 商场名字               |
+| `name`            | string | 否 | 商场名字               |
 | `has_supermarket` | boolean | 否 | 是否有大型超市：true/false |
 | `distance`        | string  | 否 | 距离筛选               |
 | `page`            | integer | 否 | 页码，默认 1            |
@@ -407,9 +408,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ### POST 创建明细
 
-> **⚠ 后端未开发** — 以下业务逻辑仅在前端 Mock 层实现，后端 `POST /api/travel-plan-items` 目前只做通用 INSERT，未包含任何业务校验。
-
-**请求体：**
+**请求体（Pydantic 自动校验，arrive_time/leave_time 支持 "8:06" 或 "08:06" 格式）：**
 
 | 参数 | 类型 | 必填 | 描述 |
 |------|------|------|------|
@@ -417,17 +416,17 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `location_table_name` | string | 是 | 关联场所表名称（如 restaurants） |
 | `location_id` | integer | 是 | 场所表中具体 ID |
 | `day_num` | integer | 否 | 第几天行程，默认 1（仅支持 1 或 2） |
-| `arrive_time` | string | 否 | 预计到达时间，格式 HH:MM |
-| `leave_time` | string | 否 | 预计离开时间，格式 HH:MM |
+| `arrive_time` | string | 否 | 预计到达时间，格式 HH:MM（支持 `8:06` 或 `08:06`） |
+| `leave_time` | string | 否 | 预计离开时间，格式 HH:MM（支持 `8:06` 或 `08:06`） |
 | `stay_minute` | integer | 否 | 停留时长（分钟），默认 0 |
 | `remark` | string | 否 | 本段行程备注 |
 
-**⚠ 后端必须实现的业务判断：**
+**后端业务校验（按顺序执行）：**
 
-1. **预约名额检查**：查询场所的 `current_booking_count` 和 `max_booking_count`，若两者均 >= 0 且 `current_booking_count >= max_booking_count`，拒绝创建，返回 `{ code: 400, msg: "预约名额已满" }`
-2. **排队时间调整**：若场所的 `queue_time > 0`，实际 `arrive_time` 应自动提前 `queue_time` 分钟，冲突检测以调整后的时间段为准
-3. **时间段冲突检测**：新增明细的 `[调整后arrive_time, leave_time]` 不能与同一 `plan_id` 下已有明细的时间段重叠。重叠判定公式：`!(newEnd <= existStart || newStart >= existEnd)`。冲突时返回 `{ code: 409, msg: "时间段冲突" }`
-4. **时间合法性**：`arrive_time` 必须早于 `leave_time`，否则返回 `{ code: 400, msg: "到达时间必须早于离开时间" }`
+1. **时间合法性**：`arrive_time` 必须早于 `leave_time`，否则返回 `{ code: 400, msg: "到达时间必须早于离开时间" }`
+2. **预约名额检查**：查询场所的 `current_booking_count` 和 `max_booking_count`，若两者均 >= 0 且 `current_booking_count >= max_booking_count`，拒绝创建，返回 `{ code: 400, msg: "预约名额已满" }`
+3. **排队时间调整**：若场所的 `queue_time > 0`，实际 `arrive_time` 应自动提前 `queue_time` 分钟，冲突检测以调整后的时间段为准（不影响入库的 `arrive_time` 原始值）
+4. **时间段冲突检测**：新增明细的 `[调整后 arrive_time, leave_time]` 不能与同一 `plan_id` 下已有明细的时间段重叠。重叠判定公式：`!(newEnd <= existStart \|\| newStart >= existEnd)`。冲突时返回 `{ code: 409, msg: "时间段冲突" }`
 
 **成功响应：**
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Query
 
 from app.api import error, paged, success
+from app.constant.error_code import Err
 from app.service import travel_plan_service
 
 router = APIRouter(prefix="/api/travel-plans", tags=["旅行方案"])
@@ -32,7 +33,7 @@ def list_travel_plans(
 def get_travel_plan(id: int):
     row = travel_plan_service.get_by_id(id)
     if not row:
-        return error("方案不存在", 404)
+        return error(*Err.PLAN_NOT_FOUND)
     return success(row)
 
 
@@ -46,7 +47,7 @@ def create_travel_plan(data: dict = Body(...)):
 def update_travel_plan(id: int, data: dict = Body(...)):
     ok = travel_plan_service.update(id, data)
     if not ok:
-        return error("方案不存在或未修改", 404)
+        return error(*Err.PLAN_NOT_FOUND_OR_UNCHANGED)
     return success(None, "更新成功")
 
 
@@ -54,5 +55,5 @@ def update_travel_plan(id: int, data: dict = Body(...)):
 def delete_travel_plan(id: int):
     ok = travel_plan_service.delete(id)
     if not ok:
-        return error("方案不存在", 404)
+        return error(*Err.PLAN_NOT_FOUND)
     return success(None, "删除成功")

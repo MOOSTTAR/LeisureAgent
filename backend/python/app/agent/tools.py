@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
-from app.api import calc_distance
+from app.api import add_minutes, calc_distance
 from app.db.database import get_connection
 from app.models.schemas import AgentOrder, AgentPlan, AgentPlanItem
 from app.service import (
@@ -68,7 +68,7 @@ def persist_agent_plan(session_id: str, plan: AgentPlan) -> AgentPlan:
 
     persisted_items = []
     for item in plan.items:
-        item_id = travel_plan_item_service.create(
+        item_id, _ = travel_plan_item_service.create(
             {
                 "plan_id": plan_id,
                 "location_table_name": item.location_table_name,
@@ -80,7 +80,8 @@ def persist_agent_plan(session_id: str, plan: AgentPlan) -> AgentPlan:
                 "remark": item.remark,
             }
         )
-        persisted_items.append(item.model_copy(update={"step_order": item.step_order}))
+        if item_id is not None:
+            persisted_items.append(item.model_copy(update={"step_order": item.step_order}))
 
     return plan.model_copy(update={"id": plan_id, "items": persisted_items})
 
@@ -374,8 +375,3 @@ def _order_label(order: AgentOrder) -> str:
     if order.order_type == "ticket_booking":
         return f"{order.target_name}预约"
     return f"{order.target_name}安排"
-
-
-def add_minutes(time_text: str, minutes: int) -> str:
-    dt = datetime.strptime(time_text, "%H:%M") + timedelta(minutes=minutes)
-    return dt.strftime("%H:%M")

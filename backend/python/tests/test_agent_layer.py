@@ -13,7 +13,7 @@ def setup_function() -> None:
 def test_family_chat_creates_session_plan_orders_and_share() -> None:
     client = TestClient(app)
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "message": "今天下午想和老婆孩子出去玩几个小时，孩子5岁，老婆最近在减肥，别离家太远",
             "auto_execute": True,
@@ -35,7 +35,7 @@ def test_family_chat_creates_session_plan_orders_and_share() -> None:
 def test_friends_chat_uses_friend_scenario() -> None:
     client = TestClient(app)
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "message": "今天下午和朋友出去玩，总共4个人，2男2女，想拍照聊天，别离家太远",
             "auto_execute": True,
@@ -52,13 +52,13 @@ def test_friends_chat_uses_friend_scenario() -> None:
 def test_session_history_and_second_turn_context() -> None:
     client = TestClient(app)
     first = client.post(
-        "/chat",
+        "/api/chat",
         json={"message": "今天下午想和老婆孩子出去玩，孩子5岁，老婆减肥，别离家太远"},
     ).json()
     session_id = first["session_id"]
 
     second = client.post(
-        "/chat",
+        "/api/chat",
         json={"message": "那就别太累，晚餐清淡一点", "session_id": session_id},
     ).json()
 
@@ -72,7 +72,7 @@ def test_session_history_and_second_turn_context() -> None:
 
 def test_session_list_and_delete() -> None:
     client = TestClient(app)
-    created = client.post("/chat", json={"message": "今天下午和朋友4个人出去玩"}).json()
+    created = client.post("/api/chat", json={"message": "今天下午和朋友4个人出去玩"}).json()
 
     sessions = client.get("/api/agent/sessions").json()
     assert sessions["code"] == 0
@@ -85,7 +85,7 @@ def test_session_list_and_delete() -> None:
 def test_share_endpoint_returns_text_and_plan() -> None:
     client = TestClient(app)
     chat = client.post(
-        "/chat",
+        "/api/chat",
         json={"message": "今天下午想和老婆孩子出去玩，孩子5岁，老婆减肥，别离家太远"},
     ).json()
     plan_id = chat["plan"]["id"]

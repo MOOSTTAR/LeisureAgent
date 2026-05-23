@@ -100,7 +100,7 @@ async def health():
 
 
 # ── SSE 聊天端点 ──
-@app.post("/chat/stream")
+@app.post("/api/chat/stream")
 async def chat_stream(request: ChatRequest):
     return StreamingResponse(
         _stream_events(request),
@@ -113,7 +113,7 @@ async def chat_stream(request: ChatRequest):
 
 
 # ── 同步聊天端点（非流式） ──
-@app.post("/chat")
+@app.post("/api/chat")
 async def chat(request: ChatRequest):
     initial_state: AgentState = {
         "user_input": request.message,

@@ -45,8 +45,8 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/travel-plan-items/{id}` | GET | 获取单个计划明细详情 |
 | `/api/travel-plan-items/{id}` | PUT | 更新计划明细信息 |
 | `/api/travel-plan-items/{id}` | DELETE | 删除明细 |
-| `/chat/stream` | POST | SSE 流式聊天（Agent 核心入口） |
-| `/chat` | POST | 同步聊天（非流式） |
+| `/api/chat/stream` | POST | SSE 流式聊天（Agent 核心入口） |
+| `/api/chat` | POST | 同步聊天（非流式） |
 | `/api/agent/sessions` | GET | 列出所有会话 |
 | `/api/agent/sessions/{session_id}` | GET | 获取会话详情 |
 | `/api/agent/sessions/{session_id}` | DELETE | 删除会话 |
@@ -484,7 +484,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 
 ---
 
-## `/chat/stream` - SSE 流式聊天
+## `/api/chat/stream` - SSE 流式聊天
 
 Agent 核心入口。接收用户输入，执行完整规划流程，以 SSE（Server-Sent Events）格式流式返回中间状态和最终方案。
 
@@ -549,7 +549,7 @@ Agent 核心入口。接收用户输入，执行完整规划流程，以 SSE（S
 **前端接入示例：**
 
 ```javascript
-const eventSource = new EventSource('/chat/stream', {
+const eventSource = new EventSource('/api/chat/stream', {
   method: 'POST',
   body: JSON.stringify({ message: '下午带老婆孩子出去玩', session_id: '' })
 });
@@ -571,13 +571,13 @@ eventSource.addEventListener('done', () => {
 
 ---
 
-## `/chat` - 同步聊天
+## `/api/chat` - 同步聊天
 
-与 `/chat/stream` 相同流程，但以同步 JSON 响应返回完整结果，适合不需要流式体验的场景。
+与 `/api/chat/stream` 相同流程，但以同步 JSON 响应返回完整结果，适合不需要流式体验的场景。
 
 ### POST
 
-**请求体：** 同 `/chat/stream`
+**请求体：** 同 `/api/chat/stream`
 
 **响应：**
 
@@ -860,7 +860,7 @@ USE_LLM_FOR_PLAN=true
 /api/* (FastAPI Router) → app/service/* (业务层) → app/repository/* (数据层) → SQLite
 
 Agent 层：
-/chat/stream → app/agent/graph.py (LangGraph) → app/agent/planner.py (节点)
+/api/chat/stream → app/agent/graph.py (LangGraph) → app/agent/planner.py (节点)
                                       ↓
                          app/llm/provider.py (LLM 封装)
 ```

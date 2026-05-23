@@ -8,7 +8,7 @@ from typing import Any
 
 from app.api import add_minutes, calc_distance
 from app.db.database import get_connection
-from app.models.schemas import AgentOrder, AgentPlan, AgentPlanItem
+from app.models.schemas import AgentPlan, AgentPlanItem
 from app.service import (
     amusement_park_service,
     exhibition_hall_service,
@@ -54,7 +54,7 @@ def search_local_candidates(scenario: str, constraints: dict[str, Any]) -> dict[
     return pools
 
 
-def persist_agent_plan(session_id: str, plan: AgentPlan) -> AgentPlan:
+def persist_agent_plan(session_id: int, plan: AgentPlan) -> AgentPlan:
     plan_id = travel_plan_service.create(
         {
             "plan_title": plan.title,
@@ -68,12 +68,15 @@ def persist_agent_plan(session_id: str, plan: AgentPlan) -> AgentPlan:
 
     persisted_items = []
     for item in plan.items:
+        is_need = _check_need_booking(item.location_table_name, item.location_id)
         item_id, _ = travel_plan_item_service.create(
             {
                 "plan_id": plan_id,
                 "location_table_name": item.location_table_name,
                 "location_id": item.location_id,
                 "day_num": 1,
+                "is_need_booking": is_need,
+                "is_had_booking": 0,
                 "arrive_time": item.arrive_time,
                 "leave_time": item.leave_time,
                 "stay_minute": item.stay_minute,
@@ -86,144 +89,61 @@ def persist_agent_plan(session_id: str, plan: AgentPlan) -> AgentPlan:
     return plan.model_copy(update={"id": plan_id, "items": persisted_items})
 
 
-def execute_plan_actions(session_id: str, plan: AgentPlan) -> list[AgentOrder]:
-    if not plan.id:
-        return []
-
-    plan_items, _ = travel_plan_item_service.list_all(plan_id=plan.id, page=1, page_size=100)
-    orders: list[AgentOrder] = []
-
-    for item in plan.items:
-        persisted_item = _match_persisted_item(plan_items, item)
-        plan_item_id = persisted_item["id"] if persisted_item else None
-
-        if item.location_table_name == "restaurant":
-            restaurant = restaurant_service.get_by_id(item.location_id)
-            if not restaurant:
-                continue
-            if _can_book(restaurant):
-                orders.append(
-                    create_agent_order(
-                        session_id=session_id,
-                        plan_id=plan.id,
-                        plan_item_id=plan_item_id,
-                        order_type="restaurant_reservation",
-                        target_table="restaurant",
-                        target_id=item.location_id,
-                        target_name=item.location_name,
-                        details={
-                            "time": item.arrive_time,
-                            "party_size": _infer_party_size(plan.scenario),
-                            "remark": item.remark,
-                        },
-                    )
-                )
-            elif restaurant.get("queue_time", -1) and restaurant.get("queue_time", -1) > 0:
-                orders.append(
-                    create_agent_order(
-                        session_id=session_id,
-                        plan_id=plan.id,
-                        plan_item_id=plan_item_id,
-                        order_type="queue_taking",
-                        target_table="restaurant",
-                        target_id=item.location_id,
-                        target_name=item.location_name,
-                        details={
-                            "time": item.arrive_time,
-                            "party_size": _infer_party_size(plan.scenario),
-                            "queue_time": restaurant.get("queue_time"),
-                        },
-                    )
-                )
-
-        if item.location_table_name in {"amusement_park", "exhibition_hall", "scenic_spot"}:
-            location = get_location(item.location_table_name, item.location_id)
-            if location and _can_book(location):
-                orders.append(
-                    create_agent_order(
-                        session_id=session_id,
-                        plan_id=plan.id,
-                        plan_item_id=plan_item_id,
-                        order_type="ticket_booking",
-                        target_table=item.location_table_name,
-                        target_id=item.location_id,
-                        target_name=item.location_name,
-                        details={
-                            "time": item.arrive_time,
-                            "quantity": _infer_party_size(plan.scenario),
-                            "ticket_price": location.get("ticket_price", 0),
-                        },
-                    )
-                )
-
-    return orders
-
-
-def create_agent_order(
-    *,
-    session_id: str,
-    plan_id: int,
-    plan_item_id: int | None,
-    order_type: str,
-    target_table: str,
-    target_id: int,
-    target_name: str,
-    details: dict[str, Any],
-) -> AgentOrder:
+def execute_plan_actions(plan_id: int) -> list[dict[str, Any]]:
+    """执行预约：检查容量并更新 current_booking_count 和 travel_plan_item.is_had_booking。"""
+    plan_items, _ = travel_plan_item_service.list_all(plan_id=plan_id, page=1, page_size=100)
+    results: list[dict[str, Any]] = []
     conn = get_connection()
-    cur = conn.execute(
-        """
-        INSERT INTO agent_order (
-            session_id, plan_id, plan_item_id, order_type, target_table, target_id,
-            target_name, order_details, status, external_reference
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'success', '')
-        """,
-        (
-            session_id,
-            plan_id,
-            plan_item_id,
-            order_type,
-            target_table,
-            target_id,
-            target_name,
-            json.dumps(details, ensure_ascii=False),
-        ),
-    )
-    order_id = int(cur.lastrowid)
-    external_reference = _external_reference(order_type, order_id)
-    conn.execute(
-        "UPDATE agent_order SET external_reference=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
-        (external_reference, order_id),
-    )
-    conn.commit()
-    return AgentOrder(
-        id=order_id,
-        order_type=order_type,
-        target_table=target_table,
-        target_id=target_id,
-        target_name=target_name,
-        order_details=details,
-        status="success",
-        external_reference=external_reference,
-    )
 
+    for item in plan_items:
+        if not item.get("is_need_booking"):
+            continue
+        if item.get("is_had_booking"):
+            continue
 
-def get_agent_orders(plan_id: int) -> list[dict[str, Any]]:
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT * FROM agent_order WHERE plan_id=? ORDER BY id",
-        (plan_id,),
-    ).fetchall()
-    orders = []
-    for row in rows:
-        item = dict(row)
-        try:
-            item["order_details"] = json.loads(item.get("order_details") or "{}")
-        except json.JSONDecodeError:
-            item["order_details"] = {}
-        orders.append(item)
-    return orders
+        table_name = item["location_table_name"]
+        location_id = item["location_id"]
+        location = get_location(table_name, location_id)
+
+        if not location:
+            continue
+
+        current = location.get("current_booking_count", -1)
+        max_count = location.get("max_booking_count", -1)
+
+        if current >= 0 and max_count > 0 and current < max_count:
+            # 更新业务表预约数
+            conn.execute(
+                f"UPDATE {table_name} SET current_booking_count=? WHERE id=?",
+                (current + 1, location_id),
+            )
+            # 更新方案明细预约状态
+            conn.execute(
+                """
+                UPDATE travel_plan_item
+                SET is_had_booking=1, updated_at=CURRENT_TIMESTAMP
+                WHERE id=?
+                """,
+                (item["id"],),
+            )
+            conn.commit()
+            results.append({
+                "location_table_name": table_name,
+                "location_id": location_id,
+                "location_name": location["name"],
+                "status": "success",
+                "message": "预约成功",
+            })
+        else:
+            results.append({
+                "location_table_name": table_name,
+                "location_id": location_id,
+                "location_name": location.get("name", ""),
+                "status": "failed",
+                "message": "已约满或不可预约",
+            })
+
+    return results
 
 
 def get_location(table_name: str, location_id: int) -> dict[str, Any] | None:
@@ -247,9 +167,6 @@ def build_share_text(plan: AgentPlan) -> str:
             f"{item.arrive_time}-{item.leave_time} {item.location_name}，"
             f"{item.stay_minute} 分钟。{item.remark}"
         )
-    if plan.orders:
-        labels = [_order_label(order) for order in plan.orders]
-        lines.append("已完成关键安排：" + "、".join(labels))
     lines.append(f"预计花费约 {int(plan.total_cost)} 元。")
     return "\n".join(lines)
 
@@ -259,7 +176,6 @@ def build_share_payload(plan_id: int) -> dict[str, Any] | None:
     if not plan:
         return None
     items, _ = travel_plan_item_service.list_all(plan_id=plan_id, page=1, page_size=100)
-    orders = get_agent_orders(plan_id)
     share_url = f"/api/agent/plans/{plan_id}/share"
     lines = [f"搞定了，方案：{plan['plan_title']}"]
     for item in items:
@@ -269,13 +185,10 @@ def build_share_payload(plan_id: int) -> dict[str, Any] | None:
             f"{item.get('arrive_time')}-{item.get('leave_time')} {name}，"
             f"{item.get('stay_minute', 0)} 分钟。{item.get('remark') or ''}"
         )
-    if orders:
-        lines.append("已完成关键安排：" + "、".join(_order_label(AgentOrder(**order)) for order in orders))
     lines.append(f"预计花费约 {int(plan.get('total_cost') or 0)} 元。")
     return {
         "plan": plan,
         "items": items,
-        "orders": orders,
         "share_text": "\n".join(lines),
         "share_url": share_url,
     }
@@ -342,36 +255,15 @@ def _friends_exhibition_score(item: dict[str, Any]) -> float:
     return score - item["distance"] / 100
 
 
-def _infer_party_size(scenario: str) -> int:
-    return 4 if scenario == "friends" else 3 if scenario == "family" else 2
-
-
-def _match_persisted_item(plan_items: list[dict[str, Any]], item: AgentPlanItem) -> dict[str, Any] | None:
-    for candidate in plan_items:
-        if (
-            candidate["location_table_name"] == item.location_table_name
-            and candidate["location_id"] == item.location_id
-            and candidate["arrive_time"] == item.arrive_time
-        ):
-            return candidate
-    return None
-
-
-def _external_reference(order_type: str, order_id: int) -> str:
-    prefix = {
-        "restaurant_reservation": "RSV",
-        "queue_taking": "QUE",
-        "ticket_booking": "TKT",
-        "delivery": "DLV",
-    }.get(order_type, "ORD")
-    return f"{prefix}{order_id:06d}"
-
-
-def _order_label(order: AgentOrder) -> str:
-    if order.order_type == "restaurant_reservation":
-        return f"{order.target_name}订座"
-    if order.order_type == "queue_taking":
-        return f"{order.target_name}取号"
-    if order.order_type == "ticket_booking":
-        return f"{order.target_name}预约"
-    return f"{order.target_name}安排"
+def _check_need_booking(table_name: str, location_id: int) -> int:
+    """判断地点是否需要预约：1=需要，0=不需要。"""
+    location = get_location(table_name, location_id)
+    if not location:
+        return 0
+    if table_name == "restaurant":
+        if _can_book(location) or location.get("queue_time", -1) > 0:
+            return 1
+        return 0
+    if table_name in {"amusement_park", "exhibition_hall", "scenic_spot"}:
+        return 1 if _can_book(location) else 0
+    return 0

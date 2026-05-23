@@ -54,8 +54,7 @@ class UserIntent(BaseModel):
 class ChatRequest(BaseModel):
     """聊天请求"""
     message: str = Field(min_length=1, max_length=2000)
-    session_id: str = Field(default="")
-    auto_execute: bool = Field(default=True)
+    session_id: int = Field(default=0)
 
 
 class ChatEvent(BaseModel):
@@ -137,18 +136,17 @@ class AgentPlan(BaseModel):
     travel_type: str
     total_cost: float
     items: list[AgentPlanItem] = Field(default_factory=list)
-    orders: list[AgentOrder] = Field(default_factory=list)
     share_text: str = ""
     share_url: str = ""
 
 
 class AgentSessionSummary(BaseModel):
     """会话列表项"""
-    id: str
+    id: int
     title: str
     last_message: str
-    current_plan_id: int | None = None
-    status: str = "active"
+    travel_plan_id: int | None = None
+    status: int = 0
     created_at: str | None = None
     updated_at: str | None = None
 

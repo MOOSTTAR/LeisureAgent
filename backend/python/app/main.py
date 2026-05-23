@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from app.agent.graph import graph
 from app.agent import memory
 from app.agent.state import AgentState
-from app.agent.tools import build_share_payload
+from app.agent.tools import build_share_payload, execute_plan_actions
 from app.api.amusement_park_api import router as amusement_park_router
 from app.api.exhibition_hall_api import router as exhibition_hall_router
 from app.api.mall_api import router as mall_router
@@ -53,13 +53,10 @@ async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:
     initial_state: AgentState = {
         "user_input": request.message,
         "session_id": request.session_id,
-        "auto_execute": request.auto_execute,
         "intent": None,
         "plan": None,
         "messages": [{"role": "user", "content": request.message}],
         "current_step": "load_session",
-        "execution_results": [],
-        "tool_results": [],
         "error": None,
     }
 
@@ -77,12 +74,6 @@ async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:
                     ensure_ascii=False,
                 ),
             )
-
-            if payload.get("tool_results"):
-                yield _sse(
-                    "tool_result",
-                    json.dumps(payload["tool_results"], ensure_ascii=False, default=_json_default),
-                )
 
             if payload.get("plan"):
                 yield _sse(
@@ -127,13 +118,10 @@ async def chat(request: ChatRequest):
     initial_state: AgentState = {
         "user_input": request.message,
         "session_id": request.session_id,
-        "auto_execute": request.auto_execute,
         "intent": None,
         "plan": None,
         "messages": [{"role": "user", "content": request.message}],
         "current_step": "load_session",
-        "execution_results": [],
-        "tool_results": [],
         "error": None,
     }
 
@@ -144,7 +132,6 @@ async def chat(request: ChatRequest):
         "session_id": result.get("session_id", ""),
         "reply": result.get("share_text") or result.get("messages", [{}])[-1].get("content", ""),
         "plan": plan_data,
-        "tool_results": result.get("tool_results", []),
         "share_text": result.get("share_text", ""),
         "share_url": result.get("share_url", ""),
         "current_step": result.get("current_step"),
@@ -158,7 +145,7 @@ async def list_agent_sessions():
 
 
 @app.get("/api/agent/sessions/{session_id}")
-async def get_agent_session(session_id: str):
+async def get_agent_session(session_id: int):
     session = memory.get_session(session_id)
     if not session:
         return {"code": 404, "data": None, "msg": "会话不存在"}
@@ -166,7 +153,7 @@ async def get_agent_session(session_id: str):
 
 
 @app.delete("/api/agent/sessions/{session_id}")
-async def delete_agent_session(session_id: str):
+async def delete_agent_session(session_id: int):
     if not memory.delete_session(session_id):
         return {"code": 404, "data": None, "msg": "会话不存在"}
     return {"code": 0, "data": None, "msg": "删除成功"}
@@ -178,6 +165,18 @@ async def share_agent_plan(plan_id: int):
     if not payload:
         return {"code": 404, "data": None, "msg": "方案不存在"}
     return {"code": 0, "data": payload, "msg": "success"}
+
+
+@app.post("/api/agent/plans/{plan_id}/execute")
+async def execute_plan(plan_id: int):
+    """用户确认方案后执行预约，只更新业务表的 current_booking_count。"""
+    results = execute_plan_actions(plan_id)
+    all_success = all(r["status"] == "success" for r in results)
+    return {
+        "code": 0 if all_success else 1,
+        "data": results,
+        "msg": "全部预约成功" if all_success else "部分预约失败",
+    }
 
 
 def _json_default(obj):

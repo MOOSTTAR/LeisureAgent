@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS agent_session (
     title TEXT NOT NULL DEFAULT '',
     last_message TEXT NOT NULL DEFAULT '',
     current_plan_id INTEGER DEFAULT NULL,
-    status TEXT NOT NULL DEFAULT 'active',
+    status INTEGER NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (current_plan_id) REFERENCES travel_plan(id)

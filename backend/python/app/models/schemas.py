@@ -172,6 +172,8 @@ class TravelPlanItemCreate(BaseModel):
     leave_time: str = Field(default="", pattern=r"^\d{1,2}:\d{2}$")
     stay_minute: int = Field(default=0, ge=0)
     remark: str = Field(default="")
+    is_need_booking: int = Field(default=0, ge=0, le=1)
+    is_had_booking: int = Field(default=0, ge=0, le=1)
 
     @field_validator("arrive_time", "leave_time", mode="before")
     @classmethod

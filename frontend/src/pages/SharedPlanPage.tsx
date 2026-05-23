@@ -222,6 +222,15 @@ export function SharedPlanPage({ shareCode, onBack }: SharedPlanPageProps) {
                                           {loc.subtypeLabel}
                                         </span>
                                       )}
+                                      {item.is_need_booking === 1 && (
+                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${
+                                          item.is_had_booking === 1
+                                            ? 'bg-emerald-50 text-emerald-600'
+                                            : 'bg-amber-50 text-amber-600'
+                                        }`}>
+                                          {item.is_had_booking === 1 ? '已预约' : '未预约'}
+                                        </span>
+                                      )}
                                     </div>
                                     <h4 className="text-base font-medium text-slate-900">{loc.name}</h4>
                                     <p className="flex items-center gap-1 text-xs text-slate-400 mt-1">

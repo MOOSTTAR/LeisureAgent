@@ -100,6 +100,8 @@ export interface TravelPlanItem {
   leave_time: string | null
   stay_minute: number
   remark: string | null
+  is_need_booking: number
+  is_had_booking: number
   created_at: string
   updated_at: string
 }
@@ -374,6 +376,8 @@ export async function addTravelPlanItem(params: {
   leave_time?: string | null
   stay_minute?: number
   remark?: string | null
+  is_need_booking?: number
+  is_had_booking?: number
 }): Promise<CreateResponse> {
   return post<CreateResponse>(TPI, params)
 }

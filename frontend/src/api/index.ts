@@ -398,6 +398,165 @@ export async function cancelBooking(itemId: number): Promise<UpdateDeleteRespons
   return post<UpdateDeleteResponse>(`/api/booking/cancel/${itemId}`)
 }
 
+// ==================== Agent Types ====================
+
+export interface AgentSession {
+  id: number
+  title: string
+  last_message: string | null
+  travel_plan_id: number | null
+  status: number
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface AgentMessage {
+  role: string
+  content: string
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface AgentSessionDetail extends AgentSession {
+  messages: AgentMessage[]
+}
+
+export interface AgentPlanItem {
+  step_order: number
+  activity_type: string
+  location_table_name: string
+  location_id: number
+  location_name: string
+  address: string
+  arrive_time: string
+  leave_time: string
+  stay_minute: number
+  remark: string
+  estimated_cost: number
+}
+
+export interface AgentPlan {
+  id: number | null
+  title: string
+  description: string
+  scenario: string
+  travel_type: string
+  total_cost: number
+  items: AgentPlanItem[]
+  share_text: string
+  share_url: string
+}
+
+export interface TokenEvent {
+  node: string
+  current_step: string
+  message: string
+}
+
+export interface ExecuteResult {
+  location_table_name: string
+  location_id: number
+  location_name: string
+  status: string
+  message: string
+}
+
+interface ExecuteResponse {
+  code: number
+  data: ExecuteResult[]
+  msg: string
+}
+
+// ==================== Agent APIs ====================
+
+export async function getAgentSessions(): Promise<ListResponse<AgentSession>> {
+  return get<ListResponse<AgentSession>>('/api/agent/sessions')
+}
+
+export async function getAgentSession(id: number): Promise<ItemResponse<AgentSessionDetail>> {
+  return get<ItemResponse<AgentSessionDetail>>(`/api/agent/sessions/${id}`)
+}
+
+export async function deleteAgentSession(id: number): Promise<UpdateDeleteResponse> {
+  return del<UpdateDeleteResponse>(`/api/agent/sessions/${id}`)
+}
+
+export async function executePlan(planId: number): Promise<ExecuteResponse> {
+  return post<ExecuteResponse>(`/api/agent/plans/${planId}/execute`)
+}
+
+export async function getPlanShare(planId: number): Promise<ItemResponse<unknown>> {
+  return get<ItemResponse<unknown>>(`/api/agent/plans/${planId}/share`)
+}
+
+export async function chatStream(
+  message: string,
+  sessionId: number,
+  callbacks: {
+    onToken?: (data: TokenEvent) => void
+    onPlan?: (plan: AgentPlan) => void
+    onDone?: () => void
+    onError?: (message: string) => void
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+  const res = await fetch(`${BASE_URL}/api/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, session_id: sessionId }),
+    signal,
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    callbacks.onError?.(body.msg || body.detail || `请求失败 (${res.status})`)
+    return
+  }
+
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      let currentEvent = ''
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim()
+        } else if (line.startsWith('data: ')) {
+          try {
+            const parsed = JSON.parse(line.slice(6))
+            switch (currentEvent) {
+              case 'token':
+                callbacks.onToken?.(parsed)
+                break
+              case 'plan':
+                callbacks.onPlan?.(parsed)
+                break
+              case 'done':
+                callbacks.onDone?.()
+                break
+              case 'error':
+                callbacks.onError?.(parsed.message || '未知错误')
+                break
+            }
+          } catch { /* skip unparseable data */ }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 // ==================== resolveLocation (async) ====================
 
 const TABLE_NAME_LABELS: Record<string, { typeLabel: string; theme: ResolvedLocation['theme'] }> = {

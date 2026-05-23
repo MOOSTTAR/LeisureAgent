@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple } from '@phosphor-icons/react'
-import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../mock/api'
+import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
 
 interface TravelPlanPageProps {
   onBack: () => void
@@ -577,9 +577,11 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
       setItems(fetchedItems)
 
       const locMap = new Map<number, ResolvedLocation | null>()
-      for (const item of fetchedItems) {
-        locMap.set(item.id, resolveLocation(item.location_table_name, item.location_id))
-      }
+      await Promise.all(
+        fetchedItems.map(async (item) => {
+          locMap.set(item.id, await resolveLocation(item.location_table_name, item.location_id))
+        })
+      )
       setLocations(locMap)
     } catch (error) {
       console.error('Failed to fetch plan items:', error)

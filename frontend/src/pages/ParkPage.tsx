@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getParks, deletePark, createPark, updatePark, type Park } from '../mock/api'
+import { getParks, deletePark, createPark, updatePark, type Park } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 const CrowdDensity = {

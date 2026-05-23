@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getAmusementParks, deleteAmusementPark, createAmusementPark, updateAmusementPark, type AmusementPark } from '../mock/api'
+import { getAmusementParks, deleteAmusementPark, createAmusementPark, updateAmusementPark, type AmusementPark } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../mock/api'
+import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 interface FilterOptions {

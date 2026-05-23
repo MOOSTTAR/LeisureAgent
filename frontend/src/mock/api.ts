@@ -479,7 +479,6 @@ interface GetParksParams {
   name?: string
   spot_type?: string
   crowd_level?: number
-  can_book?: boolean
   distance?: '<200m' | '<500m' | '<1.0km' | '<2.0km' | 'other'
   page?: number
   page_size?: number
@@ -1145,6 +1144,24 @@ export async function getBookingRestaurants(params: { page?: number; page_size?:
  * 获取公园列表
  * GET /api/parks
  */
+/**
+ * 获取可预约景点列表
+ * GET /api/parks/get_booking_list
+ */
+export async function getBookingParks(params: { page?: number; page_size?: number } = {}): Promise<{ code: number; data: { list: Park[]; total: number; page: number; page_size: number }; msg: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const page = params.page || 1
+  const pageSize = Math.min(params.page_size || 5, 50)
+  const filtered = MOCK_PARKS.filter(p => p.booking_hours && p.booking_hours !== '不能预约')
+  const total = filtered.length
+  const start = (page - 1) * pageSize
+  return {
+    code: 0,
+    data: { list: filtered.slice(start, start + pageSize), total, page, page_size: pageSize },
+    msg: 'success',
+  }
+}
+
 // ==================== 展馆展览馆 / Exhibition Halls ====================
 
 interface ExhibitionHall {
@@ -2154,7 +2171,7 @@ const MOCK_TRAVEL_PLANS: TravelPlan[] = [
     plan_title: '朋友聚会吃饭逛街',
     plan_desc: '和朋友一起吃烤肉，逛商场看电影',
     travel_days: 1,
-    travel_type: '聚会',
+    travel_type: '逛街',
     travel_date: '2026-05-25',
     total_cost: 1200,
     created_at: '2026-05-21 09:15:00',
@@ -2514,14 +2531,6 @@ export async function getParks(params: GetParksParams): Promise<GetParksResponse
   // 人流量筛选
   if (params.crowd_level !== undefined) {
     filtered = filtered.filter(r => r.crowd_density === params.crowd_level)
-  }
-
-  // 是否可预约筛选
-  if (params.can_book !== undefined) {
-    filtered = filtered.filter(r => {
-      const canBook = r.booking_hours !== '不能预约'
-      return canBook === params.can_book
-    })
   }
 
   // 距离筛选

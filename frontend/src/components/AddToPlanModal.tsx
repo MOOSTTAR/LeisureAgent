@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Clock, CalendarBlank, CaretDown } from '@phosphor-icons/react'
-import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../mock/api'
+import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../api'
 
 interface AddToPlanModalProps {
   isOpen: boolean
@@ -245,14 +245,14 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
     : userArriveTime
   const adjustedLeaveTime = userLeaveTime
 
-  const checkConflict = () => {
-    if (!userArriveTime || !userLeaveTime) return
-    if (timeToMinutes(adjustedArriveTime) >= timeToMinutes(adjustedLeaveTime)) return
+  const checkConflict = async () => {
+    if (!userArriveTime || !userLeaveTime) { setConflict(null); return }
+    if (timeToMinutes(adjustedArriveTime) >= timeToMinutes(adjustedLeaveTime)) { setConflict(null); return }
 
     for (const pi of planItems) {
       if (!pi.arrive_time || !pi.leave_time) continue
       if (isOverlapping(adjustedArriveTime, adjustedLeaveTime, pi.arrive_time, pi.leave_time)) {
-        const loc = resolveLocation(pi.location_table_name, pi.location_id)
+        const loc = await resolveLocation(pi.location_table_name, pi.location_id)
         setConflict({
           locationName: loc?.name || '未知场所',
           arriveTime: pi.arrive_time,

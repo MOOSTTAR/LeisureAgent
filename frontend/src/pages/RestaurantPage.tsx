@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
-import { getRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../mock/api'
+import { getRestaurants, deleteRestaurant, createRestaurant, updateRestaurant, type Restaurant } from '../api'
 import { AddToPlanModal } from '../components/AddToPlanModal'
 
 const DiningStyle = {

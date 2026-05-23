@@ -20,6 +20,7 @@ from app.api.restaurant_api import router as restaurant_router
 from app.api.scenic_spot_api import router as scenic_spot_router
 from app.api.travel_plan_api import router as travel_plan_router
 from app.api.travel_plan_item_api import router as travel_plan_item_router
+from app.api.booking import router as booking_router
 from app.db.database import init_db
 from app.models.schemas import ChatRequest
 
@@ -40,6 +41,7 @@ app.include_router(scenic_spot_router)
 app.include_router(exhibition_hall_router)
 app.include_router(travel_plan_router)
 app.include_router(travel_plan_item_router)
+app.include_router(booking_router)
 
 
 @app.on_event("startup")

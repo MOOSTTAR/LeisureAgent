@@ -37,3 +37,8 @@ class Err:
     ITEM_TIME_INVALID = ("到达时间必须早于离开时间", 400)
     ITEM_BOOKING_FULL = ("预约名额已满", 400)
     ITEM_TIME_CONFLICT = ("时间段冲突", 409)
+
+    # ── 预约确认 ──
+    BOOKING_ALREADY_CONFIRMED = ("已经预约，无法重复预约", 400)
+    BOOKING_NOT_NEEDED = ("该地点无需预约", 200)
+    BOOKING_VENUE_NOT_FOUND = ("关联场所不存在", 404)

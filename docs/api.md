@@ -45,6 +45,7 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/travel-plan-items/{id}` | GET | 获取单个计划明细详情 |
 | `/api/travel-plan-items/{id}` | PUT | 更新计划明细信息 |
 | `/api/travel-plan-items/{id}` | DELETE | 删除明细 |
+| `/api/booking/confirm/{item_id}` | POST | 确认预约地点 |
 | `/chat/stream` | POST | SSE 流式聊天（Agent 核心入口） |
 | `/chat` | POST | 同步聊天（非流式） |
 | `/api/agent/sessions` | GET | 列出所有会话 |
@@ -411,6 +412,8 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `location_table_name` | string | 关联场所表名称 |
 | `location_id` | integer | 场所表中具体 ID |
 | `day_num` | integer | 第几天行程 |
+| `is_need_booking` | integer | 是否需要预约：0 不需要/1 需要 |
+| `is_had_booking` | integer | 是否已预约：0 未预约/1 已预约 |
 | `arrive_time` | string | 预计到达时间 |
 | `leave_time` | string | 预计离开时间 |
 | `stay_minute` | integer | 停留时长（分钟） |

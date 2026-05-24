@@ -10,7 +10,7 @@ class AgentState(TypedDict, total=False):
     """LangGraph Agent 全局状态。"""
 
     user_input: str
-    session_id: str
+    session_id: int
 
     intent: UserIntent | None
     scenario: str

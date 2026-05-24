@@ -572,7 +572,7 @@ Agent 核心入口。接收用户输入，执行完整规划流程，以 SSE（S
 | 参数 | 类型 | 必填 | 描述 |
 |------|------|------|------|
 | `message` | string | 是 | 用户输入消息（1-2000 字符） |
-| `session_id` | string | 否 | 会话 ID，空字符串表示创建新会话 |
+| `session_id` | int | 否 | 会话 ID，默认 0 表示创建新会话 |
 
 **SSE 事件类型：**
 
@@ -626,24 +626,55 @@ Agent 核心入口。接收用户输入，执行完整规划流程，以 SSE（S
 **前端接入示例：**
 
 ```javascript
-const eventSource = new EventSource('/api/chat/stream', {
-  method: 'POST',
-  body: JSON.stringify({ message: '下午带老婆孩子出去玩', session_id: '' })
-});
+async function streamChat(message, sessionId = 0) {
+  const response = await fetch('/api/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, session_id: sessionId })
+  });
 
-eventSource.addEventListener('token', (e) => {
-  const data = JSON.parse(e.data);
-  console.log('节点:', data.node, '步骤:', data.current_step);
-});
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
 
-eventSource.addEventListener('plan', (e) => {
-  const plan = JSON.parse(e.data);
-  // 展示方案，显示确认按钮
-});
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
 
-eventSource.addEventListener('done', () => {
-  eventSource.close();
-});
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // 保留不完整的最后一行
+
+    let currentEvent = '';
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7);
+      } else if (line.startsWith('data: ')) {
+        const data = JSON.parse(line.slice(6));
+        switch (currentEvent) {
+          case 'token':
+            console.log('节点:', data.node, '步骤:', data.current_step);
+            break;
+          case 'plan':
+            // 展示方案，显示确认按钮
+            console.log('方案:', data);
+            break;
+          case 'tool_result':
+            console.log('工具结果:', data);
+            break;
+          case 'done':
+            console.log('完成');
+            break;
+          case 'error':
+            console.error('错误:', data);
+            break;
+        }
+      }
+    }
+  }
+}
+
+streamChat('下午带老婆孩子出去玩');
 ```
 
 ---
@@ -660,7 +691,7 @@ eventSource.addEventListener('done', () => {
 
 ```json
 {
-  "session_id": "abc123",
+  "session_id": 1,
   "reply": "搞定了，14:00 出发...",
   "plan": { ... },
   "share_text": "搞定了，14:00 出发...",

@@ -55,6 +55,7 @@ class ChatRequest(BaseModel):
     """聊天请求"""
     message: str = Field(min_length=1, max_length=2000)
     session_id: int = Field(default=0)
+    auto_execute: bool = Field(default=True, description="是否自动执行预约/购票动作")
 
 
 class ChatEvent(BaseModel):
@@ -153,7 +154,7 @@ class AgentSessionSummary(BaseModel):
 
 class ChatResponse(BaseModel):
     """聊天响应"""
-    session_id: str
+    session_id: int
     reply: str
     plan: AgentPlan | None = None
     tool_results: list[dict[str, Any]] = Field(default_factory=list)

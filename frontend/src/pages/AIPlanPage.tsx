@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   CaretLeft,
   CaretRight,
+  Plus,
   Trash,
   User,
   Robot,
@@ -545,6 +546,7 @@ function ConversationSidebar({
   isLoading,
   onSelect,
   onDelete,
+  onNew,
 }: {
   isOpen: boolean
   sessions: AgentSession[]
@@ -552,6 +554,7 @@ function ConversationSidebar({
   isLoading: boolean
   onSelect: (id: number) => void
   onDelete: (id: number) => void
+  onNew: () => void
 }) {
   return (
     <motion.div
@@ -560,10 +563,17 @@ function ConversationSidebar({
       transition={{ duration: 0.25, ease: 'easeInOut' }}
     >
       <div className="w-[260px] flex flex-col h-full">
-        <div className="flex items-center px-3 py-3 border-b border-slate-100">
+        <div className="flex items-center justify-between px-3 py-3 border-b border-slate-100">
           <span className="text-sm font-medium text-slate-500">
             {isLoading ? '加载中...' : `${sessions.length} 个会话`}
           </span>
+          <button
+            onClick={onNew}
+            className="flex items-center gap-1 text-sm text-white bg-blue-500 hover:bg-blue-600 px-2.5 py-1 rounded-lg transition-colors"
+          >
+            <Plus size={14} weight="bold" />
+            新对话
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -578,7 +588,7 @@ function ConversationSidebar({
                 onClick={() => onSelect(s.id)}
                 className={`group flex items-center gap-2 px-3 py-2.5 mx-2 mt-1 rounded-lg cursor-pointer transition-colors ${
                   activeId === s.id
-                    ? 'bg-blue-50/80 text-blue-700'
+                    ? 'bg-blue-500 text-white shadow-sm'
                     : 'hover:bg-slate-50 text-slate-700'
                 }`}
               >
@@ -588,7 +598,11 @@ function ConversationSidebar({
                     e.stopPropagation()
                     onDelete(s.id)
                   }}
-                  className="hidden group-hover:flex p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                  className={`hidden group-hover:flex p-1.5 rounded transition-colors ${
+                    activeId === s.id
+                      ? 'text-white/70 hover:text-white hover:bg-white/20'
+                      : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+                  }`}
                 >
                   <Trash size={13} />
                 </button>
@@ -721,6 +735,14 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     } catch {
       toast.error('删除失败')
     }
+  }
+
+  const handleNew = () => {
+    setActiveSessionId(null)
+    setMessages([])
+    setCurrentPlan(null)
+    setExecuteResults(null)
+    setStreamProgress('')
   }
 
   const handleSend = async (text: string) => {
@@ -857,6 +879,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
               isLoading={sessionsLoading}
               onSelect={handleSelectSession}
               onDelete={handleDeleteSession}
+              onNew={handleNew}
             />
           </motion.div>
 

@@ -38,8 +38,16 @@ def search_local_candidates(scenario: str, constraints: dict[str, Any]) -> dict[
         "exhibition_hall": [_with_distance(item) for item in exhibitions],
     }
 
+    cuisine_type = constraints.get("cuisine_type")
+
     for key, items in pools.items():
         pools[key] = [item for item in items if item["distance"] <= max_distance]
+        # 菜系/类型偏好过滤
+        if cuisine_type and key == "restaurant":
+            pools[key] = [
+                item for item in pools[key]
+                if cuisine_type in str(item.get("cuisine_type", ""))
+            ]
         pools[key].sort(key=lambda item: item["distance"])
 
     if scenario == "family":
@@ -74,12 +82,13 @@ def persist_agent_plan(session_id: int, plan: AgentPlan) -> AgentPlan:
                 "plan_id": plan_id,
                 "location_table_name": item.location_table_name,
                 "location_id": item.location_id,
-                "day_num": 1,
+                "day_num": item.day_num,
                 "is_need_booking": is_need,
                 "is_had_booking": 0,
                 "arrive_time": item.arrive_time,
                 "leave_time": item.leave_time,
                 "stay_minute": item.stay_minute,
+                "travel_mode": item.travel_mode,
                 "remark": item.remark,
             }
         )
@@ -196,63 +205,87 @@ def build_share_payload(plan_id: int) -> dict[str, Any] | None:
 
 def _with_distance(item: dict[str, Any]) -> dict[str, Any]:
     row = dict(item)
-    row["distance"] = calc_distance(row["x"], row["y"])
+    try:
+        row["distance"] = calc_distance(int(row["x"]), int(row["y"]))
+    except (ValueError, TypeError):
+        row["distance"] = 9999999
     return row
 
 
+def _to_int(val: Any, default: int = 0) -> int:
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_str(val: Any) -> str:
+    """Safely convert any value to string for 'in' checks."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val
+    try:
+        return str(val)
+    except Exception:
+        return ""
+
+
 def _can_book(item: dict[str, Any]) -> bool:
+    max_booking = _to_int(item.get("max_booking_count", -1), -1)
+    current = _to_int(item.get("current_booking_count", 0))
     return bool(
         item.get("booking_hours")
         and item.get("booking_hours") != "不能预约"
-        and item.get("max_booking_count", -1) != -1
-        and item.get("current_booking_count", 0) < item.get("max_booking_count", 0)
+        and max_booking != -1
+        and current < max_booking
     )
 
 
 def _family_restaurant_score(item: dict[str, Any]) -> float:
-    tags = item.get("tags") or []
+    tags = _safe_str(item.get("tags")) or ""
     score = 0
     if "亲子餐厅" in tags or "适合带娃" in tags:
         score += 8
-    if item.get("cuisine_type") in {"日料", "粤菜", "中餐"}:
+    if _safe_str(item.get("cuisine_type", "")) in {"日料", "粤菜", "中餐"}:
         score += 3
     if "环境好" in tags or "有包间" in tags:
         score += 2
     if _can_book(item):
         score += 3
-    return score - item["distance"] / 100
+    return score - _to_int(item["distance"]) / 100
 
 
 def _friends_restaurant_score(item: dict[str, Any]) -> float:
-    tags = item.get("tags") or []
+    tags = _safe_str(item.get("tags")) or ""
     score = 0
-    if item.get("cuisine_type") in {"火锅", "中餐", "烧烤", "西餐"}:
+    if _safe_str(item.get("cuisine_type", "")) in {"火锅", "中餐", "烧烤", "西餐"}:
         score += 5
     if "网红店" in tags or "环境好" in tags:
         score += 3
     if _can_book(item):
         score += 2
-    return score - item["distance"] / 100
+    return score - _to_int(item["distance"]) / 100
 
 
 def _family_activity_score(item: dict[str, Any]) -> float:
     score = 0
     if item.get("park_theme") in {"亲子", "童话", "卡通", "海洋"}:
         score += 8
-    if item.get("queue_time", -1) in {-1, 5, 10}:
+    if _to_int(item.get("queue_time", -1)) in {-1, 5, 10}:
         score += 2
-    return score - item["distance"] / 100
+    return score - _to_int(item["distance"]) / 100
 
 
 def _friends_exhibition_score(item: dict[str, Any]) -> float:
     score = 0
     if item.get("hall_type") in {"艺术", "综合", "科技"}:
         score += 5
-    if item.get("interactive_project") == 1:
+    if _to_int(item.get("interactive_project")) == 1:
         score += 2
-    if item.get("crowd_level", 2) <= 2:
+    if _to_int(item.get("crowd_level", 2)) <= 2:
         score += 2
-    return score - item["distance"] / 100
+    return score - _to_int(item["distance"]) / 100
 
 
 def _check_need_booking(table_name: str, location_id: int) -> int:
@@ -261,9 +294,137 @@ def _check_need_booking(table_name: str, location_id: int) -> int:
     if not location:
         return 0
     if table_name == "restaurant":
-        if _can_book(location) or location.get("queue_time", -1) > 0:
+        if _can_book(location) or _to_int(location.get("queue_time", -1)) > 0:
             return 1
         return 0
     if table_name in {"amusement_park", "exhibition_hall", "scenic_spot"}:
         return 1 if _can_book(location) else 0
     return 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# 咨询/浏览模式工具（Inquiry）
+# ═══════════════════════════════════════════════════════════════
+
+_CATEGORY_KEYWORDS: dict[str, list[str]] = {
+    "restaurant": ["面", "粉", "饭", "菜", "餐", "火锅", "烧烤", "日料", "西餐", "粤菜", "中餐",
+                   "小吃", "点心", "甜品", "奶茶", "咖啡", "素食", "海鲜", "自助", "拉面", "米线"],
+    "amusement_park": ["游乐园", "乐园", "主题公园", "游乐场", "过山车", "摩天轮", "欢乐谷"],
+    "scenic_spot": ["公园", "爬山", "山", "湖", "河", "古迹", "寺庙", "园林", "长城", "故宫"],
+    "exhibition_hall": ["展", "博物馆", "美术馆", "科技馆", "画廊", "艺术", "展览"],
+    "mall": ["商场", "购物", "逛街", "买", "大悦城", "万达", "超市", "影院", "电影院"],
+}
+
+_CATEGORY_TO_TABLE: dict[str, str] = {
+    "restaurant": "restaurant",
+    "amusement_park": "amusement_park",
+    "scenic_spot": "scenic_spot",
+    "exhibition_hall": "exhibition_hall",
+    "mall": "mall",
+}
+
+
+def search_inquiry(user_input: str, constraints: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """精确搜索：根据用户查询关键词匹配场所。用于咨询/浏览模式。"""
+    import re
+
+    max_distance = (constraints or {}).get("max_distance", 5000)
+    # 尝试从输入中提取距离限制
+    dist_match = re.search(r"(\d+)\s*(km|公里|千米|m|米)", user_input)
+    if dist_match:
+        num = int(dist_match.group(1))
+        unit = dist_match.group(2)
+        max_distance = num * 1000 if unit in ("km", "公里", "千米") else num
+
+    # 确定要搜索哪些表
+    tables_to_search: set[str] = set()
+    for table, keywords in _CATEGORY_KEYWORDS.items():
+        if any(kw in user_input for kw in keywords):
+            tables_to_search.add(table)
+
+    # 如果没匹配到任何关键词，搜索所有表（兜底）
+    if not tables_to_search:
+        tables_to_search = {"restaurant", "amusement_park", "scenic_spot", "exhibition_hall", "mall"}
+
+    # 提取菜系/类型关键词做进一步筛选
+    cuisine_keywords = ["火锅", "烧烤", "日料", "西餐", "粤菜", "中餐", "川菜", "湘菜",
+                        "面食", "面", "粉", "素食", "海鲜", "自助", "小吃", "家常菜",
+                        "饺子", "烤鸭", "拉面", "米线", "东南亚菜", "韩餐", "寿司"]
+    target_cuisine: str | None = None
+    for ck in cuisine_keywords:
+        if ck in user_input:
+            target_cuisine = ck
+            break
+
+    results: list[dict[str, Any]] = []
+    for table_name in tables_to_search:
+        service_map = {
+            "restaurant": restaurant_service,
+            "mall": mall_service,
+            "amusement_park": amusement_park_service,
+            "scenic_spot": scenic_spot_service,
+            "exhibition_hall": exhibition_hall_service,
+        }
+        service = service_map.get(table_name)
+        if not service:
+            continue
+        items, _ = service.list_all(page=1, page_size=9999)
+        for item in items:
+            item = dict(item)
+            try:
+                dist = calc_distance(int(item["x"]), int(item["y"]))
+            except (ValueError, TypeError):
+                continue
+            if dist > max_distance:
+                continue
+            # 菜系筛选
+            if target_cuisine and table_name == "restaurant":
+                cuisine = str(item.get("cuisine_type", ""))
+                if target_cuisine not in cuisine:
+                    continue
+            item["distance"] = dist
+            item["available"] = _check_availability(item)
+            item["can_book"] = _can_book(item)
+            item["category"] = table_name
+            results.append(item)
+
+    results.sort(key=lambda x: x["distance"])
+    return results
+
+
+def _check_availability(item: dict[str, Any]) -> bool:
+    """检查地点是否可用（未满）。"""
+    max_booking = _to_int(item.get("max_booking_count", 0))
+    if max_booking <= 0:
+        return True
+    current = _to_int(item.get("current_booking_count", 0))
+    return current < max_booking
+
+
+def _is_fully_booked(item: dict[str, Any]) -> bool:
+    """判断是否预约已满。"""
+    max_booking = _to_int(item.get("max_booking_count", 0))
+    if max_booking <= 0:
+        return False
+    return _to_int(item.get("current_booking_count", 0)) >= max_booking
+
+
+def _get_needed_categories(scenario: str) -> list[str]:
+    """根据场景返回需要的场所类别。"""
+    if scenario == "family":
+        return ["amusement_park", "scenic_spot", "mall", "restaurant"]
+    if scenario == "friends":
+        return ["exhibition_hall", "scenic_spot", "mall", "restaurant"]
+    return ["restaurant", "mall", "scenic_spot"]
+
+
+def _category_label(category: str) -> str:
+    """场所类别的中文标签。"""
+    labels = {
+        "restaurant": "餐厅",
+        "mall": "商场",
+        "amusement_park": "游乐园",
+        "scenic_spot": "户外景点",
+        "exhibition_hall": "展馆",
+    }
+    return labels.get(category, category)

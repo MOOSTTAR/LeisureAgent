@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS travel_plan_item (
     arrive_time TEXT DEFAULT NULL, -- 预计到达时间
     leave_time TEXT DEFAULT NULL, -- 预计离开时间
     stay_minute INTEGER DEFAULT 0, -- 停留时长(分钟)
+    travel_mode TEXT DEFAULT NULL, -- 到达方式: walking/biking/driving/subway, 首项NULL
     remark TEXT DEFAULT NULL, -- 本段行程备注
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 创建时间
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP -- 更新时间
@@ -272,6 +273,16 @@ def init_db() -> None:
     """创建表并写入种子数据（幂等安全，应用启动时调用一次）。"""
     conn = get_connection()
     conn.executescript(_SCHEMA)
+    # Migration: 已有数据库加 travel_mode 列（safe for existing DBs）
+    try:
+        conn.execute("ALTER TABLE travel_plan_item ADD COLUMN travel_mode TEXT DEFAULT NULL")
+    except Exception:
+        pass
+    # Migration: 已有数据库加 processing_log 列
+    try:
+        conn.execute("ALTER TABLE agent_session ADD COLUMN processing_log TEXT DEFAULT NULL")
+    except Exception:
+        pass
     conn.commit()
     _seed_mock_data(conn)
 

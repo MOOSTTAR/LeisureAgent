@@ -58,6 +58,8 @@ def create_chat_model(
             temperature=temp,
             max_tokens=max_tok,
             timeout=settings.timeout,
+            reasoning_effort="medium",
+            extra_body={"thinking": {"type": "enabled"}},
         )
 
     if provider == LLMProvider.OPENAI_COMPATIBLE:

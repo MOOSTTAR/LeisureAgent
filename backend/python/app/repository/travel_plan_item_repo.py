@@ -51,7 +51,7 @@ def search(
     conn = get_connection()
     if plan_id is not None:
         rows = conn.execute(
-            "SELECT * FROM travel_plan_item WHERE plan_id=? ORDER BY id LIMIT ? OFFSET ?",
+            "SELECT * FROM travel_plan_item WHERE plan_id=? ORDER BY day_num, arrive_time LIMIT ? OFFSET ?",
             (plan_id, limit, offset),
         ).fetchall()
     else:

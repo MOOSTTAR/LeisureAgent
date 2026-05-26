@@ -99,6 +99,7 @@ export interface TravelPlanItem {
   arrive_time: string | null
   leave_time: string | null
   stay_minute: number
+  travel_mode: string | null
   remark: string | null
   is_need_booking: number
   is_had_booking: number
@@ -112,6 +113,8 @@ export interface ResolvedLocation {
   typeLabel: string
   subtypeLabel: string | null
   theme: 'orange' | 'emerald' | 'pink' | 'violet' | 'amber'
+  x: number
+  y: number
 }
 
 // ==================== Param Types ====================
@@ -419,10 +422,14 @@ export interface AgentMessage {
 
 export interface AgentSessionDetail extends AgentSession {
   messages: AgentMessage[]
+  plan?: AgentPlan | null
+  processing_log?: string | null
 }
 
 export interface AgentPlanItem {
   step_order: number
+  day_num: number
+  day_label: string
   activity_type: string
   location_table_name: string
   location_id: number
@@ -433,6 +440,9 @@ export interface AgentPlanItem {
   stay_minute: number
   remark: string
   estimated_cost: number
+  travel_mode: string | null
+  location_x: number
+  location_y: number
 }
 
 export interface AgentPlan {
@@ -451,6 +461,8 @@ export interface TokenEvent {
   node: string
   current_step: string
   message: string
+  session_id?: number
+  day_count?: number
 }
 
 export interface ExecuteResult {
@@ -459,6 +471,53 @@ export interface ExecuteResult {
   location_name: string
   status: string
   message: string
+}
+
+// ── 新增: 咨询/浏览模式 ──
+
+export interface InquiryItem {
+  id: number
+  name: string
+  address: string
+  category: string
+  table_name: string
+  distance: number
+  tags?: string[]
+  queue_time?: number
+  price?: number
+  can_book: boolean
+  available: boolean
+}
+
+export interface InquiryEvent {
+  items: InquiryItem[]
+  message: string
+  query: string
+}
+
+// ── 新增: 异常/警告 ──
+
+export interface ExceptionItem {
+  type: string
+  category: string
+  location_name?: string
+  detail: string
+  severity: string
+}
+
+export interface ExceptionEvent {
+  exceptions: ExceptionItem[]
+  warnings: string[]
+}
+
+// ── 新增: 会话阶段 ──
+
+export interface StageEvent {
+  stage: 'chatting' | 'planning' | 'reviewing' | 'executed'
+}
+
+export interface StepEvent {
+  label: string
 }
 
 interface ExecuteResponse {
@@ -485,6 +544,10 @@ export async function executePlan(planId: number): Promise<ExecuteResponse> {
   return post<ExecuteResponse>(`/api/agent/plans/${planId}/execute`)
 }
 
+export async function updateTravelModes(planId: number, modes: (string | null)[]): Promise<UpdateDeleteResponse> {
+  return put<UpdateDeleteResponse>(`/api/agent/plans/${planId}/travel-modes`, modes)
+}
+
 export async function getPlanShare(planId: number): Promise<ItemResponse<unknown>> {
   return get<ItemResponse<unknown>>(`/api/agent/plans/${planId}/share`)
 }
@@ -497,6 +560,12 @@ export async function chatStream(
     onPlan?: (plan: AgentPlan) => void
     onDone?: () => void
     onError?: (message: string) => void
+    onInquiry?: (data: InquiryEvent) => void
+    onGuardReject?: (message: string) => void
+    onExceptions?: (data: ExceptionEvent) => void
+    onStage?: (data: StageEvent) => void
+    onExecuteResult?: (data: ExecuteResult[]) => void
+    onStep?: (data: StepEvent) => void
   },
   signal?: AbortSignal,
 ): Promise<void> {
@@ -504,7 +573,7 @@ export async function chatStream(
   const res = await fetch(`${BASE_URL}/api/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, session_id: sessionId }),
+    body: JSON.stringify({ message, session_id: sessionId, auto_execute: false }),
     signal,
   })
 
@@ -547,6 +616,24 @@ export async function chatStream(
               case 'error':
                 callbacks.onError?.(parsed.message || '未知错误')
                 break
+              case 'inquiry':
+                callbacks.onInquiry?.(parsed)
+                break
+              case 'guard_reject':
+                callbacks.onGuardReject?.(parsed.message || '请询问与周末出行计划相关的问题。')
+                break
+              case 'exceptions':
+                callbacks.onExceptions?.(parsed)
+                break
+              case 'stage':
+                callbacks.onStage?.(parsed)
+                break
+              case 'execute_result':
+                callbacks.onExecuteResult?.(parsed)
+                break
+              case 'step':
+                callbacks.onStep?.(parsed)
+                break
             }
           } catch { /* skip unparseable data */ }
         }
@@ -571,41 +658,41 @@ export async function resolveLocation(tableName: string, locationId: number): Pr
   const labelInfo = TABLE_NAME_LABELS[tableName]
   if (!labelInfo) return null
 
-  let found: { name: string; address: string; subtypeLabel?: string } | null = null
+  let found: { name: string; address: string; subtypeLabel?: string; x: number; y: number } | null = null
 
   switch (tableName) {
     case 'restaurant': {
       const res = await getRestaurantById(locationId)
       if (res.code === 0 && res.data) {
-        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.cuisine_type ?? undefined }
+        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.cuisine_type ?? undefined, x: res.data.x, y: res.data.y }
       }
       break
     }
     case 'scenic_spot': {
       const res = await getParkById(locationId)
       if (res.code === 0 && res.data) {
-        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.spot_type ?? undefined }
+        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.spot_type ?? undefined, x: res.data.x, y: res.data.y }
       }
       break
     }
     case 'mall': {
       const res = await getMallById(locationId)
       if (res.code === 0 && res.data) {
-        found = { name: res.data.name, address: res.data.address }
+        found = { name: res.data.name, address: res.data.address, x: res.data.x, y: res.data.y }
       }
       break
     }
     case 'exhibition_hall': {
       const res = await getExhibitionById(locationId)
       if (res.code === 0 && res.data) {
-        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.hall_type ?? undefined }
+        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.hall_type ?? undefined, x: res.data.x, y: res.data.y }
       }
       break
     }
     case 'amusement_park': {
       const res = await getAmusementParkById(locationId)
       if (res.code === 0 && res.data) {
-        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.park_theme ?? undefined }
+        found = { name: res.data.name, address: res.data.address, subtypeLabel: res.data.park_theme ?? undefined, x: res.data.x, y: res.data.y }
       }
       break
     }
@@ -618,5 +705,7 @@ export async function resolveLocation(tableName: string, locationId: number): Pr
     typeLabel: labelInfo.typeLabel,
     subtypeLabel: found.subtypeLabel ?? null,
     theme: labelInfo.theme,
+    x: found.x,
+    y: found.y,
   }
 }

@@ -55,7 +55,7 @@ class ChatRequest(BaseModel):
     """聊天请求"""
     message: str = Field(min_length=1, max_length=2000)
     session_id: int = Field(default=0)
-    auto_execute: bool = Field(default=True, description="是否自动执行预约/购票动作")
+    auto_execute: bool = Field(default=False, description="是否自动执行预约/购票动作")
 
 
 class ChatEvent(BaseModel):
@@ -103,6 +103,8 @@ class BookingResult(BaseModel):
 class AgentPlanItem(BaseModel):
     """Agent 生成的单个行程步骤"""
     step_order: int
+    day_num: int = Field(default=1, ge=1)
+    day_label: str = Field(default="")
     activity_type: str
     location_table_name: str
     location_id: int
@@ -113,6 +115,9 @@ class AgentPlanItem(BaseModel):
     stay_minute: int
     remark: str = ""
     estimated_cost: float = 0
+    travel_mode: str | None = None  # walking | biking | driving | subway | null(首项)
+    location_x: int = 0
+    location_y: int = 0
 
 
 class AgentOrder(BaseModel):
@@ -172,6 +177,7 @@ class TravelPlanItemCreate(BaseModel):
     arrive_time: str = Field(default="", pattern=r"^\d{1,2}:\d{2}$")
     leave_time: str = Field(default="", pattern=r"^\d{1,2}:\d{2}$")
     stay_minute: int = Field(default=0, ge=0)
+    travel_mode: str | None = Field(default=None)
     remark: str = Field(default="")
     is_need_booking: int = Field(default=0, ge=0, le=1)
     is_had_booking: int = Field(default=0, ge=0, le=1)

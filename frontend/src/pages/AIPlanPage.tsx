@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CaretLeft,
@@ -14,21 +14,34 @@ import {
   Spinner,
   CheckCircle,
   XCircle,
+  Warning,
+  Info,
+  Share,
 } from '@phosphor-icons/react'
 import { toast } from '../components/Toast'
 import {
   getAgentSessions,
   getAgentSession,
   deleteAgentSession,
-  executePlan,
   chatStream,
+  resolveLocation,
   type AgentSession,
   type AgentMessage,
   type AgentPlan,
   type AgentPlanItem,
+  type ResolvedLocation,
   type TokenEvent,
+  updateTravelModes,
   type ExecuteResult,
+  type InquiryEvent,
+  type ExceptionEvent,
+  type StageEvent,
+  type StepEvent,
 } from '../api'
+import { TravelModeSelector } from '../components/TravelModeSelector'
+import { PlanMapView } from '../components/PlanMapView'
+import { ShareModal } from '../components/ShareModal'
+import { encodePlanId } from '../utils/shareCode'
 
 // ==================== Types ====================
 
@@ -73,6 +86,35 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   buffer: '休息',
 }
 
+const TRAVEL_MODE_LABELS: Record<string, string> = {
+  walking: '步行',
+  biking: '骑车',
+  driving: '开车',
+  subway: '地铁',
+}
+
+const TRAVEL_MODE_ICONS: Record<string, string> = {
+  walking: '🚶',
+  biking: '🚴',
+  driving: '🚗',
+  subway: '🚇',
+}
+
+const TRAVEL_SPEEDS: Record<string, number> = {
+  walking: 80, biking: 250, driving: 500, subway: 600,
+}
+
+function calcDist(x1: number, y1: number, x2: number, y2: number): number {
+  return Math.abs(x1 - x2) + Math.abs(y1 - y2)
+}
+
+function estTravelMins(dist: number, mode: string): number {
+  if (!mode || !TRAVEL_SPEEDS[mode]) return 0
+  let mins = dist / TRAVEL_SPEEDS[mode]
+  if (mode === 'subway') mins += 10
+  return Math.max(1, Math.round(mins))
+}
+
 const TABLE_TYPE_INFO: Record<string, { typeLabel: string; theme: string; dot: string }> = {
   restaurant: { typeLabel: '餐厅', theme: 'bg-orange-50 text-orange-600 border-orange-200', dot: 'bg-orange-400' },
   scenic_spot: { typeLabel: '景点', theme: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-400' },
@@ -82,12 +124,73 @@ const TABLE_TYPE_INFO: Record<string, { typeLabel: string; theme: string; dot: s
 }
 
 const NODE_LABELS: Record<string, string> = {
-  load_session: '正在准备...',
-  analyze_goal: '正在分析需求...',
+  load_session: '正在加载会话数据...',
+  classify_intent: '正在分类意图（Agent）...',
+  analyze_goal: '正在解析出行需求（Agent 提取场景/偏好/天数）...',
   search_candidates: '正在搜索候选地点...',
-  compose_plan: '正在生成方案...',
-  persist_plan: '正在保存方案...',
+  search_inquiry: '正在搜索...',
+  detect_exceptions: '正在检查地点可用性...',
+  adjust_search: '正在扩大搜索范围...',
+  compose_plan: 'Agent 正在编排行程方案...',
+  persist_plan: '正在保存方案到数据库...',
+  present_plan: '正在整理方案...',
+  present_inquiry: '正在整理搜索结果...',
+  analyze_feedback: '正在理解修改意见（Agent）...',
+  execute_bookings: '正在执行预约...',
+  replan_execute: '正在重新规划替代方案...',
   finalize: '正在生成分享文案...',
+  finalize_executed: '预约完成',
+}
+
+// 每个节点独立为一个步骤，不再跨节点合并阶段
+// 快速步骤（< 0.5s）会被吸收到下一步的标签中
+const NODE_PHASES: Record<string, string> = {
+  load_session: 'load',
+  classify_intent: 'classify',
+  analyze_goal: 'analyze',
+  search_candidates: 'search',
+  search_inquiry: 'search',
+  detect_exceptions: 'detect',
+  adjust_search: 'adjust',
+  compose_plan: 'compose',
+  persist_plan: 'persist',
+  present_plan: 'present',
+  present_inquiry: 'present',
+  analyze_feedback: 'feedback',
+  execute_bookings: 'execute',
+  replan_execute: 'execute',
+  finalize: 'finalize',
+  finalize_executed: 'finalize',
+  direct_reply: 'reply',
+}
+
+// ==================== ErrorBoundary ====================
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; errorMsg: string }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false, errorMsg: '' }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('PlanView render error:', error.message, error.stack, errorInfo.componentStack)
+    this.setState({ errorMsg: error.message })
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <span className="text-sm text-slate-400">页面渲染出错，请刷新重试</span>
+          {this.state.errorMsg && (
+            <span className="text-xs text-slate-300 max-w-md text-center break-all">{this.state.errorMsg}</span>
+          )}
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 // ==================== DecorativeBubble ====================
@@ -223,30 +326,188 @@ function MessageBubble({
   )
 }
 
+// ==================== InquiryModal ====================
+
+function InquiryModal({
+  data,
+  onClose,
+  onAddToPlan,
+  onOther,
+}: {
+  data: InquiryEvent
+  onClose: () => void
+  onAddToPlan: (itemNames: string[]) => void
+  onOther: (feedback: string) => void
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [otherText, setOtherText] = useState('')
+
+  const toggleItem = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleAddSelected = () => {
+    const names = data.items.filter((item) => selected.has(item.id)).map((item) => item.name)
+    if (names.length > 0) onAddToPlan(names)
+  }
+
+  const handleAddAll = () => {
+    onAddToPlan(data.items.map((item) => item.name))
+  }
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <motion.div
+        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-w-lg w-full mx-0 sm:mx-4 max-h-[70vh] overflow-hidden flex flex-col"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h3 className="text-base font-semibold text-slate-900">查询结果</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{data.message}</p>
+        </div>
+
+        {/* Item List */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+          {data.items.map((item) => {
+            const isSelected = selected.has(item.id)
+            return (
+              <div
+                key={`${item.category}-${item.id}`}
+                onClick={() => toggleItem(item.id)}
+                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                  isSelected ? 'border-blue-300 bg-blue-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                  isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300'
+                }`}>
+                  {isSelected && <CheckCircle size={14} weight="fill" className="text-white" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-900 truncate">{item.name}</span>
+                    {!item.available && (
+                      <span className="text-xs text-red-500 bg-red-50 px-1.5 py-0.5 rounded">已满</span>
+                    )}
+                    {item.can_book && item.available && (
+                      <span className="text-xs text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">可预约</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {item.address} · {item.distance}m
+                    {item.queue_time && item.queue_time > 0 ? ` · 排队约${item.queue_time}分钟` : ''}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Actions — Yes/No/Other */}
+        <div className="px-5 py-3 border-t border-slate-100 space-y-2">
+          <button
+            onClick={selected.size > 0 ? handleAddSelected : handleAddAll}
+            className="w-full py-2.5 text-sm font-semibold text-white bg-blue-500 rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all"
+          >
+            {selected.size > 0 ? `添加选中 (${selected.size})` : '全部添加'} (Yes)
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-2 text-sm text-slate-500 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+          >
+            不要了 (No)
+          </button>
+          <div className="flex items-center gap-2">
+            <input
+              value={otherText}
+              onChange={(e) => setOtherText(e.target.value)}
+              placeholder="Other — 输入其他需求..."
+              className="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-300 focus:bg-white transition-colors placeholder:text-slate-400"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && otherText.trim()) {
+                  onOther(otherText.trim())
+                  setOtherText('')
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                if (otherText.trim()) {
+                  onOther(otherText.trim())
+                  setOtherText('')
+                }
+              }}
+              disabled={!otherText.trim()}
+              className="shrink-0 px-4 py-2 bg-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              提交
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ==================== PlanView ====================
 
 function PlanView({
   plan,
   executeResults,
   executing,
+  exceptions,
+  warnings,
+  resolvedLocations,
+  dayCount,
+  travelModeConfirmed,
   onExecute,
   onRegenerate,
+  onOther,
+  onShowMap,
+  onShowTravelMode,
+  onShare,
 }: {
   plan: AgentPlan
   executeResults: ExecuteResult[] | null
   executing: boolean
+  exceptions: ExceptionEvent | null
+  warnings: string[]
+  resolvedLocations: Map<number, ResolvedLocation | null>
+  dayCount: number
+  travelModeConfirmed: boolean
   onExecute: () => void
   onRegenerate: () => void
+  onOther: (feedback: string) => void
+  onShowMap: () => void
+  onShowTravelMode: () => void
+  onShare: () => void
 }) {
-  const itemsByType = useMemo(() => {
-    const map = new Map<string, AgentPlanItem[]>()
+  const [otherText, setOtherText] = useState('')
+  const days = useMemo(() => {
+    const map = new Map<string, { key: number; label: string; items: AgentPlanItem[] }>()
     for (const item of plan.items) {
-      const key = item.activity_type
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(item)
+      const label = item.day_label || `第${item.day_num || 1}天`
+      if (!map.has(label)) map.set(label, { key: item.day_num || 1, label, items: [] })
+      map.get(label)!.items.push(item)
     }
-    return map
+    return [...map.values()].sort((a, b) => a.key - b.key)
   }, [plan.items])
+  const isMultiDay = days.length > 1
 
   const allResults = plan.items.map((item) => {
     if (!executeResults) return null
@@ -255,7 +516,7 @@ function PlanView({
     ) ?? null
   })
 
-  const hasExecuted = executeResults !== null
+  const hasExecuted = executeResults !== null && executeResults.length > 0
 
   return (
     <motion.div
@@ -267,7 +528,29 @@ function PlanView({
       <div className="max-w-xl mx-auto">
         {/* Plan Header */}
         <div className="bg-white rounded-2xl border border-emerald-200/50 shadow-sm p-5 mb-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-1">{plan.title}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-lg font-semibold text-slate-900">{plan.title}</h3>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onShowMap}
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500 hover:text-emerald-600"
+              title="查看地图"
+            >
+              <MapPin size={18} weight="fill" />
+            </motion.button>
+            {plan.id != null && hasExecuted && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onShare}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500 hover:text-blue-500"
+                title="分享计划"
+              >
+                <Share size={18} weight="fill" />
+              </motion.button>
+            )}
+          </div>
           {plan.description && (
             <p className="text-sm text-slate-500 mb-3">{plan.description}</p>
           )}
@@ -275,112 +558,281 @@ function PlanView({
             <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 font-medium">
               {plan.travel_type}
             </span>
+            {isMultiDay ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-600 font-semibold border border-indigo-200">
+                {days.map((d) => d.label).join(' + ')} · {days.length} 天行程
+              </span>
+            ) : dayCount > 1 ? (
+              <span className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-600 font-semibold border border-amber-200">
+                {dayCount} 天行程
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 border border-slate-200">
+                单日行程
+              </span>
+            )}
             <span>预估费用 <span className="text-slate-900 font-medium">¥{plan.total_cost}</span></span>
             <span>共 {plan.items.length} 个行程</span>
           </div>
         </div>
 
-        {/* Timeline */}
-        <div className="relative pl-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-          {plan.items.map((item, idx) => {
-            const info = TABLE_TYPE_INFO[item.location_table_name] ?? TABLE_TYPE_INFO.restaurant
-            const activityLabel = ACTIVITY_TYPE_LABELS[item.activity_type] || item.activity_type
-
-            return (
-              <div key={idx} className="relative mb-4 last:mb-0">
-                <div className={`absolute -left-[26px] top-3 w-3 h-3 rounded-full border-2 border-white ${info.dot} z-10`} />
-
-                <div className={`bg-white rounded-xl border ${info.theme.split(' ')[2]} shadow-sm overflow-hidden`}>
-                  {(item.arrive_time || item.leave_time) && (
-                    <div className={`flex items-center gap-3 px-4 py-2.5 ${info.theme.split(' ')[0]} border-b ${info.theme.split(' ')[2]}`}>
-                      <Clock size={14} className={info.theme.split(' ')[1]} />
-                      <span className={`text-sm font-medium ${info.theme.split(' ')[1]}`}>
-                        {item.arrive_time || '--'} — {item.leave_time || '--'}
-                      </span>
-                      {item.stay_minute > 0 && (
-                        <span className={`text-xs ${info.theme.split(' ')[1]} opacity-70`}>
-                          停留 {item.stay_minute} 分钟
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${info.theme.split(' ')[0]} ${info.theme.split(' ')[1]}`}>
-                        {info.typeLabel}
-                      </span>
-                      <span className="px-2 py-0.5 text-xs rounded-md bg-slate-100 text-slate-500">
-                        {activityLabel}
-                      </span>
-                      {item.estimated_cost > 0 && (
-                        <span className="text-xs text-slate-400">¥{item.estimated_cost}</span>
-                      )}
-                    </div>
-                    <h4 className="text-base font-medium text-slate-900">{item.location_name}</h4>
-                    <p className="flex items-center gap-1 text-xs text-slate-400 mt-1">
-                      <MapPin size={12} />
-                      {item.address}
-                    </p>
-                    {item.remark && (
-                      <p className="text-xs text-slate-400 mt-2 pt-2 border-t border-slate-100">
-                        {item.remark}
-                      </p>
-                    )}
+        {/* Timeline — grouped by day */}
+        <div className="space-y-6">
+          {days.map(({ key, label, items: dayItems }) => (
+            <div key={key}>
+              {isMultiDay && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-600">
+                    {label}
+                  </span>
+                  <div className="flex-1 h-px bg-indigo-100" />
+                </div>
+              )}
+              <div className="relative pl-8">
+                {/* 起点（家） */}
+                <div className="relative mb-1">
+                  <div className="absolute -left-[26px] top-1.5 w-3 h-3 rounded-full border-2 border-white bg-slate-400 z-10" />
+                  <div className="flex items-center gap-2 pl-1 py-1">
+                    <span className="text-sm font-medium text-slate-500">起点（家）</span>
                   </div>
                 </div>
 
-                {/* Execution result badge */}
-                {hasExecuted && allResults[idx] && (
-                  <div className={`mt-1 ml-1 flex items-center gap-1 text-xs ${
-                    allResults[idx]!.status === 'success' ? 'text-emerald-600' : 'text-red-500'
-                  }`}>
-                    {allResults[idx]!.status === 'success'
-                      ? <CheckCircle size={12} weight="fill" />
-                      : <XCircle size={12} weight="fill" />
-                    }
-                    {allResults[idx]!.message}
-                  </div>
-                )}
+                {/* 连接线 */}
+                <div className="absolute left-[11px] top-3 bottom-0 w-0.5 bg-slate-200" />
+
+                {dayItems.map((item) => {
+                  const globalIdx = plan.items.indexOf(item)
+                  const info = TABLE_TYPE_INFO[item.location_table_name] ?? TABLE_TYPE_INFO.restaurant
+                  const activityLabel = ACTIVITY_TYPE_LABELS[item.activity_type] || item.activity_type
+
+                  // 计算从上一地点到当前地点的距离和出行时间
+                  const prevItem = globalIdx > 0 ? plan.items[globalIdx - 1] : null
+                  const fromX = prevItem?.location_x ?? 0
+                  const fromY = prevItem?.location_y ?? 0
+                  const toX = item.location_x || 0
+                  const toY = item.location_y || 0
+                  const dist = calcDist(fromX, fromY, toX, toY)
+                  const mode = item.travel_mode || 'walking'
+                  const travelMins = estTravelMins(dist, mode)
+
+                  return (
+                    <div key={globalIdx} className="relative">
+                      {/* 出行方式连接段 */}
+                      <div className="flex items-center gap-3 py-2 pl-1">
+                        <div className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                        <span className="text-xs text-slate-400">
+                          {TRAVEL_MODE_ICONS[mode] || '🚶'} {TRAVEL_MODE_LABELS[mode] || '步行'}
+                          {travelMins > 0 && <> · 约{travelMins}分钟</>}
+                          {dist > 0 && <> · {dist >= 1000 ? `${(dist / 1000).toFixed(1)}km` : `约${dist}m`}</>}
+                        </span>
+                      </div>
+
+                      {/* 地点卡片 */}
+                      <div className="relative mb-1">
+                        <div className={`absolute -left-[26px] top-3 w-3 h-3 rounded-full border-2 border-white ${info.dot} z-10`} />
+
+                        <div className={`bg-white rounded-xl border ${info.theme.split(' ')[2]} shadow-sm overflow-hidden`}>
+                          {(item.arrive_time || item.leave_time) && (
+                            <div className={`flex items-center gap-3 px-4 py-2.5 ${info.theme.split(' ')[0]} border-b ${info.theme.split(' ')[2]}`}>
+                              <Clock size={14} className={info.theme.split(' ')[1]} />
+                              <span className={`text-sm font-medium ${info.theme.split(' ')[1]}`}>
+                                {item.arrive_time || '--'} — {item.leave_time || '--'}
+                              </span>
+                              {item.stay_minute > 0 && (
+                                <span className={`text-xs ${info.theme.split(' ')[1]} opacity-70`}>
+                                  停留 {item.stay_minute} 分钟
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="p-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-md ${info.theme.split(' ')[0]} ${info.theme.split(' ')[1]}`}>
+                                {info.typeLabel}
+                              </span>
+                              <span className="px-2 py-0.5 text-xs rounded-md bg-slate-100 text-slate-500">
+                                {activityLabel}
+                              </span>
+                              {item.estimated_cost > 0 && (
+                                <span className="text-xs text-slate-400">¥{item.estimated_cost}</span>
+                              )}
+                            </div>
+                            <h4 className="text-base font-medium text-slate-900">{item.location_name}</h4>
+                            <p className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                              <MapPin size={12} />
+                              {item.address}
+                            </p>
+                            {item.remark && (
+                              <p className="text-xs text-slate-400 mt-2 pt-2 border-t border-slate-100">
+                                {item.remark}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Execution result badge */}
+                        {hasExecuted && allResults[globalIdx] && (
+                          <div className={`mt-1 ml-1 flex items-center gap-1 text-xs ${
+                            allResults[globalIdx]!.status === 'success' ? 'text-emerald-600' : 'text-red-500'
+                          }`}>
+                            {allResults[globalIdx]!.status === 'success'
+                              ? <CheckCircle size={12} weight="fill" />
+                              : <XCircle size={12} weight="fill" />
+                            }
+                            {allResults[globalIdx]!.message}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
+
+        {/* Exceptions & Warnings */}
+        {exceptions && (exceptions.exceptions.length > 0 || warnings.length > 0) && (
+          <div className="mt-4 space-y-2">
+            {exceptions.exceptions.map((e, i) => (
+              <div key={i} className="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                <Warning size={14} className="shrink-0 mt-0.5" weight="fill" />
+                <span>{e.detail}</span>
+              </div>
+            ))}
+            {warnings.map((w, i) => (
+              <div key={i} className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                <Info size={14} className="shrink-0 mt-0.5" weight="fill" />
+                <span>{w}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Action Buttons */}
         {!hasExecuted && (
-          <div className="flex items-center gap-3 mt-6">
-            <button
-              onClick={onExecute}
-              disabled={executing}
-              className="flex-1 py-2.5 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 active:scale-[0.98] shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-            >
-              {executing ? '正在执行预约...' : '确认方案，执行预约'}
-            </button>
-            <button
-              onClick={onRegenerate}
-              disabled={executing}
-              className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              重新生成
-            </button>
+          <div className="mt-6 space-y-3">
+            {!travelModeConfirmed ? (
+              <>
+                <button
+                  onClick={onShowTravelMode}
+                  className="w-full py-2.5 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 active:scale-[0.98] shadow-sm transition-all"
+                >
+                  选择出行方式
+                </button>
+                <p className="text-xs text-slate-400 text-center">
+                  先选择地点间的出行方式，确认时间后再执行预约
+                </p>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={onExecute}
+                  disabled={executing}
+                  className="w-full py-2.5 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 active:scale-[0.98] shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                >
+                  {executing ? '正在执行预约...' : '确认方案，执行预约 (Yes)'}
+                </button>
+                <button
+                  onClick={onRegenerate}
+                  disabled={executing}
+                  className="w-full py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  不要这个方案 (No)
+                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={otherText}
+                    onChange={(e) => setOtherText(e.target.value)}
+                    placeholder="Other — 输入其他想法或修改意见..."
+                    disabled={executing}
+                    className="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-blue-300 focus:bg-white transition-colors disabled:opacity-50 placeholder:text-slate-400"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && otherText.trim()) {
+                        onOther(otherText.trim())
+                        setOtherText('')
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (otherText.trim()) {
+                        onOther(otherText.trim())
+                        setOtherText('')
+                      }
+                    }}
+                    disabled={executing || !otherText.trim()}
+                    className="shrink-0 px-4 py-2.5 bg-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-300 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    提交
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* Execution Summary */}
         {hasExecuted && (
           <div className="mt-6 bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-medium text-slate-700 mb-2">
+            <p className="text-sm font-medium text-slate-700">
               {executeResults.every((r) => r.status === 'success') ? '全部预约成功' : '部分预约失败'}
             </p>
-            <button
-              onClick={onRegenerate}
-              className="text-sm text-blue-500 hover:text-blue-600 transition-colors"
-            >
-              发起新规划
-            </button>
           </div>
         )}
+      </div>
+    </motion.div>
+  )
+}
+
+// ==================== ProcessingRecord ====================
+
+function ProcessingRecord({
+  streamSteps,
+  isStreaming,
+}: {
+  streamSteps: { label: string; status: 'active' | 'completed'; elapsed?: number }[]
+  isStreaming: boolean
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center py-6 gap-3"
+    >
+      <div className="flex flex-col gap-1.5 px-4 py-3 bg-white rounded-2xl border border-indigo-200/40 shadow-sm min-w-[260px]">
+        <div className="flex items-center gap-2 mb-1">
+          {isStreaming ? (
+            <Spinner size={14} className="text-indigo-500 animate-spin" />
+          ) : (
+            <CheckCircle size={14} weight="fill" className="text-emerald-400" />
+          )}
+          <span className="text-xs text-slate-400 font-medium">
+            {isStreaming ? 'Agent 正在处理...' : '处理记录'}
+          </span>
+        </div>
+        {streamSteps.map((step, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+            className={`flex items-center gap-2 text-xs ${
+              step.status === 'completed' ? 'text-slate-400' : 'text-slate-700 font-medium'
+            }`}
+          >
+            {step.status === 'completed' ? (
+              <CheckCircle size={12} weight="fill" className="text-emerald-400 shrink-0" />
+            ) : (
+              <Spinner size={12} className="text-indigo-500 animate-spin shrink-0" />
+            )}
+            <span className="flex-1">{step.label}</span>
+            {step.elapsed != null && (
+              <span className="text-[10px] text-slate-300 tabular-nums">{step.elapsed}s</span>
+            )}
+          </motion.div>
+        ))}
       </div>
     </motion.div>
   )
@@ -393,21 +845,39 @@ function ChatArea({
   currentPlan,
   executeResults,
   isStreaming,
-  streamProgress,
+  streamSteps,
   executing,
   entranceReady,
+  exceptions,
+  warnings,
+  resolvedLocations,
+  dayCount,
+  travelModeConfirmed,
   onExecute,
   onRegenerate,
+  onOther,
+  onShowMap,
+  onShowTravelMode,
+  onShare,
 }: {
   messages: ChatMessage[]
   currentPlan: AgentPlan | null
   executeResults: ExecuteResult[] | null
   isStreaming: boolean
-  streamProgress: string
+  streamSteps: { label: string; status: 'active' | 'completed' }[]
   executing: boolean
   entranceReady: boolean
+  exceptions: ExceptionEvent | null
+  warnings: string[]
+  resolvedLocations: Map<number, ResolvedLocation | null>
+  dayCount: number
+  travelModeConfirmed: boolean
   onExecute: () => void
   onRegenerate: () => void
+  onOther: (feedback: string) => void
+  onShowMap: () => void
+  onShowTravelMode: () => void
+  onShare: () => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const prevScrollTopRef = useRef(0)
@@ -499,37 +969,54 @@ function ChatArea({
             })}
           </p>
         </div>
-      ) : currentPlan ? (
-        <PlanView
-          plan={currentPlan}
-          executeResults={executeResults}
-          executing={executing}
-          onExecute={onExecute}
-          onRegenerate={onRegenerate}
-        />
       ) : (
         <div className="flex flex-col items-center py-6">
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              scrollDirection={scrollDirection}
-              scrollVelocity={scrollVelocity}
-            />
-          ))}
+          {(() => {
+            // 找到最后一条 user 消息的索引，处理记录插在其后
+            let lastUserIdx = -1
+            for (let i = messages.length - 1; i >= 0; i--) {
+              if (messages[i].role === 'user') { lastUserIdx = i; break }
+            }
+            const showProcessingInline = !isStreaming && streamSteps.length > 0
 
-          {/* Progress Indicator */}
-          {isStreaming && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center py-6 gap-3"
-            >
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-2xl border border-indigo-200/40 shadow-sm">
-                <Spinner size={16} className="text-indigo-500 animate-spin" />
-                <span className="text-sm text-slate-500">{streamProgress || '正在处理...'}</span>
-              </div>
-            </motion.div>
+            return messages.map((msg, i) => (
+              <React.Fragment key={msg.id}>
+                <MessageBubble
+                  message={msg}
+                  scrollDirection={scrollDirection}
+                  scrollVelocity={scrollVelocity}
+                />
+                {/* 处理记录插在用户问题和 agent 回答之间 */}
+                {showProcessingInline && i === lastUserIdx && (
+                  <ProcessingRecord streamSteps={streamSteps} isStreaming={false} />
+                )}
+              </React.Fragment>
+            ))
+          })()}
+
+          {/* 流式中：处理记录放最后（agent 还没回答） */}
+          {isStreaming && streamSteps.length > 0 && (
+            <ProcessingRecord streamSteps={streamSteps} isStreaming={true} />
+          )}
+
+          {/* Plan View — shown after messages when plan exists */}
+          {currentPlan && (
+            <PlanView
+              plan={currentPlan}
+              executeResults={executeResults}
+              executing={executing}
+              exceptions={exceptions}
+              warnings={warnings}
+              resolvedLocations={resolvedLocations}
+              dayCount={dayCount}
+              travelModeConfirmed={travelModeConfirmed}
+              onExecute={onExecute}
+              onRegenerate={onRegenerate}
+              onOther={onOther}
+              onShowMap={onShowMap}
+              onShowTravelMode={onShowTravelMode}
+              onShare={onShare}
+            />
           )}
         </div>
       )}
@@ -544,6 +1031,7 @@ function ConversationSidebar({
   sessions,
   activeId,
   isLoading,
+  disabled,
   onSelect,
   onDelete,
   onNew,
@@ -552,6 +1040,7 @@ function ConversationSidebar({
   sessions: AgentSession[]
   activeId: number | null
   isLoading: boolean
+  disabled: boolean
   onSelect: (id: number) => void
   onDelete: (id: number) => void
   onNew: () => void
@@ -569,7 +1058,8 @@ function ConversationSidebar({
           </span>
           <button
             onClick={onNew}
-            className="flex items-center gap-1 text-sm text-white bg-blue-500 hover:bg-blue-600 px-2.5 py-1 rounded-lg transition-colors"
+            disabled={disabled}
+            className="flex items-center gap-1 text-sm text-white bg-blue-500 hover:bg-blue-600 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-500"
           >
             <Plus size={14} weight="bold" />
             新对话
@@ -585,8 +1075,10 @@ function ConversationSidebar({
             sessions.map((s) => (
               <div
                 key={s.id}
-                onClick={() => onSelect(s.id)}
-                className={`group flex items-center gap-2 px-3 py-2.5 mx-2 mt-1 rounded-lg cursor-pointer transition-colors ${
+                onClick={() => { if (!disabled) onSelect(s.id) }}
+                className={`group flex items-center gap-2 px-3 py-2.5 mx-2 mt-1 rounded-lg transition-colors ${
+                  disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                } ${
                   activeId === s.id
                     ? 'bg-blue-500 text-white shadow-sm'
                     : 'hover:bg-slate-50 text-slate-700'
@@ -596,9 +1088,10 @@ function ConversationSidebar({
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    onDelete(s.id)
+                    if (!disabled) onDelete(s.id)
                   }}
-                  className={`hidden group-hover:flex p-1.5 rounded transition-colors ${
+                  disabled={disabled}
+                  className={`hidden group-hover:flex p-1.5 rounded transition-colors disabled:!hidden ${
                     activeId === s.id
                       ? 'text-white/70 hover:text-white hover:bg-white/20'
                       : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
@@ -620,9 +1113,11 @@ function ConversationSidebar({
 function ChatInput({
   onSend,
   disabled,
+  stage,
 }: {
   onSend: (text: string) => void
   disabled: boolean
+  stage: string
 }) {
   const [input, setInput] = useState('')
 
@@ -633,13 +1128,34 @@ function ChatInput({
     onSend(text)
   }
 
+  const getPlaceholder = () => {
+    switch (stage) {
+      case 'reviewing':
+        return '输入修改意见，如"换一家近的餐厅"，或输入"确认"执行预约...'
+      case 'executed':
+        return '预约已完成，方案已锁定。新建对话可重新规划'
+      default:
+        return '描述你的需求，如：下午带老婆孩子出去玩...'
+    }
+  }
+
+  if (stage === 'executed') {
+    return (
+      <div className="border-t-2 border-emerald-400/60 bg-white/60 backdrop-blur-sm px-4 py-4">
+        <div className="max-w-xl mx-auto text-center">
+          <span className="text-sm text-slate-400">预约已完成，此会话已锁定</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="border-t-2 border-emerald-400/60 bg-white/60 backdrop-blur-sm px-4 py-4">
       <div className="max-w-xl mx-auto flex items-center gap-3">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="描述你的需求，如：下午带老婆孩子出去玩..."
+          placeholder={getPlaceholder()}
           className="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-300 focus:bg-white transition-colors disabled:opacity-50"
           disabled={disabled}
           onKeyDown={(e) => {
@@ -672,11 +1188,25 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [currentPlan, setCurrentPlan] = useState<AgentPlan | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
-  const [streamProgress, setStreamProgress] = useState('')
+  interface StepItem { phase: string; label: string; status: 'active' | 'completed'; startedAt: number; elapsed?: number }
+  const [streamSteps, setStreamSteps] = useState<StepItem[]>([])
   const [executing, setExecuting] = useState(false)
   const [executeResults, setExecuteResults] = useState<ExecuteResult[] | null>(null)
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [stage, setStage] = useState<string>('chatting')
+  const [exceptions, setExceptions] = useState<ExceptionEvent | null>(null)
+  const [warningsList, setWarningsList] = useState<string[]>([])
+  const [inquiryData, setInquiryData] = useState<InquiryEvent | null>(null)
+  const [showInquiryModal, setShowInquiryModal] = useState(false)
+  const [showTravelModeSelector, setShowTravelModeSelector] = useState(false)
+  const [showMap, setShowMap] = useState(false)
+  const [travelModeConfirmed, setTravelModeConfirmed] = useState(false)
+  const [sharePlanId, setSharePlanId] = useState<number | null>(null)
+  const [resolvedLocations, setResolvedLocations] = useState<Map<number, ResolvedLocation | null>>(new Map())
+  const [dayCount, setDayCount] = useState(1)
   const abortRef = useRef<AbortController | null>(null)
+  const hasPlanOrInquiryRef = useRef(false)
+  const pendingNewSessionRef = useRef(false)
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 640)
@@ -699,8 +1229,27 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     fetchSessions()
   }, [fetchSessions])
 
+  // 活跃步骤实时计时器（每 100ms 刷新）
+  useEffect(() => {
+    if (!isStreaming) return
+    const timer = setInterval(() => {
+      setStreamSteps((prev) => {
+        const hasActive = prev.some((s) => s.status === 'active')
+        if (!hasActive) return prev
+        const now = Date.now()
+        return prev.map((s) =>
+          s.status === 'active'
+            ? { ...s, elapsed: Math.round((now - s.startedAt) / 100) / 10 }
+            : s
+        )
+      })
+    }, 100)
+    return () => clearInterval(timer)
+  }, [isStreaming])
+
   const handleSelectSession = async (id: number) => {
     setActiveSessionId(id)
+    setStreamSteps([])
     try {
       const res = await getAgentSession(id)
       if (res.code === 0 && res.data) {
@@ -710,9 +1259,45 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           content: m.content,
         }))
         setMessages(msgs)
-        // If there's a plan in metadata, we don't have the full plan here; clear it
-        setCurrentPlan(null)
+        // 恢复处理记录
+        if (res.data.processing_log) {
+          try {
+            const log: { label: string; elapsed: number }[] = JSON.parse(res.data.processing_log)
+            setStreamSteps(log.map((s) => ({
+              phase: '',
+              label: s.label,
+              status: 'completed' as const,
+              startedAt: 0,
+              elapsed: s.elapsed,
+            })))
+          } catch { setStreamSteps([]) }
+        }
+        // 恢复会话中的 plan 和 stage
+        if (res.data.plan) {
+          setCurrentPlan(res.data.plan)
+          setTravelModeConfirmed(false)
+          // 从 plan items 构建 resolvedLocations（供 TravelModeSelector 和地图使用）
+          const locMap = new Map<number, ResolvedLocation | null>()
+          res.data.plan.items.forEach((item, i) => {
+            locMap.set(i, {
+              name: item.location_name,
+              x: item.location_x || 0,
+              y: item.location_y || 0,
+              theme: 'orange' as const,
+              typeLabel: '',
+              subtypeLabel: null,
+              address: item.address || '',
+            })
+          })
+          setResolvedLocations(locMap)
+        } else {
+          setCurrentPlan(null)
+          setTravelModeConfirmed(false)
+        }
         setExecuteResults(null)
+        // status: 0=active, 1=has_plan(reviewing), 2=executed
+        const statusMap: Record<number, string> = { 0: 'chatting', 1: 'reviewing', 2: 'executed' }
+        setStage(statusMap[res.data.status] || 'chatting')
       }
     } catch {
       toast.error('加载会话失败')
@@ -742,7 +1327,29 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     setMessages([])
     setCurrentPlan(null)
     setExecuteResults(null)
-    setStreamProgress('')
+    setStreamSteps([])
+    setStage('chatting')
+    setExceptions(null)
+    setWarningsList([])
+    setInquiryData(null)
+    setShowInquiryModal(false)
+    setDayCount(1)
+    setTravelModeConfirmed(false)
+  }
+
+  const handleAddToPlan = (itemNames: string[]) => {
+    setShowInquiryModal(false)
+    setInquiryData(null)
+    const text = `把${itemNames.join('、')}加入计划`
+    handleSend(text)
+  }
+
+  const handleOther = (feedback: string) => {
+    setShowInquiryModal(false)
+    setInquiryData(null)
+    if (feedback.trim()) {
+      handleSend(feedback.trim())
+    }
   }
 
   const handleSend = async (text: string) => {
@@ -755,10 +1362,20 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
       content: text,
     }
     setMessages((prev) => [...prev, userMsg])
-    setCurrentPlan(null)
+    // 确认/执行流程不消除已展示的计划，保持可见
+    const isConfirmFlow = text.trim() === '确认' && currentPlan != null
+    if (!isConfirmFlow) {
+      setCurrentPlan(null)
+      setDayCount(1)
+      setTravelModeConfirmed(false)
+    }
     setExecuteResults(null)
+    setExceptions(null)
+    setWarningsList([])
     setIsStreaming(true)
-    setStreamProgress('正在处理...')
+    setStreamSteps([{ phase: '', label: '正在处理...', status: 'active' as const, startedAt: Date.now() }])
+    hasPlanOrInquiryRef.current = false
+    pendingNewSessionRef.current = !activeSessionId
 
     const controller = new AbortController()
     abortRef.current = controller
@@ -769,12 +1386,101 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
         activeSessionId ?? 0,
         {
           onToken: (data: TokenEvent) => {
-            const label = NODE_LABELS[data.node] || data.message || '处理中...'
-            setStreamProgress(label)
+            // 新会话：load_session 返回 session_id 后立刻刷新侧边栏
+            if (data.node === 'load_session' && data.session_id && pendingNewSessionRef.current) {
+              pendingNewSessionRef.current = false
+              setActiveSessionId(data.session_id)
+              fetchSessions()
+            }
+            if (data.day_count && data.day_count > 1) {
+              setDayCount(data.day_count)
+            }
+
+            const phase = NODE_PHASES[data.node]
+            if (!phase) return
+
+            // 合并 0s 步骤：小于 0.5s 的快速节点不新建步骤，仅更新当前标签
+            const FAST_THRESHOLD = 0.5
+
+            setStreamSteps((prev) => {
+              const now = Date.now()
+              const activeIdx = prev.findIndex((s) => s.status === 'active')
+
+              if (activeIdx < 0) return prev
+
+              const activeStep = prev[activeIdx]
+
+              // 初始占位步骤 → 直接替换，不展示 0s
+              if (activeStep.phase === '') {
+                const label = NODE_LABELS[data.node] || data.message || '处理中...'
+                return [{ phase, label, status: 'active' as const, startedAt: now }]
+              }
+
+              const elapsed = Math.round((now - activeStep.startedAt) / 100) / 10
+
+              // 同 phase → 更新标签（阶段内子步骤）
+              if (activeStep.phase === phase) {
+                const label = NODE_LABELS[data.node] || data.message || '处理中...'
+                return prev.map((s, i) =>
+                  i === activeIdx ? { ...s, label, elapsed } : s
+                )
+              }
+
+              // 跨 phase：完成当前步骤，开新步骤
+              // 若当前步骤 < FAST_THRESHOLD，不保留（避免 0s 污染）
+              let label = NODE_LABELS[data.node] || data.message || '处理中...'
+              if (data.node === 'search_candidates' && data.day_count && data.day_count > 1) {
+                label = `已理解需求：${data.day_count} 天行程`
+              }
+              if (elapsed < FAST_THRESHOLD) {
+                // 删除过快的步骤，用新步骤替代
+                return prev
+                  .filter((_, i) => i !== activeIdx)
+                  .concat([{ phase, label, status: 'active' as const, startedAt: now }])
+              }
+              return prev.map((s, i) =>
+                i === activeIdx
+                  ? { ...s, status: 'completed' as const, elapsed }
+                  : s
+              ).concat([{ phase, label, status: 'active' as const, startedAt: now }])
+            })
+
+            const step = data.current_step || ''
+            const isFinal = step === 'done' || step === 'direct_reply'
+            if (data.message && isFinal) {
+              setMessages((prev) => [...prev, {
+                id: `${Date.now()}-${prev.length}`,
+                role: 'assistant' as const,
+                content: data.message,
+              }])
+            }
+          },
+          onStep: (data: StepEvent) => {
+            setStreamSteps((prev) => {
+              const activeIdx = prev.findIndex((s) => s.status === 'active')
+              if (activeIdx < 0) return prev
+              return prev.map((s, i) =>
+                i === activeIdx ? { ...s, label: data.label } : s
+              )
+            })
           },
           onPlan: async (plan: AgentPlan) => {
+            hasPlanOrInquiryRef.current = true
             setCurrentPlan(plan)
-            setIsStreaming(false)
+            setTravelModeConfirmed(false)
+            setStage('reviewing')
+            // 解析所有地点坐标
+            const locMap = new Map<number, ResolvedLocation | null>()
+            await Promise.all(
+              plan.items.map(async (item: AgentPlanItem, i: number) => {
+                try {
+                  locMap.set(i, await resolveLocation(item.location_table_name, item.location_id))
+                } catch {
+                  locMap.set(i, null)
+                }
+              })
+            )
+            setResolvedLocations(locMap)
             try {
               const res = await getAgentSessions()
               if (res.code === 0) {
@@ -786,13 +1492,47 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
             } catch { /* refresh failed, non-critical */ }
           },
           onDone: () => {
+            const now = Date.now()
+            setStreamSteps((prev) => prev.map((s) =>
+              s.status === 'active'
+                ? { ...s, status: 'completed' as const, elapsed: Math.round((now - s.startedAt) / 100) / 10 }
+                : s
+            ))
             setIsStreaming(false)
-            setStreamProgress('')
           },
           onError: (msg: string) => {
             setIsStreaming(false)
-            setStreamProgress('')
+            setStreamSteps([])
             toast.error(msg)
+          },
+          onInquiry: (data: InquiryEvent) => {
+            hasPlanOrInquiryRef.current = true
+            setIsStreaming(false)
+            setStreamSteps([])
+            setInquiryData(data)
+            setShowInquiryModal(true)
+            setStage('chatting')
+          },
+          onGuardReject: (msg: string) => {
+            hasPlanOrInquiryRef.current = true
+            setIsStreaming(false)
+            setStreamSteps([])
+            setMessages((prev) => [...prev, {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: msg,
+            }])
+          },
+          onExceptions: (data: ExceptionEvent) => {
+            setExceptions(data)
+            if (data.warnings) setWarningsList(data.warnings)
+          },
+          onStage: (data: StageEvent) => {
+            setStage(data.stage)
+          },
+          onExecuteResult: (data: ExecuteResult[]) => {
+            setExecuteResults(data)
+            setStage('executed')
           },
         },
         controller.signal,
@@ -800,34 +1540,33 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setIsStreaming(false)
-      setStreamProgress('')
+      setStreamSteps([])
       toast.error('请求失败，请检查网络')
     }
   }
 
-  const handleExecute = async () => {
-    if (!currentPlan?.id) return
-    setExecuting(true)
-    try {
-      const res = await executePlan(currentPlan.id)
-      setExecuteResults(res.data)
-      if (res.code === 0) {
-        toast.success('全部预约成功')
-      } else {
-        toast.error(res.msg || '部分预约失败')
-      }
-    } catch {
-      toast.error('执行预约失败')
-    } finally {
-      setExecuting(false)
-    }
+  const handleExecute = () => {
+    handleSend('确认')
+  }
+
+  const handleOtherFeedback = (feedback: string) => {
+    handleSend(feedback)
+  }
+
+  const handleShowTravelMode = () => {
+    setShowTravelModeSelector(true)
   }
 
   const handleRegenerate = () => {
     setMessages([])
     setCurrentPlan(null)
     setExecuteResults(null)
-    setStreamProgress('')
+    setExceptions(null)
+    setWarningsList([])
+    setStreamSteps([])
+    setStage('chatting')
+    setDayCount(1)
+    setTravelModeConfirmed(false)
   }
 
   const sideLeft = sidebarOpen ? 246 : 4
@@ -851,14 +1590,16 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           <div className="px-4 py-3 flex items-center gap-3">
             <button
               onClick={onBack}
-              className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              disabled={isStreaming || executing}
+              className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ArrowLeft size={20} weight="bold" />
             </button>
             <span className="text-base font-medium text-slate-800 flex-1">AI 一键规划</span>
             <button
               onClick={() => { window.location.hash = '/travel-plans' }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700"
+              disabled={isStreaming || executing}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <User weight="bold" size={20} />
               <span className="text-sm font-medium">我的计划</span>
@@ -877,6 +1618,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
               sessions={sessions}
               activeId={activeSessionId}
               isLoading={sessionsLoading}
+              disabled={isStreaming || executing}
               onSelect={handleSelectSession}
               onDelete={handleDeleteSession}
               onNew={handleNew}
@@ -894,7 +1636,8 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           >
             <button
               onClick={() => setSidebarOpen((prev) => !prev)}
-              className="p-2 bg-emerald-500 text-white rounded-full shadow-md hover:bg-emerald-600 hover:shadow-lg transition-colors"
+              disabled={isStreaming || executing}
+              className="p-2 bg-emerald-500 text-white rounded-full shadow-md hover:bg-emerald-600 hover:shadow-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {sidebarOpen ? <CaretLeft size={16} weight="bold" /> : <CaretRight size={16} weight="bold" />}
             </button>
@@ -907,17 +1650,30 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
               animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.4, delay: 0.65, ease: [0.22, 0.61, 0.36, 1] }}
             >
-              <ChatArea
-                messages={messages}
-                currentPlan={currentPlan}
-                executeResults={executeResults}
-                isStreaming={isStreaming}
-                streamProgress={streamProgress}
-                executing={executing}
-                entranceReady={ready}
-                onExecute={handleExecute}
-                onRegenerate={handleRegenerate}
-              />
+              <ErrorBoundary>
+                <ChatArea
+                  messages={messages}
+                  currentPlan={currentPlan}
+                  executeResults={executeResults}
+                  isStreaming={isStreaming}
+                  streamSteps={streamSteps}
+                  executing={executing}
+                  entranceReady={ready}
+                  exceptions={exceptions}
+                  warnings={warningsList}
+                  resolvedLocations={resolvedLocations}
+                  dayCount={dayCount}
+                  travelModeConfirmed={travelModeConfirmed}
+                  onExecute={handleExecute}
+                  onRegenerate={handleRegenerate}
+                  onOther={handleOtherFeedback}
+                  onShowMap={() => setShowMap(true)}
+                  onShowTravelMode={handleShowTravelMode}
+                  onShare={() => {
+                    if (currentPlan?.id != null) setSharePlanId(currentPlan.id)
+                  }}
+                />
+              </ErrorBoundary>
             </motion.div>
 
             <motion.div
@@ -925,11 +1681,84 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
               animate={ready ? { y: 0, opacity: 1 } : { y: 40, opacity: 0 }}
               transition={{ duration: 0.4, delay: 0.8, ease: [0.22, 0.61, 0.36, 1] }}
             >
-              <ChatInput onSend={handleSend} disabled={isStreaming || executing} />
+              <ChatInput onSend={handleSend} disabled={isStreaming || executing} stage={stage} />
             </motion.div>
           </div>
         </div>
       </div>
+
+      {/* Inquiry Modal */}
+      <AnimatePresence>
+        {showInquiryModal && inquiryData && (
+          <InquiryModal
+            data={inquiryData}
+            onClose={() => {
+              setShowInquiryModal(false)
+              setInquiryData(null)
+            }}
+            onAddToPlan={handleAddToPlan}
+            onOther={handleOther}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Travel Mode Selector */}
+      <AnimatePresence>
+        {showTravelModeSelector && currentPlan && (
+          <TravelModeSelector
+            items={currentPlan.items}
+            locations={resolvedLocations}
+            onConfirm={async (updatedItems) => {
+              const planId = currentPlan?.id
+              if (planId) {
+                try {
+                  await updateTravelModes(planId, updatedItems.map((it) => it.travel_mode))
+                } catch { /* 非关键，落库失败不阻断 */ }
+              }
+              setCurrentPlan((prev) => prev ? { ...prev, items: updatedItems } : prev)
+              setShowTravelModeSelector(false)
+              setTravelModeConfirmed(true)
+              toast.success('出行方式已更新，可以确认方案了')
+            }}
+            onClose={() => setShowTravelModeSelector(false)}
+            onOther={(feedback: string) => {
+              setShowTravelModeSelector(false)
+              if (feedback.trim()) handleSend(feedback.trim())
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={sharePlanId !== null}
+        onClose={() => setSharePlanId(null)}
+        planTitle={currentPlan?.title || ''}
+        shareUrl={sharePlanId !== null ? `${window.location.origin}${window.location.pathname}#/travel-plans/${encodePlanId(sharePlanId)}` : ''}
+      />
+
+      {/* Map View */}
+      <AnimatePresence>
+        {showMap && currentPlan && (
+          <PlanMapView
+            points={currentPlan.items.map((item, idx) => {
+              const loc = resolvedLocations.get(idx)
+              return {
+                name: loc?.name || item.location_name || '未知',
+                x: item.location_x || loc?.x || 0,
+                y: item.location_y || loc?.y || 0,
+                arriveTime: item.arrive_time || '',
+                leaveTime: item.leave_time || '',
+                theme: loc?.theme || 'orange',
+                typeLabel: loc?.typeLabel || '',
+                dayNum: item.day_num || 1,
+                dayLabel: item.day_label || '',
+              }
+            })}
+            onClose={() => setShowMap(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

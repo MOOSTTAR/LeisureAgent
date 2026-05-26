@@ -16,6 +16,16 @@ from app.service import (
 )
 
 
+def _to_int(value: Any) -> int:
+    """安全转 int。"""
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return -1
+
+
 def get_by_id(id: int) -> Optional[dict[str, Any]]:
     return travel_plan_item_repo.get_by_id(id)
 
@@ -81,14 +91,14 @@ def create(data: dict[str, Any]) -> tuple[Optional[int], Optional[str]]:
     if venue is None:
         return None, Err.BOOKING_VENUE_NOT_FOUND[0]
 
-    current = venue.get("current_booking_count", -1)
-    maximum = venue.get("max_booking_count", -1)
+    current = _to_int(venue.get("current_booking_count", -1))
+    maximum = _to_int(venue.get("max_booking_count", -1))
     # Rule 1: 预约名额检查
     if current >= 0 and maximum >= 0 and current >= maximum:
         return None, Err.ITEM_BOOKING_FULL[0]
 
     # Rule 2: 排队时间调整（仅用于冲突检测），将到达时间提前
-    queue = venue.get("queue_time", -1)
+    queue = _to_int(venue.get("queue_time", -1))
     adjusted_arrive = add_minutes(arrive, -queue) if queue > 0 and arrive else arrive
 
     # 自动推断 is_need_booking

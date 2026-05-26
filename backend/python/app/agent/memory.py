@@ -133,7 +133,7 @@ def get_session(session_id: int) -> dict[str, Any] | None:
         SELECT s.id, s.title,
                (SELECT m.content FROM agent_message m
                 WHERE m.agent_session_id = s.id ORDER BY m.id DESC LIMIT 1) as last_message,
-               s.travel_plan_id, s.status, s.created_at, s.updated_at
+               s.travel_plan_id, s.status, s.processing_log, s.created_at, s.updated_at
         FROM agent_session s
         WHERE s.id=?
         """,
@@ -159,11 +159,58 @@ def bind_plan(session_id: int, plan_id: int) -> None:
     conn.commit()
 
 
+def update_session_title(session_id: int, title: str) -> None:
+    """用 AI 生成的方案标题更新会话标题。"""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE agent_session SET title=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (title[:48] or "新对话", session_id),
+    )
+    conn.commit()
+
+
 def delete_session(session_id: int) -> bool:
     conn = get_connection()
     cur = conn.execute("DELETE FROM agent_session WHERE id=?", (session_id,))
     conn.commit()
     return cur.rowcount > 0
+
+
+def mark_completed(session_id: int) -> None:
+    """执行预约后标记会话完成 (status=2)。"""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE agent_session SET status=2, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (session_id,),
+    )
+    conn.commit()
+
+
+def get_stage(session_id: int) -> str:
+    """查询会话当前阶段：planning / reviewing / executed。"""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT status, travel_plan_id FROM agent_session WHERE id=?",
+        (session_id,),
+    ).fetchone()
+    if not row:
+        return "planning"
+    # status: 0=active(planning), 1=has_plan(reviewing), 2=executed
+    if row["status"] == 2:
+        return "executed"
+    if row["status"] == 1 and row["travel_plan_id"]:
+        return "reviewing"
+    return "planning"
+
+
+def save_processing_log(session_id: int, log_json: str) -> None:
+    """保存 Agent 处理步骤日志（JSON 字符串）。"""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE agent_session SET processing_log=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (log_json, session_id),
+    )
+    conn.commit()
 
 
 def _make_title(text: str) -> str:

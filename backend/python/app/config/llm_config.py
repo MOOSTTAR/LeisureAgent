@@ -19,7 +19,7 @@ class LLMProvider(str, Enum):
 class LLMSettings(BaseSettings):
     """LLM 配置，优先从环境变量读取，支持 .env 文件。"""
 
-    llm_provider: LLMProvider = Field(default=LLMProvider.OPENAI, alias="LLM_PROVIDER")
+    llm_provider: LLMProvider = Field(default=LLMProvider.DEEPSEEK, alias="LLM_PROVIDER")
 
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
@@ -32,8 +32,8 @@ class LLMSettings(BaseSettings):
     ollama_model: str = Field(default="qwen2.5:14b", alias="OLLAMA_MODEL")
 
     deepseek_api_key: str = Field(default="", alias="DEEPSEEK_API_KEY")
-    deepseek_base_url: str = Field(default="https://api.deepseek.com/v1", alias="DEEPSEEK_BASE_URL")
-    deepseek_model: str = Field(default="deepseek-chat", alias="DEEPSEEK_MODEL")
+    deepseek_base_url: str = Field(default="https://api.deepseek.com", alias="DEEPSEEK_BASE_URL")
+    deepseek_model: str = Field(default="deepseek-v4-pro", alias="DEEPSEEK_MODEL")
 
     compatible_api_key: str = Field(default="", alias="COMPATIBLE_API_KEY")
     compatible_base_url: str = Field(default="", alias="COMPATIBLE_BASE_URL")

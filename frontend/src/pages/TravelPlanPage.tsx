@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple, Share } from '@phosphor-icons/react'
+import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple, Share, PersonSimpleWalk, Bicycle, Car, Train } from '@phosphor-icons/react'
 import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, confirmBooking, cancelBooking, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
 import { ShareModal } from '../components/ShareModal'
+import { PlanMapView } from '../components/PlanMapView'
 import { encodePlanId } from '../utils/shareCode'
 import { toast } from '../components/Toast'
 
@@ -588,6 +589,7 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
   const [cancellingItemId, setCancellingItemId] = useState<number | null>(null)
   const [editItemModal, setEditItemModal] = useState<TravelPlanItem | null>(null)
   const [planData, setPlanData] = useState(plan)
+  const [showMap, setShowMap] = useState(false)
 
   const fetchDetail = async () => {
     setIsLoading(true)
@@ -673,7 +675,9 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
 
   // Group items by day_num
   const groupedByDay = new Map<number, TravelPlanItem[]>()
-  for (const item of items) {
+  const timeToMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const sortedItems = [...items].sort((a, b) => timeToMin(a.arrive_time || '0:00') - timeToMin(b.arrive_time || '0:00'))
+  for (const item of sortedItems) {
     const day = item.day_num || 1
     if (!groupedByDay.has(day)) groupedByDay.set(day, [])
     groupedByDay.get(day)!.push(item)
@@ -709,6 +713,15 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
               title="编辑计划"
             >
               <PencilSimple size={17} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowMap(true)}
+              className="p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-500 hover:text-emerald-600"
+              title="查看地图"
+            >
+              <MapPin size={17} weight="fill" />
             </motion.button>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 ml-11">
@@ -749,7 +762,7 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
               <div key={day} className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded-lg">
-                    第 {day} 天
+                    {day === 1 ? '周六' : day === 2 ? '周日' : `第 ${day} 天`}
                   </span>
                   <span className="text-xs text-slate-400">
                     {groupedByDay.get(day)!.length} 个行程
@@ -760,9 +773,17 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                   {groupedByDay.get(day)!.map((item, idx) => {
                     const loc = locations.get(item.id)
                     const theme = loc?.theme ? THEME_COLORS[loc.theme] : THEME_COLORS.orange
+                    const dayItems = groupedByDay.get(day)!
+                    const hasNext = idx < dayItems.length - 1
+                    const nextItem = hasNext ? dayItems[idx + 1] : null
+                    const nextLoc = nextItem ? locations.get(nextItem.id) : null
+                    const connectorDist = (loc && nextLoc)
+                      ? Math.abs(loc.x - nextLoc.x) + Math.abs(loc.y - nextLoc.y)
+                      : null
 
                     return (
-                      <div key={item.id} className="relative mb-5 last:mb-0">
+                    <Fragment key={item.id}>
+                      <div className="relative mb-3">
                         {/* Timeline dot */}
                         <div className={`absolute -left-[26px] top-3 w-3 h-3 rounded-full border-2 border-white ${theme.dot} z-10`} />
 
@@ -878,8 +899,51 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
                           </div>
                         </motion.div>
                       </div>
-                    )
-                  })}
+
+                      {/* Travel mode connector card */}
+                      {hasNext && nextItem && (
+                        <div className="relative mb-3">
+                          <div className="absolute -left-[24px] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate-300 border-2 border-white z-10" />
+                          <div className="bg-slate-50/80 rounded-lg border border-slate-200 px-3 py-2 flex items-center gap-2">
+                            {([
+                              { key: 'walking', label: '步行', Icon: PersonSimpleWalk },
+                              { key: 'biking', label: '骑车', Icon: Bicycle },
+                              { key: 'driving', label: '开车', Icon: Car },
+                              { key: 'subway', label: '地铁', Icon: Train },
+                            ] as const).map(({ key, label, Icon }) => {
+                              const isActive = (nextItem.travel_mode || 'walking') === key
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => {
+                                    updateTravelPlanItem(nextItem.id, { travel_mode: key })
+                                    setItems((prev) =>
+                                      prev.map((i) => (i.id === nextItem.id ? { ...i, travel_mode: key } : i)),
+                                    )
+                                  }}
+                                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all ${
+                                    isActive
+                                      ? 'bg-blue-500 text-white shadow-sm'
+                                      : 'text-slate-500 hover:bg-white hover:text-slate-700'
+                                  }`}
+                                >
+                                  <Icon size={14} weight={isActive ? 'fill' : 'regular'} />
+                                  {label}
+                                </button>
+                              )
+                            })}
+                            {connectorDist !== null && (
+                              <span className="text-[10px] text-slate-400 shrink-0 ml-1 px-1.5 py-0.5 bg-white/80 rounded">约 {connectorDist}m</span>
+                            )}
+                            <span className="text-[10px] text-slate-300 ml-auto">
+                              {loc?.name || ''} → {nextLoc?.name || ''}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </Fragment>
+                    )}
+                  )}
                 </div>
               </div>
             ))}
@@ -908,6 +972,28 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
           onUpdated={fetchDetail}
         />
       )}
+
+      <AnimatePresence>
+        {showMap && (
+          <PlanMapView
+            points={sortedItems.map((item) => {
+              const loc = locations.get(item.id)
+              return {
+                name: loc?.name || '未知',
+                x: loc?.x || 0,
+                y: loc?.y || 0,
+                arriveTime: item.arrive_time || '',
+                leaveTime: item.leave_time || '',
+                theme: loc?.theme || 'orange',
+                typeLabel: loc?.typeLabel || '',
+                dayNum: item.day_num || 1,
+                dayLabel: '',
+              }
+            })}
+            onClose={() => setShowMap(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

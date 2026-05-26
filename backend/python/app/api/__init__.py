@@ -20,8 +20,31 @@ def paged(data: list, total: int, page: int, page_size: int) -> dict:
 
 
 def calc_distance(x: int, y: int) -> int:
-    """曼哈顿距离 = |x| + |y|（单位：米）"""
+    """曼哈顿距离 = |x| + |y|（单位：米），到原点(0,0)的距离"""
     return abs(x) + abs(y)
+
+
+def calc_distance_between(x1: int, y1: int, x2: int, y2: int) -> int:
+    """两点间曼哈顿距离 = |x1-x2| + |y1-y2|（单位：米）"""
+    return abs(x1 - x2) + abs(y1 - y2)
+
+
+TRAVEL_SPEEDS: dict[str, int] = {
+    "walking": 80,   # 步行 5 km/h
+    "biking": 250,   # 骑行 15 km/h
+    "driving": 500,  # 驾车 30 km/h
+    "subway": 600,   # 地铁 36 km/h（不含固定进站时间）
+}
+
+
+def estimate_travel_time(distance_m: int, mode: str) -> int:
+    """返回给定距离和出行方式的预估耗时（分钟）。"""
+    if not mode or mode not in TRAVEL_SPEEDS:
+        return 0
+    minutes = distance_m / TRAVEL_SPEEDS[mode]
+    if mode == "subway":
+        minutes += 10  # 地铁固定进出站时间
+    return max(1, int(minutes))
 
 
 def parse_distance_filter(

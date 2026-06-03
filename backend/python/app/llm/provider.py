@@ -75,9 +75,32 @@ def create_chat_model(
     raise ValueError(f"不支持的 LLM provider: {provider}")
 
 
+_light_model_cache: BaseChatModel | None = None
+
+
 def get_chat_model() -> BaseChatModel:
     """获取 ChatModel（缓存）。"""
     global _chat_model_cache
     if _chat_model_cache is None:
         _chat_model_cache = create_chat_model()
     return _chat_model_cache
+
+
+def get_light_chat_model() -> BaseChatModel:
+    """获取轻量 ChatModel（无深度推理模式，用于简单分类任务）。"""
+    global _light_model_cache
+    if _light_model_cache is not None:
+        return _light_model_cache
+    settings = get_llm_settings()
+    if settings.llm_provider == LLMProvider.DEEPSEEK:
+        _light_model_cache = ChatOpenAI(
+            model=settings.deepseek_model,
+            api_key=settings.deepseek_api_key or None,
+            base_url=settings.deepseek_base_url,
+            temperature=0.0,
+            max_tokens=512,
+            timeout=settings.timeout,
+        )
+    else:
+        _light_model_cache = create_chat_model(temperature=0.0, max_tokens=512)
+    return _light_model_cache

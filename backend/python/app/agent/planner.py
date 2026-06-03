@@ -35,6 +35,7 @@ from app.agent.tools import (
 from app.repository import travel_plan_item_repo
 from app.service import travel_plan_service
 from app.config.llm_config import get_llm_settings
+from app.llm.provider import get_light_chat_model
 from app.llm.prompts import (
     format_analyze_prompt,
     format_classify_prompt,
@@ -154,6 +155,7 @@ def classify_intent_node(state: AgentState) -> dict[str, Any]:
             )
             result: ClassifyOutput = invoke_structured(
                 system, user, ClassifyOutput,
+                model=get_light_chat_model(),
                 validate=_validate_classify_output,
             )
             intent_type = result.intent_type

@@ -344,12 +344,14 @@ def format_compose_prompt(
     """返回 (system_prompt, user_prompt) — 方案编排。"""
     from json import dumps
 
+    MAX_PER_CATEGORY = 8
     candidates_summary = {}
     for category, items in candidates.items():
         filtered = [it for it in items if it.get("available", True)]
         if not filtered:
             continue
         filtered.sort(key=lambda x: int(x.get("distance", 99999)))
+        # 每类只取最近的前8个，减少 prompt 长度和 LLM 处理时间
         candidates_summary[category] = [
             {
                 "id": item["id"],
@@ -360,7 +362,7 @@ def format_compose_prompt(
                 "cuisine": item.get("cuisine_type", ""),
                 "price": item.get("ticket_price", 0),
             }
-            for item in filtered[:5]
+            for item in filtered[:MAX_PER_CATEGORY]
         ]
 
     # 反馈指令

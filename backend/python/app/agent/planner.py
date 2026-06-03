@@ -104,46 +104,6 @@ def classify_intent_node(state: AgentState) -> dict[str, Any]:
     # auto_execute 仅来自前端显式开关，不做关键词自动检测
     auto_execute = state.get("auto_execute", False) and not existing_plan_id
 
-    # 快速规则：短领域词（菜系/地点类型）强制走 inquiry，防止 LLM 误分为 new_plan
-    if not existing_plan_id and _is_domain_term(user_input):
-        return {"intent_type": "inquiry", "direct_reply": "", "is_relevant": True,
-                "stage": "chatting", "current_step": "search_inquiry"}
-
-    # 快速规则：询问当前计划状态 → 直接回复摘要，不触发规划
-    _status_kw = ["计划有啥", "计划有什么", "我的计划", "当前计划", "现在的计划",
-                  "看看计划", "查看计划", "方案有啥", "方案有什么", "当前方案",
-                  "现在的方案", "看看方案", "查看方案", "目前有什么", "现在有啥",
-                  "方案是什么", "计划是什么", "我有什么计划"]
-    if existing_plan_id and any(kw in user_input for kw in _status_kw):
-        summary = _build_plan_status_summary(existing_plan_id)
-        return {
-            "intent_type": "casual",
-            "direct_reply": summary,
-            "stage": state.get("stage", "reviewing"),
-            "current_step": "direct_reply",
-            "messages": [{"role": "assistant", "content": summary}],
-        }
-
-    # 快速规则：无 pending 方案 + "加入计划"但没有提及具体地点 → 反问确认
-    # 如果带了具体地点名（如"把XX加入计划"），说明用户是从搜索结果选的，应该放行
-    _add_plan_bare = any(kw == user_input.strip() for kw in ["加入计划", "加到计划", "添加到计划"])
-    _add_plan_with_item = ("加入计划" in user_input or "加到计划" in user_input) and not _add_plan_bare
-    if not existing_plan_id and _add_plan_bare and not _add_plan_with_item:
-        # 只有纯"加入计划"三个字（无任何其他内容）时才拦截
-        pass  # 太短了也会被 _is_casual 拦截，不用特殊处理
-    if not existing_plan_id and _add_plan_bare:
-        return {
-            "intent_type": "clarify",
-            "direct_reply": (
-                "你想把什么加入方案呢？请告诉我具体的地点名称，比如从刚才的搜索结果里选一个～"
-            ),
-            "stage": "chatting",
-            "current_step": "direct_reply",
-            "messages": [{"role": "assistant", "content": (
-                "你想把什么加入方案呢？请告诉我具体的地点名称，比如从刚才的搜索结果里选一个～"
-            )}],
-        }
-
     # 快速规则：有 pending 方案 + 明确确认词 → 直接执行
     confirm_keywords = ["确认", "可以", "好的", "执行", "预约", "就这样", "没问题", "行", "ok", "yes", "确定"]
     if any(kw in user_input.lower() for kw in confirm_keywords) and existing_plan_id:

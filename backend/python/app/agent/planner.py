@@ -100,6 +100,24 @@ def classify_intent_node(state: AgentState) -> dict[str, Any]:
     # auto_execute 仅来自前端显式开关，不做关键词自动检测
     auto_execute = state.get("auto_execute", False) and not existing_plan_id
 
+    # 快速规则：无 pending 方案 + 想把单个地点加入计划 → 反问确认而不是生成完整方案
+    if not existing_plan_id and ("加入计划" in user_input or "加到计划" in user_input or "添加" in user_input):
+        return {
+            "intent_type": "clarify",
+            "direct_reply": (
+                "好的，已了解你的需求。不过目前还没有待确认的方案，我帮你规划一个完整的半日行程怎么样？"
+                "你可以告诉我更多偏好：想搭配什么类型的活动（逛街、游玩、公园）？或者再指定一家餐厅？"
+                "如果就想单去这一个地方，也可以告诉我，我帮你生成一个精简方案。"
+            ),
+            "stage": "chatting",
+            "current_step": "direct_reply",
+            "messages": [{"role": "assistant", "content": (
+                "好的，已了解你的需求。不过目前还没有待确认的方案，我帮你规划一个完整的半日行程怎么样？"
+                "你可以告诉我更多偏好：想搭配什么类型的活动（逛街、游玩、公园）？或者再指定一家餐厅？"
+                "如果就想单去这一个地方，也可以告诉我，我帮你生成一个精简方案。"
+            )}],
+        }
+
     # 快速规则：有 pending 方案 + 明确确认词 → 直接执行
     confirm_keywords = ["确认", "可以", "好的", "执行", "预约", "就这样", "没问题", "行", "ok", "yes", "确定"]
     if any(kw in user_input.lower() for kw in confirm_keywords) and existing_plan_id:
@@ -113,7 +131,7 @@ def classify_intent_node(state: AgentState) -> dict[str, Any]:
     # 快速规则：有 pending 方案 + 修改关键词 → 直接走 feedback
     if existing_plan_id:
         feedback_kw = ["换", "改", "不要", "不去", "去掉", "取消", "调整", "修改",
-                       "便宜", "贵", "近", "远", "早", "晚", "排队", "再推荐"]
+                       "便宜", "贵", "近", "远", "早", "晚", "排队", "再推荐", "加入", "添加"]
         if any(kw in user_input for kw in feedback_kw):
             return {
                 "intent_type": "feedback",

@@ -1534,11 +1534,18 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           },
           onDone: () => {
             const now = Date.now()
-            updateSteps((prev) => prev.map((s) =>
-              s.status === 'active'
-                ? { ...s, status: 'completed' as const, elapsed: Math.round((now - s.startedAt) / 100) / 10 }
-                : s
-            ))
+            updateSteps((prev) => {
+              const result = prev.map((s) =>
+                s.status === 'active'
+                  ? { ...s, status: 'completed' as const, elapsed: Math.round((now - s.startedAt) / 100) / 10 }
+                  : s
+              )
+              // 移除 elapsed < 0.1s 的最后一步（收尾节点瞬间完成，展示 0s 无意义）
+              if (result.length > 0 && (result[result.length - 1].elapsed ?? 0) < 0.1) {
+                result.pop()
+              }
+              return result
+            })
             setIsStreaming(false)
           },
           onError: (msg: string) => {

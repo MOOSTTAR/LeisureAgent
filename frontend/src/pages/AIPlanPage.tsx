@@ -405,7 +405,7 @@ function InquiryModal({
                       <span className="text-xs text-red-500 bg-red-50 px-1.5 py-0.5 rounded">已满</span>
                     )}
                     {item.can_book && item.available && (
-                      <span className="text-xs text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">可预约</span>
+                      <span className="text-xs text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">需要预约</span>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">

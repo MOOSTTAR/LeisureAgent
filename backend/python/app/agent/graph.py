@@ -33,6 +33,7 @@ from app.agent.planner import (
     execute_bookings_node,
     finalize_executed_node,
     finalize_node,
+    gap_report_node,
     load_session_node,
     persist_plan_node,
     present_inquiry_node,
@@ -65,6 +66,7 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     workflow.add_node("replan_execute", replan_execute_node)
     workflow.add_node("finalize_executed", finalize_executed_node)
     workflow.add_node("finalize", finalize_node)
+    workflow.add_node("gap_report", gap_report_node)
 
     workflow.set_entry_point("load_session")
     workflow.add_conditional_edges(
@@ -99,6 +101,7 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
         {
             "retry_search": "adjust_search",
             "compose": "compose_plan",
+            "gap_report": "gap_report",
         },
     )
     workflow.add_edge("adjust_search", "search_candidates")
@@ -147,6 +150,7 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
 
     # ── finalize（同步端点兼容） ──
     workflow.add_edge("finalize", END)
+    workflow.add_edge("gap_report", END)
 
     return workflow.compile()
 
@@ -176,9 +180,11 @@ def _route_feedback(state: AgentState) -> str:
 
 
 def _route_after_detect(state: AgentState) -> str:
-    """ReAct 搜索自愈：关键类别缺失且未达重试上限 → 放宽重搜。"""
-    if state.get("critical_gaps", False) and state.get("search_attempt", 0) < 2:
-        return "retry_search"
+    """ReAct 搜索自愈：关键类别缺失且未达重试上限 → 放宽重搜。若重试耗尽仍有缺口 → 告知用户。"""
+    if state.get("critical_gaps", False):
+        if state.get("search_attempt", 0) < 2:
+            return "retry_search"
+        return "gap_report"
     return "compose"
 
 

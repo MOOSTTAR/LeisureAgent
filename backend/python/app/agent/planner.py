@@ -256,6 +256,50 @@ def _classify_rule_based(user_input: str, existing_plan_id: int | None,
 
 
 # ═══════════════════════════════════════════════════════════════
+# gap_report — 候选不足时告知用户，不给凑合方案
+# ═══════════════════════════════════════════════════════════════
+
+def gap_report_node(state: AgentState) -> dict[str, Any]:
+    """候选地点存在关键缺口，告知用户并引导其调整需求。"""
+    candidates = state.get("candidates", {})
+    exceptions = state.get("exceptions", [])
+    constraints = state.get("constraints", {})
+    scenario = state.get("scenario", "other")
+
+    # 汇总缺失的类别
+    missing: list[str] = []
+    if not candidates.get("restaurant"):
+        cuisine = constraints.get("cuisine_type", "")
+        if cuisine:
+            missing.append(f"{cuisine}类餐厅")
+        else:
+            missing.append("餐厅")
+    if scenario == "family" and not candidates.get("amusement_park") and not candidates.get("scenic_spot"):
+        missing.append("亲子游乐/景点")
+    if scenario == "friends" and not candidates.get("exhibition_hall") and not candidates.get("scenic_spot"):
+        missing.append("展馆/景点")
+
+    if missing:
+        msg = (
+            f"抱歉，当前数据库中暂时没有符合条件的{'、'.join(missing)}。\n\n"
+            f"建议你调整一下需求，比如：\n"
+            f"- 换个菜系（中餐、日料、烧烤等）\n"
+            f"- 放宽距离限制\n"
+            f"- 换一种活动类型\n\n"
+            f"请告诉我你想怎么调整？"
+        )
+    else:
+        msg = "当前候选不足以生成完整方案，请尝试调整你的需求（比如放宽距离、换一种活动类型）。"
+
+    memory.append_message(state["session_id"], "assistant", msg)
+    return {
+        "current_step": "done",
+        "stage": "chatting",
+        "messages": [{"role": "assistant", "content": msg}],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
 # 5. direct_reply — AI 直接回复（寒暄/out_of_domain），不走规划流程
 # ═══════════════════════════════════════════════════════════════
 

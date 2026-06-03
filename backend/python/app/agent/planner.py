@@ -35,7 +35,7 @@ from app.agent.tools import (
 from app.repository import travel_plan_item_repo
 from app.service import travel_plan_service
 from app.config.llm_config import get_llm_settings
-from app.llm.provider import get_light_chat_model
+from app.llm.provider import create_chat_model, get_light_chat_model
 from app.llm.prompts import (
     format_analyze_prompt,
     format_classify_prompt,
@@ -650,6 +650,9 @@ def _compose_plan_with_llm(state: AgentState) -> dict[str, Any]:
             candidates.setdefault(cat, []).append(loc)
     coord_lookup = _build_coord_lookup(candidates)
 
+    # 编排专用模型：更大输出 token 避免跨天方案被截断
+    _compose_model = create_chat_model(max_tokens=4096)
+
     def _invoke(extra_instruction: str = "") -> AgentPlan:
         sp, up = format_compose_prompt(
             scenario=state["scenario"],
@@ -670,7 +673,8 @@ def _compose_plan_with_llm(state: AgentState) -> dict[str, Any]:
             system_prompt=sp,
             user_prompt=up,
             output_schema=PlanOutput,
-            validate=_make_plan_validator(candidates),
+            model=_compose_model,
+            validate=_make_plan_validator(candidates, day_count),
         )
         return AgentPlan(
             title=plan_output.title,
@@ -1753,7 +1757,7 @@ def _sanitize_companion(text: str) -> str:
     return cleaned or "同行人"
 
 
-def _make_plan_validator(candidates: dict[str, list[dict[str, Any]]]):
+def _make_plan_validator(candidates: dict[str, list[dict[str, Any]]], day_count: int = 1):
     """返回一个 PlanOutput 校验器，验证所有 location_id 来自候选且可用。"""
 
     # 构建 (table_name, location_id) → item 的索引
@@ -1772,6 +1776,15 @@ def _make_plan_validator(candidates: dict[str, list[dict[str, Any]]]):
             errors.append("方案至少需要 1 个活动项")
         if len(plan.items) > 10:
             errors.append("方案最多 10 个活动项")
+        # 跨天方案：检查每天至少有一项
+        if day_count > 1:
+            days_present = set(it.day_num for it in plan.items)
+            missing_days = set(range(1, day_count + 1)) - days_present
+            if missing_days:
+                errors.append(
+                    f"方案应覆盖 {day_count} 天，但缺少第{'、'.join(str(d) for d in sorted(missing_days))}天的活动。"
+                    f"请确保每天至少安排 1 项活动。"
+                )
 
         prev_leave_minutes = 0
         prev_day_num = 1

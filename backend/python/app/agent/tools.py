@@ -42,12 +42,15 @@ def search_local_candidates(scenario: str, constraints: dict[str, Any]) -> dict[
 
     for key, items in pools.items():
         pools[key] = [item for item in items if item["distance"] <= max_distance]
-        # 菜系/类型偏好过滤
+        # 菜系/类型偏好过滤（若过滤后为空则保留全部，避免餐厅池清空）
         if cuisine_type and key == "restaurant":
-            pools[key] = [
+            filtered = [
                 item for item in pools[key]
                 if cuisine_type in str(item.get("cuisine_type", ""))
             ]
+            if filtered:
+                pools[key] = filtered
+            # else: 没有匹配的菜系，保留全部餐厅（不做硬过滤）
         pools[key].sort(key=lambda item: item["distance"])
 
     if scenario == "family":

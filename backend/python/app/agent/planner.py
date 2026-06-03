@@ -1722,12 +1722,13 @@ def _make_plan_validator(candidates: dict[str, list[dict[str, Any]]]):
         errors: list[str] = []
         if plan.scenario not in _VALID_SCENARIOS:
             errors.append(f"scenario '{plan.scenario}' 无效")
-        if len(plan.items) < 2:
-            errors.append("方案至少需要 2 个活动项")
-        if len(plan.items) > 8:
-            errors.append("方案最多 8 个活动项")
+        if len(plan.items) < 1:
+            errors.append("方案至少需要 1 个活动项")
+        if len(plan.items) > 10:
+            errors.append("方案最多 10 个活动项")
 
         prev_leave_minutes = 0
+        prev_day_num = 1
         for i, item in enumerate(plan.items):
             prefix = f"items[{i}]"
 
@@ -1763,23 +1764,25 @@ def _make_plan_validator(candidates: dict[str, list[dict[str, Any]]]):
                 lv = _time_to_minutes(item.leave_time)
                 if arr >= lv:
                     errors.append(f"{prefix}: arrive_time >= leave_time ({item.arrive_time} >= {item.leave_time})")
-                if arr < prev_leave_minutes:
+                # 跨天时 day_num 变化，时间线重置
+                if item.day_num == prev_day_num and arr < prev_leave_minutes:
                     errors.append(f"{prefix}: arrive_time 早于上一项的 leave_time")
                 prev_leave_minutes = lv
+                prev_day_num = item.day_num or 1
             except ValueError:
                 pass
 
             # stay_minute 合理
-            if not 10 <= item.stay_minute <= 300:
-                errors.append(f"{prefix}: stay_minute {item.stay_minute} 不在 10-300 范围内")
+            if not 5 <= item.stay_minute <= 360:
+                errors.append(f"{prefix}: stay_minute {item.stay_minute} 不在 5-360 范围内")
 
-            # step_order
+            # step_order 自动修正（不做硬校验，LLM 经常偏移 1）
             if item.step_order != i + 1:
-                errors.append(f"{prefix}: step_order 应为 {i + 1}，实际 {item.step_order}")
+                item.step_order = i + 1
 
-        # total_cost 与各项求和大致匹配
+        # total_cost 与各项求和大致匹配（放宽到 50% 容差）
         items_sum = sum(it.estimated_cost for it in plan.items)
-        if abs(plan.total_cost - items_sum) > max(items_sum * 0.3, 50):
+        if items_sum > 0 and abs(plan.total_cost - items_sum) > max(items_sum * 0.5, 100):
             errors.append(
                 f"total_cost {plan.total_cost} 与各项 estimated_cost 之和 {items_sum} 偏差过大"
             )

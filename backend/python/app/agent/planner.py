@@ -27,10 +27,13 @@ from app.agent.tools import (
     add_minutes,
     build_share_text,
     execute_plan_actions,
+    get_location,
     persist_agent_plan,
     search_inquiry,
     search_local_candidates,
 )
+from app.repository import travel_plan_item_repo
+from app.service import travel_plan_service
 from app.config.llm_config import get_llm_settings
 from app.llm.prompts import (
     format_analyze_prompt,
@@ -105,6 +108,21 @@ def classify_intent_node(state: AgentState) -> dict[str, Any]:
     if not existing_plan_id and _is_domain_term(user_input):
         return {"intent_type": "inquiry", "direct_reply": "", "is_relevant": True,
                 "stage": "chatting", "current_step": "search_inquiry"}
+
+    # 快速规则：询问当前计划状态 → 直接回复摘要，不触发规划
+    _status_kw = ["计划有啥", "计划有什么", "我的计划", "当前计划", "现在的计划",
+                  "看看计划", "查看计划", "方案有啥", "方案有什么", "当前方案",
+                  "现在的方案", "看看方案", "查看方案", "目前有什么", "现在有啥",
+                  "方案是什么", "计划是什么", "我有什么计划"]
+    if existing_plan_id and any(kw in user_input for kw in _status_kw):
+        summary = _build_plan_status_summary(existing_plan_id)
+        return {
+            "intent_type": "casual",
+            "direct_reply": summary,
+            "stage": state.get("stage", "reviewing"),
+            "current_step": "direct_reply",
+            "messages": [{"role": "assistant", "content": summary}],
+        }
 
     # 快速规则：无 pending 方案 + "加入计划"但没有提及具体地点 → 反问确认
     # 如果带了具体地点名（如"把XX加入计划"），说明用户是从搜索结果选的，应该放行
@@ -1129,6 +1147,31 @@ def _is_inquiry(user_input: str) -> bool:
     if has_plan:
         return False
     return has_inquiry
+
+
+def _build_plan_status_summary(plan_id: int) -> str:
+    """根据 plan_id 构建当前方案摘要文本。"""
+    if not plan_id:
+        return "当前还没有方案。告诉我你想怎么玩，我帮你规划一个半日行程～"
+    plan = travel_plan_service.get_by_id(plan_id)
+    if not plan:
+        return "当前还没有方案。告诉我你想怎么玩～"
+    items = travel_plan_item_repo.get_by_plan_id(plan_id)
+    if not items:
+        return f"当前方案「{plan.get('plan_title', '未命名')}」还没有添加任何行程项。你可以告诉我具体想去的地方，我帮你加进去。"
+
+    lines = [f"当前方案「{plan.get('plan_title', '')}」包含以下行程："]
+    for i, item in enumerate(items, 1):
+        loc = get_location(item["location_table_name"], item["location_id"])
+        name = loc["name"] if loc else item["location_table_name"]
+        arrive = item.get("arrive_time", "")
+        leave = item.get("leave_time", "")
+        mode = item.get("travel_mode")
+        mode_text = f"（{mode}到达）" if mode else ""
+        lines.append(f"{i}. {name} {arrive}-{leave} {mode_text}")
+    lines.append(f"总费用约 {int(plan.get('total_cost') or 0)} 元。")
+    lines.append("需要调整吗？还是确认执行？")
+    return "\n".join(lines)
 
 
 def _is_domain_term(user_input: str) -> bool:

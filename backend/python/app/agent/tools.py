@@ -372,6 +372,9 @@ def search_inquiry(user_input: str, constraints: dict[str, Any] | None = None) -
     for ck in cuisine_keywords:
         if ck in user_input:
             target_cuisine = ck
+            # 菜系关键词意味着用户明确在搜餐厅，强制限定 restaurant
+            if "restaurant" not in tables_to_search:
+                tables_to_search = {"restaurant"}
             break
 
     results: list[dict[str, Any]] = []
@@ -407,6 +410,47 @@ def search_inquiry(user_input: str, constraints: dict[str, Any] | None = None) -
             results.append(item)
 
     results.sort(key=lambda x: x["distance"])
+    return results
+
+
+def _extract_named_locations(user_input: str) -> list[dict[str, Any]]:
+    """从用户输入中提取具体地点名，按名称搜索所有表并返回匹配项。"""
+    import re
+    results: list[dict[str, Any]] = []
+    # 常见模式：把XX加入计划、去XX、XX加入计划
+    patterns = [
+        r"把(.+?)加入计划",
+        r"把(.+?)加到计划",
+        r"(.+?)加入计划",
+        r"去(.+?)(?:玩|逛|吃|吧|，|。|$)",
+    ]
+    names_to_search: set[str] = set()
+    for pat in patterns:
+        for m in re.finditer(pat, user_input):
+            name = m.group(1).strip()
+            if len(name) >= 2 and len(name) <= 10:
+                names_to_search.add(name)
+
+    if not names_to_search:
+        return results
+
+    service_map = {
+        "restaurant": restaurant_service,
+        "mall": mall_service,
+        "amusement_park": amusement_park_service,
+        "scenic_spot": scenic_spot_service,
+        "exhibition_hall": exhibition_hall_service,
+    }
+    for name in names_to_search:
+        for cat, service in service_map.items():
+            items, _ = service.list_all(page=1, page_size=9999)
+            for item in items:
+                item = dict(item)
+                if item.get("name", "") == name or name in str(item.get("name", "")):
+                    item["category"] = cat
+                    results.append(item)
+                    break  # 每个名字只取第一个匹配
+
     return results
 
 

@@ -21,6 +21,7 @@ from app.api import calc_distance_between, estimate_travel_time
 from app.agent.tools import (
     _category_label,
     _check_availability,
+    _extract_named_locations,
     _get_needed_categories,
     _is_fully_booked,
     add_minutes,
@@ -100,21 +101,28 @@ def classify_intent_node(state: AgentState) -> dict[str, Any]:
     # auto_execute 仅来自前端显式开关，不做关键词自动检测
     auto_execute = state.get("auto_execute", False) and not existing_plan_id
 
-    # 快速规则：无 pending 方案 + 想把单个地点加入计划 → 反问确认而不是生成完整方案
-    if not existing_plan_id and ("加入计划" in user_input or "加到计划" in user_input or "添加" in user_input):
+    # 快速规则：短领域词（菜系/地点类型）强制走 inquiry，防止 LLM 误分为 new_plan
+    if not existing_plan_id and _is_domain_term(user_input):
+        return {"intent_type": "inquiry", "direct_reply": "", "is_relevant": True,
+                "stage": "chatting", "current_step": "search_inquiry"}
+
+    # 快速规则：无 pending 方案 + "加入计划"但没有提及具体地点 → 反问确认
+    # 如果带了具体地点名（如"把XX加入计划"），说明用户是从搜索结果选的，应该放行
+    _add_plan_bare = any(kw == user_input.strip() for kw in ["加入计划", "加到计划", "添加到计划"])
+    _add_plan_with_item = ("加入计划" in user_input or "加到计划" in user_input) and not _add_plan_bare
+    if not existing_plan_id and _add_plan_bare and not _add_plan_with_item:
+        # 只有纯"加入计划"三个字（无任何其他内容）时才拦截
+        pass  # 太短了也会被 _is_casual 拦截，不用特殊处理
+    if not existing_plan_id and _add_plan_bare:
         return {
             "intent_type": "clarify",
             "direct_reply": (
-                "好的，已了解你的需求。不过目前还没有待确认的方案，我帮你规划一个完整的半日行程怎么样？"
-                "你可以告诉我更多偏好：想搭配什么类型的活动（逛街、游玩、公园）？或者再指定一家餐厅？"
-                "如果就想单去这一个地方，也可以告诉我，我帮你生成一个精简方案。"
+                "你想把什么加入方案呢？请告诉我具体的地点名称，比如从刚才的搜索结果里选一个～"
             ),
             "stage": "chatting",
             "current_step": "direct_reply",
             "messages": [{"role": "assistant", "content": (
-                "好的，已了解你的需求。不过目前还没有待确认的方案，我帮你规划一个完整的半日行程怎么样？"
-                "你可以告诉我更多偏好：想搭配什么类型的活动（逛街、游玩、公园）？或者再指定一家餐厅？"
-                "如果就想单去这一个地方，也可以告诉我，我帮你生成一个精简方案。"
+                "你想把什么加入方案呢？请告诉我具体的地点名称，比如从刚才的搜索结果里选一个～"
             )}],
         }
 
@@ -394,6 +402,15 @@ def search_candidates_node(state: AgentState) -> dict[str, Any]:
         for item in candidates[cat]:
             item["available"] = _check_availability(item)
 
+    # 用户输入中提到的具体地点名：按名称搜索并加入候选（确保用户指定的地点不丢失）
+    _named = _extract_named_locations(state.get("user_input", ""))
+    for loc in _named:
+        cat = loc["category"]
+        existing_ids = {item.get("id") for item in candidates.get(cat, [])}
+        if loc["id"] not in existing_ids:
+            loc["available"] = _check_availability(loc)
+            candidates.setdefault(cat, []).append(loc)
+
     tool_result = {
         "tool": "search_local_candidates",
         "counts": {key: len(value) for key, value in candidates.items()},
@@ -595,10 +612,18 @@ def _enrich_items(items, coord_lookup: dict) -> list[AgentPlanItem]:
 
 
 def _compose_plan_with_llm(state: AgentState) -> dict[str, Any]:
-    candidates = state["candidates"]
+    candidates = dict(state["candidates"])  # 浅拷贝避免污染 state
     constraints = state.get("constraints", {})
     day_count = constraints.get("day_count", 1)
     user_input = state.get("user_input", "")
+    # 确保用户输入中提及的具体地点在候选列表中（覆盖 feedback skip_search 路径）
+    _named = _extract_named_locations(user_input)
+    for loc in _named:
+        cat = loc["category"]
+        existing_ids = {item.get("id") for item in candidates.get(cat, [])}
+        if loc["id"] not in existing_ids:
+            loc["available"] = _check_availability(loc)
+            candidates.setdefault(cat, []).append(loc)
     coord_lookup = _build_coord_lookup(candidates)
 
     def _invoke(extra_instruction: str = "") -> AgentPlan:

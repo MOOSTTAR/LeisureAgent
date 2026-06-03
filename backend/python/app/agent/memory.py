@@ -204,11 +204,38 @@ def get_stage(session_id: int) -> str:
 
 
 def save_processing_log(session_id: int, log_json: str) -> None:
-    """保存 Agent 处理步骤日志（JSON 字符串）。"""
+    """保存 Agent 处理步骤日志（单次交互的 JSON 数组）。"""
     conn = get_connection()
     conn.execute(
         "UPDATE agent_session SET processing_log=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (log_json, session_id),
+    )
+    conn.commit()
+
+
+def append_processing_log(session_id: int, new_steps_json: str) -> None:
+    """追加一次交互的处理步骤到累积日志（JSON 数组的数组）。"""
+    import json as _json
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT processing_log FROM agent_session WHERE id=?", (session_id,)
+    ).fetchone()
+    existing = []
+    if row and row["processing_log"]:
+        try:
+            existing = _json.loads(row["processing_log"])
+            if not isinstance(existing, list):
+                existing = []
+        except Exception:
+            existing = []
+    try:
+        new_steps = _json.loads(new_steps_json)
+    except Exception:
+        new_steps = []
+    existing.append(new_steps)
+    conn.execute(
+        "UPDATE agent_session SET processing_log=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (_json.dumps(existing, ensure_ascii=False), session_id),
     )
     conn.commit()
 

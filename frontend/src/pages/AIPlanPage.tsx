@@ -845,7 +845,8 @@ function ChatArea({
   currentPlan,
   executeResults,
   isStreaming,
-  streamSteps,
+  stepHistory,
+  activeUserMsgIdx,
   executing,
   entranceReady,
   exceptions,
@@ -864,7 +865,8 @@ function ChatArea({
   currentPlan: AgentPlan | null
   executeResults: ExecuteResult[] | null
   isStreaming: boolean
-  streamSteps: { label: string; status: 'active' | 'completed' }[]
+  stepHistory: Map<number, { label: string; status: 'active' | 'completed'; elapsed?: number }[]>
+  activeUserMsgIdx: number
   executing: boolean
   entranceReady: boolean
   exceptions: ExceptionEvent | null
@@ -971,33 +973,24 @@ function ChatArea({
         </div>
       ) : (
         <div className="flex flex-col items-center py-6">
-          {(() => {
-            // 找到最后一条 user 消息的索引，处理记录插在其后
-            let lastUserIdx = -1
-            for (let i = messages.length - 1; i >= 0; i--) {
-              if (messages[i].role === 'user') { lastUserIdx = i; break }
-            }
-            const showProcessingInline = !isStreaming && streamSteps.length > 0
-
-            return messages.map((msg, i) => (
+          {messages.map((msg, i) => (
               <React.Fragment key={msg.id}>
                 <MessageBubble
                   message={msg}
                   scrollDirection={scrollDirection}
                   scrollVelocity={scrollVelocity}
                 />
-                {/* 处理记录插在用户问题和 agent 回答之间 */}
-                {showProcessingInline && i === lastUserIdx && (
-                  <ProcessingRecord streamSteps={streamSteps} isStreaming={false} />
+                {/* 每条用户消息后展示其处理记录（历史+流式） */}
+                {msg.role === 'user' && (
+                  (() => {
+                    const steps = stepHistory.get(i)
+                    if (!steps || steps.length === 0) return null
+                    const isActive = isStreaming && i === activeUserMsgIdx
+                    return <ProcessingRecord streamSteps={steps} isStreaming={isActive} />
+                  })()
                 )}
               </React.Fragment>
-            ))
-          })()}
-
-          {/* 流式中：处理记录放最后（agent 还没回答） */}
-          {isStreaming && streamSteps.length > 0 && (
-            <ProcessingRecord streamSteps={streamSteps} isStreaming={true} />
-          )}
+            ))}
 
           {/* Plan View — shown after messages when plan exists */}
           {currentPlan && (
@@ -1189,7 +1182,9 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
   const [currentPlan, setCurrentPlan] = useState<AgentPlan | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   interface StepItem { phase: string; label: string; status: 'active' | 'completed'; startedAt: number; elapsed?: number }
-  const [streamSteps, setStreamSteps] = useState<StepItem[]>([])
+  type StepHistory = Map<number, StepItem[]>
+  const [stepHistory, setStepHistory] = useState<StepHistory>(new Map())
+  const activeUserMsgIdxRef = useRef(-1)
   const [executing, setExecuting] = useState(false)
   const [executeResults, setExecuteResults] = useState<ExecuteResult[] | null>(null)
   const [sessionsLoading, setSessionsLoading] = useState(false)
@@ -1233,15 +1228,19 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (!isStreaming) return
     const timer = setInterval(() => {
-      setStreamSteps((prev) => {
-        const hasActive = prev.some((s) => s.status === 'active')
-        if (!hasActive) return prev
+      setStepHistory((prev) => {
+        const idx = activeUserMsgIdxRef.current
+        if (idx < 0) return prev
+        const steps = prev.get(idx)
+        if (!steps || !steps.some((s) => s.status === 'active')) return prev
         const now = Date.now()
-        return prev.map((s) =>
+        const next = new Map(prev)
+        next.set(idx, steps.map((s) =>
           s.status === 'active'
             ? { ...s, elapsed: Math.round((now - s.startedAt) / 100) / 10 }
             : s
-        )
+        ))
+        return next
       })
     }, 100)
     return () => clearInterval(timer)
@@ -1249,7 +1248,8 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
 
   const handleSelectSession = async (id: number) => {
     setActiveSessionId(id)
-    setStreamSteps([])
+    setStepHistory(new Map())
+    activeUserMsgIdxRef.current = -1
     try {
       const res = await getAgentSession(id)
       if (res.code === 0 && res.data) {
@@ -1259,18 +1259,39 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           content: m.content,
         }))
         setMessages(msgs)
-        // 恢复处理记录
+        // 恢复处理记录（新格式：[[interaction1], [interaction2], ...]）
         if (res.data.processing_log) {
           try {
-            const log: { label: string; elapsed: number }[] = JSON.parse(res.data.processing_log)
-            setStreamSteps(log.map((s) => ({
-              phase: '',
-              label: s.label,
-              status: 'completed' as const,
-              startedAt: 0,
-              elapsed: s.elapsed,
-            })))
-          } catch { setStreamSteps([]) }
+            const log = JSON.parse(res.data.processing_log)
+            if (Array.isArray(log) && log.length > 0 && Array.isArray(log[0])) {
+              // 新格式：数组的数组，按用户消息索引匹配
+              const hist = new Map<number, StepItem[]>()
+              let userIdx = 0
+              for (let i = 0; i < msgs.length && userIdx < log.length; i++) {
+                if (msgs[i].role === 'user') {
+                  const steps: StepItem[] = (log[userIdx] || []).map((s: { label: string; elapsed: number }) => ({
+                    phase: '', label: s.label, status: 'completed' as const, startedAt: 0, elapsed: s.elapsed,
+                  }))
+                  if (steps.length > 0) hist.set(i, steps)
+                  userIdx++
+                }
+              }
+              setStepHistory(hist)
+            } else {
+              // 旧格式兼容：单数组归到最后一个用户消息
+              const hist = new Map<number, StepItem[]>()
+              let lastUserIdx = -1
+              for (let i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].role === 'user') { lastUserIdx = i; break }
+              }
+              if (lastUserIdx >= 0) {
+                hist.set(lastUserIdx, (Array.isArray(log) ? log : []).map((s: { label: string; elapsed: number }) => ({
+                  phase: '', label: s.label, status: 'completed' as const, startedAt: 0, elapsed: s.elapsed,
+                })))
+              }
+              setStepHistory(hist)
+            }
+          } catch { setStepHistory(new Map()) }
         }
         // 恢复会话中的 plan 和 stage
         if (res.data.plan) {
@@ -1327,7 +1348,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     setMessages([])
     setCurrentPlan(null)
     setExecuteResults(null)
-    setStreamSteps([])
+    setStepHistory(new Map())
     setStage('chatting')
     setExceptions(null)
     setWarningsList([])
@@ -1361,6 +1382,9 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
       role: 'user',
       content: text,
     }
+    // 记录此用户消息在 messages 中的索引（添加前 = messages.length）
+    const userMsgIdx = messages.length
+    activeUserMsgIdxRef.current = userMsgIdx
     setMessages((prev) => [...prev, userMsg])
     // 确认/执行流程不消除已展示的计划，保持可见
     const isConfirmFlow = text.trim() === '确认' && currentPlan != null
@@ -1373,9 +1397,26 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     setExceptions(null)
     setWarningsList([])
     setIsStreaming(true)
-    setStreamSteps([{ phase: '', label: '正在处理...', status: 'active' as const, startedAt: Date.now() }])
+    // 新交互：追加到 stepHistory
+    setStepHistory((prev) => {
+      const next = new Map(prev)
+      next.set(userMsgIdx, [{ phase: '', label: '正在处理...', status: 'active' as const, startedAt: Date.now() }])
+      return next
+    })
     hasPlanOrInquiryRef.current = false
     pendingNewSessionRef.current = !activeSessionId
+
+    // 辅助：更新当前活跃交互的步骤
+    const updateSteps = (updater: (prev: StepItem[]) => StepItem[]) => {
+      setStepHistory((prev) => {
+        const idx = activeUserMsgIdxRef.current
+        if (idx < 0) return prev
+        const steps = prev.get(idx) || []
+        const next = new Map(prev)
+        next.set(idx, updater(steps))
+        return next
+      })
+    }
 
     const controller = new AbortController()
     abortRef.current = controller
@@ -1402,7 +1443,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
             // 合并 0s 步骤：小于 0.5s 的快速节点不新建步骤，仅更新当前标签
             const FAST_THRESHOLD = 0.5
 
-            setStreamSteps((prev) => {
+            updateSteps((prev) => {
               const now = Date.now()
               const activeIdx = prev.findIndex((s) => s.status === 'active')
 
@@ -1456,7 +1497,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
             }
           },
           onStep: (data: StepEvent) => {
-            setStreamSteps((prev) => {
+            updateSteps((prev) => {
               const activeIdx = prev.findIndex((s) => s.status === 'active')
               if (activeIdx < 0) return prev
               return prev.map((s, i) =>
@@ -1493,7 +1534,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           },
           onDone: () => {
             const now = Date.now()
-            setStreamSteps((prev) => prev.map((s) =>
+            updateSteps((prev) => prev.map((s) =>
               s.status === 'active'
                 ? { ...s, status: 'completed' as const, elapsed: Math.round((now - s.startedAt) / 100) / 10 }
                 : s
@@ -1502,13 +1543,13 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           },
           onError: (msg: string) => {
             setIsStreaming(false)
-            setStreamSteps([])
+            updateSteps(() => [])
             toast.error(msg)
           },
           onInquiry: (data: InquiryEvent) => {
             hasPlanOrInquiryRef.current = true
             setIsStreaming(false)
-            setStreamSteps([])
+            updateSteps(() => [])
             setInquiryData(data)
             setShowInquiryModal(true)
             setStage('chatting')
@@ -1516,7 +1557,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
           onGuardReject: (msg: string) => {
             hasPlanOrInquiryRef.current = true
             setIsStreaming(false)
-            setStreamSteps([])
+            updateSteps(() => [])
             setMessages((prev) => [...prev, {
               id: Date.now().toString(),
               role: 'assistant',
@@ -1540,7 +1581,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setIsStreaming(false)
-      setStreamSteps([])
+      updateSteps(() => [])
       toast.error('请求失败，请检查网络')
     }
   }
@@ -1563,7 +1604,7 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
     setExecuteResults(null)
     setExceptions(null)
     setWarningsList([])
-    setStreamSteps([])
+    setStepHistory(new Map())
     setStage('chatting')
     setDayCount(1)
     setTravelModeConfirmed(false)
@@ -1656,7 +1697,8 @@ export function AIPlanPage({ onBack }: { onBack: () => void }) {
                   currentPlan={currentPlan}
                   executeResults={executeResults}
                   isStreaming={isStreaming}
-                  streamSteps={streamSteps}
+                  stepHistory={stepHistory}
+                  activeUserMsgIdx={activeUserMsgIdxRef.current}
                   executing={executing}
                   entranceReady={ready}
                   exceptions={exceptions}

@@ -158,10 +158,10 @@ async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:
         if elapsed >= 0.1:
             proc_steps.append({"label": current_label + "（收尾）", "elapsed": elapsed})
 
-        # 持久化处理日志
+        # 持久化处理日志（追加到累积日志）
         if final_session_id and proc_steps:
             try:
-                memory.save_processing_log(final_session_id, json.dumps(proc_steps, ensure_ascii=False))
+                memory.append_processing_log(final_session_id, json.dumps(proc_steps, ensure_ascii=False))
             except Exception:
                 pass
 

@@ -743,7 +743,7 @@ def _extract_single_day_label(user_input: str, default_day_num: int = 1) -> str:
 
 
 def _compose_plan_rule_based(state: AgentState) -> dict[str, Any]:
-    scenario = state.get("scenario", "family")
+    scenario = state.get("scenario", "other")
     constraints = state.get("constraints", {})
     candidates = state.get("candidates", {})
     start = constraints.get("start_time", "14:00")
@@ -757,8 +757,10 @@ def _compose_plan_rule_based(state: AgentState) -> dict[str, Any]:
 
     if scenario == "friends":
         plan = _compose_friends_plan(candidates, start)
-    else:
+    elif scenario == "family":
         plan = _compose_family_plan(candidates, start, constraints)
+    else:
+        plan = _compose_generic_plan(candidates, start, constraints)
 
     # ── 多日处理 ──
     if day_count > 1:
@@ -1302,13 +1304,18 @@ def _detect_scenario(text: str, history: list[dict[str, Any]]) -> str:
         return "family"
     if any(keyword in text for keyword in ("朋友", "2男2女", "两男两女", "4个人", "四个人")):
         return "friends"
+    if any(keyword in text for keyword in ("情侣", "对象", "女朋友", "男朋友", "老公", "约会", "两人", "2个人", "两个人")):
+        return "couple"
     for message in reversed(history):
         content = message.get("content", "")
         if any(keyword in content for keyword in ("老婆", "孩子", "娃", "亲子", "一家")):
             return "family"
         if any(keyword in content for keyword in ("朋友", "2男2女", "两男两女", "4个人", "四个人")):
             return "friends"
-    return "family"
+        if any(keyword in content for keyword in ("情侣", "对象", "女朋友", "男朋友", "老公", "约会", "两人")):
+            return "couple"
+    # 无法判断时不预设为家庭，交由 LLM 或默认使用通用场景
+    return "other"
 
 
 def _extract_constraints(text: str, scenario: str) -> dict[str, Any]:
@@ -1395,8 +1402,10 @@ def _compose_family_plan(
                                 "儿童友好，适合家庭用餐。", "walking"))
 
     total_cost = sum(item.estimated_cost for item in items)
+    day_count = constraints.get("day_count", 1)
+    title = _make_rule_title(items, day_count)
     return AgentPlan(
-        title="家庭亲子半日可执行方案",
+        title=title,
         description="按亲子友好、离家不远来安排，已包含活动、缓冲和晚餐。",
         scenario="family",
         travel_type="亲子",
@@ -1440,14 +1449,85 @@ def _compose_friends_plan(candidates: dict[str, list[dict[str, Any]]], start: st
                                 "适合聚餐聊天。", "walking"))
 
     total_cost = sum(item.estimated_cost for item in items)
+    title = _make_rule_title(items, 1)
     return AgentPlan(
-        title="朋友半日聚会可执行方案",
+        title=title,
         description="按朋友聚会、拍照聊天、聚餐可执行来安排。",
         scenario="friends",
         travel_type="美食",
         total_cost=total_cost,
         items=items,
     )
+
+
+def _compose_generic_plan(
+    candidates: dict[str, list[dict[str, Any]]],
+    start: str,
+    constraints: dict[str, Any],
+) -> AgentPlan:
+    """通用编排（非家庭/非朋友场景），按候选顺序简单组合。"""
+    play = (candidates.get("amusement_park")
+            or candidates.get("scenic_spot")
+            or candidates.get("exhibition_hall")
+            or [None])[0]
+    mall = (candidates.get("mall") or [None])[0]
+    restaurant = (candidates.get("restaurant") or [None])[0]
+
+    items: list[AgentPlanItem] = []
+    cursor = start
+    prev_x, prev_y = 0, 0
+
+    if play:
+        table = "amusement_park"
+        if play in (candidates.get("scenic_spot") or []):
+            table = "scenic_spot"
+        elif play in (candidates.get("exhibition_hall") or []):
+            table = "exhibition_hall"
+        px, py = _get_xy(play)
+        travel_min = estimate_travel_time(calc_distance_between(prev_x, prev_y, px, py), "walking")
+        arrive = add_minutes(cursor, travel_min)
+        items.append(_plan_item(1, "play", table, play, arrive, 90, "下午主活动。"))
+        cursor = add_minutes(arrive, 90)
+        prev_x, prev_y = px, py
+
+    if mall:
+        mx, my = _get_xy(mall)
+        travel_min = estimate_travel_time(calc_distance_between(prev_x, prev_y, mx, my), "walking")
+        arrive = add_minutes(cursor, travel_min)
+        items.append(_plan_item(len(items) + 1, "extra", "mall", mall, arrive, 50, "自由逛街。", "walking"))
+        cursor = add_minutes(arrive, 50)
+        prev_x, prev_y = mx, my
+
+    dinner_time = cursor if cursor >= "17:30" else "17:30"
+    if restaurant:
+        rx, ry = _get_xy(restaurant)
+        travel_min = estimate_travel_time(calc_distance_between(prev_x, prev_y, rx, ry), "walking")
+        arrive = dinner_time if dinner_time > add_minutes(cursor, travel_min) else add_minutes(cursor, travel_min)
+        items.append(_plan_item(len(items) + 1, "dining", "restaurant", restaurant, arrive, 90,
+                                "晚餐推荐。", "walking"))
+
+    total_cost = sum(item.estimated_cost for item in items)
+    day_count = constraints.get("day_count", 1)
+    title = _make_rule_title(items, day_count)
+    return AgentPlan(
+        title=title,
+        description="根据需求自动编排，已包含游玩、购物和用餐。",
+        scenario="other",
+        travel_type="休闲",
+        total_cost=total_cost,
+        items=items,
+    )
+
+
+def _make_rule_title(items: list[AgentPlanItem], day_count: int) -> str:
+    """根据实际行程内容生成动态标题。"""
+    names = [it.location_name for it in items[:3] if it.location_name]
+    if not names:
+        return f"{day_count}日出行方案" if day_count > 1 else "半日出游方案"
+    core = " · ".join(names[:2]) if len(names) >= 2 else names[0]
+    if day_count > 1:
+        return f"{core}等{day_count}日游"
+    return f"{core}半日游"
 
 
 def _pick_family_restaurant(restaurants: list[dict[str, Any]], constraints: dict[str, Any]) -> dict[str, Any] | None:

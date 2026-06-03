@@ -65,7 +65,8 @@ def load_session_node(state: AgentState) -> dict[str, Any]:
     # 使用清洗后的文本
     sanitized = check.sanitized
     _emit_step("正在创建/加载会话...")
-    session_id = memory.ensure_session(state.get("session_id", 0) or None, sanitized)
+    sid = state.get("session_id", 0)
+    session_id = memory.ensure_session(sid if sid > 0 else None, sanitized)
     _emit_step("正在加载历史消息...")
     history = memory.load_messages(session_id)
     memory.append_message(session_id, "user", sanitized)

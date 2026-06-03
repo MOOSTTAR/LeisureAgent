@@ -104,9 +104,17 @@ def execute_plan_actions(plan_id: int) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     conn = get_connection()
 
+    if not plan_items:
+        results.append({
+            "location_table_name": "",
+            "location_id": 0,
+            "location_name": "方案",
+            "status": "success",
+            "message": "方案已确认（无明细项）",
+        })
+        return results
+
     for item in plan_items:
-        if not item.get("is_need_booking"):
-            continue
         if item.get("is_had_booking"):
             continue
 
@@ -115,6 +123,16 @@ def execute_plan_actions(plan_id: int) -> list[dict[str, Any]]:
         location = get_location(table_name, location_id)
 
         if not location:
+            continue
+
+        if not item.get("is_need_booking"):
+            results.append({
+                "location_table_name": table_name,
+                "location_id": location_id,
+                "location_name": location.get("name", ""),
+                "status": "success",
+                "message": "无需预约",
+            })
             continue
 
         current = location.get("current_booking_count", -1)

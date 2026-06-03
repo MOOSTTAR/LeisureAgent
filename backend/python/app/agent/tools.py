@@ -173,6 +173,24 @@ def execute_plan_actions(plan_id: int) -> list[dict[str, Any]]:
     return results
 
 
+def get_location_by_name(name: str) -> dict[str, Any] | None:
+    """按名称在所有场所表中查找地点，返回包含坐标的 dict。"""
+    service_map = {
+        "restaurant": restaurant_service,
+        "mall": mall_service,
+        "amusement_park": amusement_park_service,
+        "scenic_spot": scenic_spot_service,
+        "exhibition_hall": exhibition_hall_service,
+    }
+    for service in service_map.values():
+        items, _ = service.list_all(page=1, page_size=9999)
+        for item in items:
+            item = dict(item)
+            if item.get("name", "") == name or name in str(item.get("name", "")):
+                return item
+    return None
+
+
 def get_location(table_name: str, location_id: int) -> dict[str, Any] | None:
     service_map = {
         "restaurant": restaurant_service,
@@ -364,6 +382,26 @@ def search_inquiry(user_input: str, constraints: dict[str, Any] | None = None) -
     if not tables_to_search:
         tables_to_search = {"restaurant", "amusement_park", "scenic_spot", "exhibition_hall", "mall"}
 
+    # 提取参照地点名：检测 "XX附近" "XX旁边" "距离XX" 等模式
+    ref_x, ref_y = 0, 0
+    ref_patterns = [
+        r"(?:距离|离|看看|去)(.+?)(?:近|附近|旁边|周边|周围)",
+        r"(.+?)(?:附近|旁边|周边|周围)",
+    ]
+    for pat in ref_patterns:
+        m = re.search(pat, user_input)
+        if m:
+            ref_name = m.group(1).strip()
+            # 尝试全名匹配 → 逐字缩短匹配（处理"全聚德比较近"误提取为"全聚德比较"的情况）
+            for end in range(len(ref_name), 1, -1):
+                candidate = ref_name[:end]
+                ref_loc = get_location_by_name(candidate)
+                if ref_loc:
+                    ref_x, ref_y = int(ref_loc.get("x", 0)), int(ref_loc.get("y", 0))
+                    break
+            if ref_x != 0 or ref_y != 0:
+                break
+
     # 提取菜系/类型关键词做进一步筛选
     cuisine_keywords = ["火锅", "烧烤", "日料", "西餐", "粤菜", "中餐", "川菜", "湘菜",
                         "面食", "面", "粉", "素食", "海鲜", "自助", "小吃", "家常菜",
@@ -372,7 +410,6 @@ def search_inquiry(user_input: str, constraints: dict[str, Any] | None = None) -
     for ck in cuisine_keywords:
         if ck in user_input:
             target_cuisine = ck
-            # 菜系关键词意味着用户明确在搜餐厅，强制限定 restaurant
             if "restaurant" not in tables_to_search:
                 tables_to_search = {"restaurant"}
             break
@@ -393,7 +430,7 @@ def search_inquiry(user_input: str, constraints: dict[str, Any] | None = None) -
         for item in items:
             item = dict(item)
             try:
-                dist = calc_distance(int(item["x"]), int(item["y"]))
+                dist = calc_distance_between(ref_x, ref_y, int(item["x"]), int(item["y"]))
             except (ValueError, TypeError):
                 continue
             if dist > max_distance:

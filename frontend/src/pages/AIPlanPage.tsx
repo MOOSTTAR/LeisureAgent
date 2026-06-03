@@ -829,7 +829,7 @@ function ProcessingRecord({
             )}
             <span className="flex-1">{step.label}</span>
             {step.elapsed != null && (
-              <span className="text-[10px] text-slate-300 tabular-nums">{step.elapsed}s</span>
+              <span className="text-[10px] text-slate-300 tabular-nums">{step.elapsed.toFixed(1)}s</span>
             )}
           </motion.div>
         ))}

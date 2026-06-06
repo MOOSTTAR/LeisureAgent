@@ -42,4 +42,10 @@ CLAUDE.local.md
 
 # Frontend Build
 frontend/.next/
-frontend/next-env.d.tsdesign.aux\n design.out\n design.toc
+frontend/next-env.d.ts
+
+# LaTeX 编译产物
+*.aux
+*.out
+*.toc
+*.log

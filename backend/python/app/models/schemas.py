@@ -1,18 +1,8 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
-
-
-class ActivityType(str, Enum):
-    """活动类型"""
-    OUTDOOR = "outdoor"
-    INDOOR = "indoor"
-    DINING = "dining"
-    SHOPPING = "shopping"
-    ENTERTAINMENT = "entertainment"
 
 
 class Location(str, Enum):
@@ -21,24 +11,6 @@ class Location(str, Enum):
     DOWNTOWN = "downtown"   # 市区
     SUBURB = "suburb"       # 郊区
     ANY = "any"
-
-
-class PlanStep(BaseModel):
-    """计划中的单个活动步骤"""
-    type: ActivityType
-    name: str = Field(description="活动名称，如'欢乐谷'、'海底捞'")
-    address: str = Field(default="", description="地址")
-    duration_minutes: int = Field(default=60, ge=30, le=180)
-    estimated_cost: float = Field(default=0, ge=0)
-    notes: str = Field(default="", description="备注/提示")
-
-
-class ActivityPlan(BaseModel):
-    """完整活动计划"""
-    steps: list[PlanStep] = Field(description="按时间排列的活动步骤")
-    total_duration_minutes: int = Field(default=0)
-    total_estimated_cost: float = Field(default=0)
-    summary: str = Field(default="", description="一句话总结")
 
 
 class UserIntent(BaseModel):
@@ -58,29 +30,11 @@ class ChatRequest(BaseModel):
     auto_execute: bool = Field(default=False, description="是否自动执行预约/购票动作")
 
 
-class ChatEvent(BaseModel):
-    """SSE 事件"""
-    event: str = Field(description="事件类型: token/plan/tool_call/tool_result/error/done")
-    data: str = Field(default="")
-
-
 class SearchParams(BaseModel):
     """搜索参数"""
     query: str
     location: str = Field(default="")
     limit: int = Field(default=5, ge=1, le=20)
-
-
-class SearchResult(BaseModel):
-    """搜索结果项"""
-    id: str
-    name: str
-    category: str
-    address: str
-    rating: float = Field(default=0, ge=0, le=5)
-    avg_cost: float = Field(default=0, ge=0)
-    available: bool = Field(default=True)
-    tags: list[str] = Field(default_factory=list)
 
 
 class BookingRequest(BaseModel):
@@ -91,13 +45,6 @@ class BookingRequest(BaseModel):
     party_size: int = Field(default=1, ge=1, le=20)
     contact_name: str = Field(default="")
     contact_phone: str = Field(default="")
-
-
-class BookingResult(BaseModel):
-    """预订结果"""
-    success: bool
-    booking_id: str = Field(default="")
-    message: str = Field(default="")
 
 
 class AgentPlanItem(BaseModel):
@@ -120,19 +67,6 @@ class AgentPlanItem(BaseModel):
     location_y: int = 0
 
 
-class AgentOrder(BaseModel):
-    """Agent 执行的 Mock 订单/预约/取号动作"""
-    id: int | None = None
-    order_type: str
-    target_table: str
-    target_id: int
-    target_name: str
-    order_details: dict[str, Any] = Field(default_factory=dict)
-    status: str = "success"
-    external_reference: str | None = None
-    error_message: str | None = None
-
-
 class AgentPlan(BaseModel):
     """Agent 返回给前端的完整方案"""
     id: int | None = None
@@ -144,28 +78,6 @@ class AgentPlan(BaseModel):
     items: list[AgentPlanItem] = Field(default_factory=list)
     share_text: str = ""
     share_url: str = ""
-
-
-class AgentSessionSummary(BaseModel):
-    """会话列表项"""
-    id: int
-    title: str
-    last_message: str
-    travel_plan_id: int | None = None
-    status: int = 0
-    created_at: str | None = None
-    updated_at: str | None = None
-
-
-class ChatResponse(BaseModel):
-    """聊天响应"""
-    session_id: int
-    reply: str
-    plan: AgentPlan | None = None
-    tool_results: list[dict[str, Any]] = Field(default_factory=list)
-    share_text: str = ""
-    share_url: str = ""
-    current_step: str = "done"
 
 
 class TravelPlanItemCreate(BaseModel):

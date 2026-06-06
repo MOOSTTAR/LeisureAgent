@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from app.db.database import get_connection
 
@@ -226,11 +229,13 @@ def append_processing_log(session_id: int, new_steps_json: str) -> None:
             existing = _json.loads(row["processing_log"])
             if not isinstance(existing, list):
                 existing = []
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to parse existing processing_log for session %s: %s", session_id, e)
             existing = []
     try:
         new_steps = _json.loads(new_steps_json)
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to parse new processing steps for session %s: %s", session_id, e)
         new_steps = []
     existing.append(new_steps)
     conn.execute(

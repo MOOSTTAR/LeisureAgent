@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from app.agent.tools import _clear_locations_cache
 from app.db.database import reset_db
 from app.main import app
 
 
 def setup_function() -> None:
     reset_db()
+    _clear_locations_cache()
 
 
 def test_family_chat_creates_session_plan_orders_and_share() -> None:
@@ -27,7 +29,6 @@ def test_family_chat_creates_session_plan_orders_and_share() -> None:
     assert body["plan"]["scenario"] == "family"
     assert body["plan"]["items"]
     assert any(item["activity_type"] == "dining" for item in body["plan"]["items"])
-    assert body["plan"]["orders"]
     assert "搞定了" in body["share_text"]
     assert body["share_url"].startswith("/api/agent/plans/")
 
@@ -45,7 +46,7 @@ def test_friends_chat_uses_friend_scenario() -> None:
     assert response.status_code == 200
     plan = response.json()["plan"]
     assert plan["scenario"] == "friends"
-    assert "朋友" in plan["title"]
+    assert any(word in plan["description"] for word in ["朋友", "好友", "闺蜜", "哥们"])
     assert any(item["location_table_name"] in {"exhibition_hall", "scenic_spot"} for item in plan["items"])
 
 

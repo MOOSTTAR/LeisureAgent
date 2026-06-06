@@ -1,0 +1,1089 @@
+% ============================================================
+%  LeisureAgent 需求分析说明书
+%  版本: 1.0
+%  日期: 2026-06-05
+% ============================================================
+
+\documentclass[12pt,a4paper]{ctexart}
+
+% ── 页面布局 ──
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm, headheight=14pt]{geometry}
+\usepackage{fancyhdr}
+\usepackage{titling}
+\usepackage{setspace}
+\onehalfspacing
+
+% ── 页眉页脚 ──
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small LeisureAgent 需求分析说明书}
+\fancyhead[R]{\small 版本 1.0}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── 图表与颜色 ──
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc, chains}
+\usepackage{xcolor}
+\definecolor{primary}{HTML}{2563EB}
+\definecolor{secondary}{HTML}{7C3AED}
+\definecolor{accent}{HTML}{059669}
+\definecolor{graybg}{HTML}{F3F4F6}
+\definecolor{darktext}{HTML}{1F2937}
+
+% ── 超链接 ──
+\usepackage[hidelinks]{hyperref}
+
+% ── 列表增强 ──
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=2em}
+
+% ── 表格 ──
+\usepackage{array, booktabs, longtable}
+\newcommand{\tabhead}[1]{\textbf{#1}}
+
+% ── 代码块 ──
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{graybg},
+  rulecolor=\color{lightgray},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+}
+
+% JSON 语言定义（listings 不自带 JSON）
+\lstdefinelanguage{json}{
+  keywords={true, false, null},
+  keywordstyle=\color{primary}\bfseries,
+  sensitive=true,
+  morestring=[b]",
+  stringstyle=\color{accent}\ttfamily,
+}
+
+% ── 图表标题格式 ──
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf, justification=centering}
+
+% ── 封面信息 ──
+\title{{\Huge\bfseries LeisureAgent}\\[6pt]
+       {\Large 本地场景短时活动规划与执行 Agent}\\[12pt]
+       {\LARGE\bfseries 需求分析说明书}}
+\author{版本 1.0 \\[4pt] 2026 年 6 月 5 日}
+\date{}
+
+\begin{document}
+
+% ============================================================
+%  封面
+% ============================================================
+\maketitle
+\thispagestyle{empty}
+
+\vspace{2cm}
+\begin{center}
+\begin{tabular}{rl}
+\toprule
+\textbf{文档编号} & LA-REQ-001 \\
+\textbf{版本号}   & 1.0 \\
+\textbf{编制日期} & 2026 年 6 月 4 日 \\
+\textbf{文档状态} & 初稿 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\newpage
+
+% ============================================================
+%  修订记录
+% ============================================================
+\section*{修订记录}
+\begin{table}[ht]
+\centering
+\begin{tabular}{cclll}
+\toprule
+\textbf{版本} & \textbf{日期} & \textbf{修订内容} & \textbf{修订人} & \textbf{审核人} \\
+\midrule
+1.0 & 2026-06-05 & 初稿，完整需求分析 & - & - \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\newpage
+
+% ============================================================
+%  目录
+% ============================================================
+\tableofcontents
+\newpage
+
+% ============================================================
+%  第一章  引言
+% ============================================================
+\section{引言}
+
+\subsection{编写目的}
+
+本文档旨在对 \textbf{LeisureAgent}——本地场景短时活动规划与执行 Agent——进行全面的需求分析，明确系统功能边界、用户交互模式、技术约束及非功能需求。本文档的预期读者包括：
+
+\begin{itemize}
+  \item \textbf{开发团队}：作为系统设计与编码实现的依据；
+  \item \textbf{测试团队}：作为测试用例设计与验收测试的基准；
+  \item \textbf{项目评审者}：作为项目范围与完成度的评审参考。
+\end{itemize}
+
+\subsection{项目背景与目标}
+
+\subsubsection{项目背景}
+
+在现代城市生活中，周末短时（4--6 小时）的综合活动安排是一项高频但低效的决策任务。用户需要在有限时间内完成"去哪玩→去哪吃→额外活动→预订"的全链路决策，面临以下痛点：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{信息碎片化}：餐厅、景点、商场等信息分散在不同的平台中，缺乏统一检索入口；
+  \item \textbf{编排复杂度高}：需要考虑距离、时间、排队、预约容量等多维约束的手工编排；
+  \item \textbf{决策疲劳}：面对大量选项时缺乏个性化筛选，反复比较消耗精力；
+  \item \textbf{执行断层}：规划与预订分离，规划完成后仍需逐个平台手动操作。
+\end{enumerate}
+
+\subsubsection{项目目标}
+
+LeisureAgent 定位为\textbf{自然语言驱动的周末短时活动智能规划助手}，核心目标是：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 接收用户的自然语言输入（如"下午带老婆孩子出去玩"），自动解析出行需求；
+  \item 综合距离、时间、容量、偏好等多维约束，编排可执行的活动方案；
+  \item 支持"一键确认→自动预约"的闭环体验；
+  \item 提供交互式反馈修订机制，支持用户对方案进行迭代调整。
+\end{enumerate}
+
+\subsection{文档范围}
+
+本文档覆盖 LeisureAgent 系统的全部功能需求与非功能需求，具体包括：
+
+\begin{itemize}
+  \item 智能规划模块：意图识别、需求解析、候选搜索、方案编排、异常检测与自愈；
+  \item 会话管理与上下文保持；
+  \item 五类地点（餐厅、商场、游乐园、户外景点、展馆）的 CRUD 与可预约筛选；
+  \item 方案持久化、分享、预约执行；
+  \item 用户反馈与方案修订。
+\end{itemize}
+
+\subsection{术语定义与缩写}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{10cm}}
+\toprule
+\textbf{术语/缩写} & \textbf{定义} \\
+\midrule
+Agent    & 基于大语言模型（LLM）的智能体，具备理解、规划、工具调用能力 \\
+LangGraph & LangChain 生态中的有状态图编排框架，用于构建多步骤 Agent 工作流 \\
+SSE      & Server-Sent Events，服务器向客户端推送事件的单向通信协议 \\
+ReAct    & Reasoning + Acting，一种 LLM 推理-行动交替的 Agent 模式 \\
+Plan \& Execute & 先制定完整计划，再逐步执行的 Agent 模式 \\
+Candidate & 候选地点，搜索阶段返回的符合约束条件的场所集合 \\
+Scenario & 出行场景，如 family（亲子）、friends（朋友）、couple（情侣） \\
+LLM      & Large Language Model，大语言模型 \\
+\bottomrule
+\end{tabular}
+\caption{术语定义与缩写}
+\label{tab:glossary}
+\end{table}
+
+\subsection{参考文献}
+
+\begin{enumerate}[label={[}\arabic*{]}]
+  \item IEEE Std 830-1998, \textit{IEEE Recommended Practice for Software Requirements Specifications}.
+  \item LangGraph Documentation, \url{https://langchain-ai.github.io/langgraph/}.
+  \item FastAPI Documentation, \url{https://fastapi.tiangolo.com/}.
+  \item LeisureAgent 项目架构文档, \texttt{docs/architecture.md}.
+  \item LeisureAgent API 文档, \texttt{docs/api.md}.
+\end{enumerate}
+
+\newpage
+
+% ============================================================
+%  第二章  总体描述
+% ============================================================
+\section{总体描述}
+
+\subsection{产品视角}
+
+\subsubsection{系统概述}
+
+LeisureAgent 是一个基于 Web 的智能对话系统。用户通过自然语言与系统交互，系统通过 LLM 驱动的 LangGraph 工作流完成意图理解、候选搜索、方案编排与预约执行。
+
+系统采用\textbf{两层 B/S 架构}：前端为 React 纯 UI 层，后端为 Python（FastAPI + LangGraph）服务层，两者通过 SSE 协议实现流式通信。
+
+\subsubsection{系统架构}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  scale=0.78, transform shape,
+  box/.style={rectangle, draw, rounded corners=6pt, minimum width=3.6cm, minimum height=1cm, align=center, font=\footnotesize},
+  comp/.style={rectangle, draw, rounded corners=4pt, minimum width=3cm, minimum height=0.8cm, align=center, font=\footnotesize},
+  srv/.style={rectangle, draw, rounded corners=4pt, minimum width=7cm, minimum height=0.8cm, align=center, font=\footnotesize},
+  db/.style={cylinder, draw, shape border rotate=90, minimum width=2.5cm, minimum height=0.9cm, align=center, font=\footnotesize},
+  arr/.style={-{Stealth[scale=1]}, thick},
+]
+
+% 第1行：用户 → 前端 → 后端
+\node[box, fill=graybg]                        (user)     {用户 (浏览器)};
+\node[box, fill=blue!8, right=1.2cm of user]    (frontend) {React 前端\\聊天面板 · 方案展示 · 预约确认};
+\node[box, fill=purple!8, right=1.2cm of frontend] (backend)  {Python 后端\\FastAPI + LangGraph};
+
+% 第2行：Agent 内部组件
+\node[comp, fill=purple!4, below=1.5cm of backend, xshift=-1.8cm] (planner) {Agent 规划器\\planner.py};
+\node[comp, fill=purple!4, right=0.8cm of planner]                  (tools)   {Tool 工具集\\search / booking};
+
+% 第3行：服务层
+\node[srv, fill=purple!3, below=1.3cm of planner, xshift=0.9cm] (service) {业务服务层 (service / repository)};
+
+% 第4行：数据库
+\node[db, fill=green!8, below=1.2cm of service] (sqlite) {SQLite};
+
+% 连线
+\draw[arr] (user) -- (frontend) node[midway, above, font=\scriptsize] {HTTP};
+\draw[arr] (frontend) -- (backend) node[midway, above, font=\scriptsize] {SSE 流式};
+\draw[arr, dashed, purple] (backend) -- (planner);
+\draw[arr, dashed, purple] (backend) -- (tools);
+\draw[arr] (planner) -- (planner |- service.north);
+\draw[arr] (tools)   -- (tools |- service.north);
+\draw[arr] (service) -- (sqlite);
+
+\end{tikzpicture}
+\caption{LeisureAgent 系统架构图}
+\label{fig:architecture}
+\end{figure}
+
+\noindent\textbf{架构说明：}
+
+\begin{itemize}
+  \item \textbf{前端层}：React + TypeScript + Tailwind CSS，负责聊天界面渲染、SSE 事件消费、方案展示与用户交互；
+  \item \textbf{后端层}：FastAPI 提供 RESTful API 与 SSE 端点，LangGraph 编排 Agent 工作流，支持 LLM 驱动与规则驱动双模式；
+  \item \textbf{数据层}：SQLite 轻量级数据库，存储地点数据、会话记录、方案与明细；
+  \item \textbf{通信协议}：前端与后端通过 SSE（Server-Sent Events）实现服务端到客户端的流式推送，普通 CRUD 操作使用标准 HTTP REST 接口。
+\end{itemize}
+
+\subsection{用户特征}
+
+\subsubsection{目标用户群体}
+
+系统面向以下用户群体：
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{2.5cm}p{4cm}p{6cm}}
+\toprule
+\textbf{用户角色} & \textbf{特征描述} & \textbf{核心诉求} \\
+\midrule
+家庭用户 & 已婚有子女，周末带家人出行 & 亲子友好场所、安全舒适、合理安排节奏 \\
+朋友聚会 & 2--4 人的社交出行 & 适合聊天拍照、氛围轻松、兼顾多种偏好 \\
+情侣约会 & 2 人出行 & 浪漫氛围、私密性好、品质感强 \\
+独行用户 & 单人休闲 & 灵活自由、低决策成本 \\
+\bottomrule
+\end{tabular}
+\caption{目标用户群体分析}
+\label{tab:users}
+\end{table}
+
+\subsubsection{用户场景}
+
+\textbf{典型场景：家庭周末半日游}
+
+\begin{enumerate}[label=\textbf{步骤 \arabic*:}]
+  \item 用户打开 LeisureAgent，输入"下午带老婆和孩子出去玩，想去游乐场，晚上吃火锅"；
+  \item 系统解析出场景为 family，提取偏好（游乐场 + 火锅），搜索附近候选地点；
+  \item 系统编排方案：14:00 出发 → 游乐园（14:20--16:00）→ 商场缓冲（16:20--17:10）→ 火锅晚餐（17:30--19:00）；
+  \item 用户查看方案，觉得满意，回复"确认"；
+  \item 系统自动执行预约，返回预约结果。
+\end{enumerate}
+
+\subsection{运行环境}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{4cm}p{6cm}}
+\toprule
+\textbf{环境维度} & \textbf{技术选型} & \textbf{说明} \\
+\midrule
+服务器操作系统 & Linux / Windows & 支持跨平台部署 \\
+Python 版本   & 3.12+            & 后端运行环境 \\
+Node.js 版本  & 20+              & 前端构建环境 \\
+数据库        & SQLite           & 嵌入式数据库，零配置 \\
+浏览器支持    & Chrome / Edge / Firefox 最新版 & 前端运行环境 \\
+容器化        & Docker + Docker Compose    & 可选部署方式 \\
+LLM 提供商    & 可配置（OpenAI / 兼容接口） & 通过环境变量切换 \\
+\bottomrule
+\end{tabular}
+\caption{运行环境要求}
+\label{tab:environment}
+\end{table}
+
+\subsection{设计与实现约束}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{周末限定}：系统仅支持周末（周六、周日）的活动规划，工作日请求将直接拒绝；
+  \item \textbf{短时规划}：默认规划 4--6 小时的活动，最长不超过 12 小时；
+  \item \textbf{本地场景}：仅在预设的本地 Mock 数据库范围内检索，不接入真实地图或第三方 API；
+  \item \textbf{LLM 降级}：LLM 不可用时自动降级为规则驱动逻辑，保证核心流程可用；
+  \item \textbf{不涉及真实金钱}：预约操作为模拟行为，仅更新数据库中的预约计数。
+\end{enumerate}
+
+\subsection{假设与依赖}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{1.5cm}p{5.5cm}p{5.5cm}}
+\toprule
+\textbf{编号} & \textbf{假设} & \textbf{影响} \\
+\midrule
+AS-01 & 用户使用中文输入 & 系统提示词与 NLP 处理均以中文为主 \\
+AS-02 & 用户输入包含足够信息用于意图解析 & 信息不足时系统将主动反问澄清 \\
+AS-03 & Mock 数据库包含足够多样本 & 候选不足时系统将告知用户而非给出凑合方案 \\
+AS-04 & LLM API 可用且响应正常 & 不可用时降级为规则逻辑 \\
+AS-05 & 距离计算基于曼哈顿距离 $|x|+|y|$ & 简化的坐标系统不影响方案合理性 \\
+\bottomrule
+\end{tabular}
+\caption{假设与依赖}
+\label{tab:assumptions}
+\end{table}
+
+\newpage
+
+% ============================================================
+%  第三章  功能需求
+% ============================================================
+\section{功能需求}
+
+\subsection{系统用例总览}
+
+\subsubsection{用例图}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  scale=0.82,
+  usecase/.style={draw, ellipse, minimum width=3cm, minimum height=0.85cm, align=center, font=\footnotesize, fill=blue!5},
+  actor/.style={draw, rounded corners=8pt, minimum width=2cm, minimum height=1.6cm, align=center, font=\footnotesize, fill=graybg},
+]
+
+% 用户（正中心）
+\node[actor] (user) at (0,0) {\textbf{用户}};
+
+% 7个用例围着用户呈环形分布
+\node[usecase] (uc1) at (0, 5)     {智能规划行程};
+\node[usecase] (uc2) at (4.2, 3.2) {浏览/查询地点};
+\node[usecase] (uc3) at (5.5, -0.5){查看与调整方案};
+\node[usecase] (uc4) at (3.5, -3.8){确认执行预约};
+\node[usecase] (uc5) at (-3.5,-3.8){反馈修订方案};
+\node[usecase] (uc6) at (-5.5,-0.5){分享方案};
+\node[usecase] (uc7) at (-4.2,3.2) {管理会话历史};
+
+% 7条辐射线，各走各的方向
+\draw (user.90)  -- (uc1.south);
+\draw (user.45)  -- (uc2.south west);
+\draw (user.10)  -- (uc3.west);
+\draw (user.330) -- (uc4.west);
+\draw (user.210) -- (uc5.east);
+\draw (user.170) -- (uc6.east);
+\draw (user.135) -- (uc7.south east);
+
+% 系统边界（圆形虚线，把用户也包进去）
+\begin{scope}[on background layer]
+  \node[draw=gray, dashed, rounded corners=20pt, fill=graybg!20,
+        fit=(uc1)(uc2)(uc3)(uc4)(uc5)(uc6)(uc7)(user),
+        inner sep=10pt, label={[font=\footnotesize\bfseries]above:LeisureAgent 系统}] {};
+\end{scope}
+
+\end{tikzpicture}
+\caption{LeisureAgent 系统用例图}
+\label{fig:usecase}
+\end{figure}
+
+\subsubsection{用例详细列表}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{clp{4.5cm}p{2.5cm}}
+\toprule
+\textbf{编号} & \textbf{用例名称} & \textbf{简要说明} & \textbf{优先级} \\
+\midrule
+UC-01 & 智能规划行程 & 输入自然语言需求，自动编排并返回可执行方案 & P0（核心） \\
+UC-02 & 浏览/查询地点  & 按类别、距离、菜系等条件搜索场所 & P1 \\
+UC-03 & 查看与调整方案 & 查看已生成方案的详情，提出修改意见 & P0 \\
+UC-04 & 确认执行预约   & 对方案中的可预约项一键确认预约       & P0 \\
+UC-05 & 反馈修订方案   & 通过自然语言反馈调整方案（换餐厅、改时间等） & P1 \\
+UC-06 & 分享方案       & 获取方案分享链接与文案               & P2 \\
+UC-07 & 管理会话历史   & 查看历史会话列表、加载历史会话       & P2 \\
+\bottomrule
+\end{tabular}
+\caption{用例列表}
+\label{tab:usecases}
+\end{table}
+
+\newpage
+
+\subsection{智能规划模块（核心）}
+
+智能规划模块是 LeisureAgent 的核心，采用 \textbf{ReAct + Plan\&Execute} 混合模式，由 LangGraph 编排实现。
+
+\subsubsection{整体流程}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  scale=0.72, transform shape,
+  tnode/.style={rectangle, draw, rounded corners=3pt, minimum width=2.8cm, minimum height=0.8cm, align=center, font=\footnotesize, inner sep=2pt},
+  dnode/.style={diamond, draw, aspect=2.2, minimum width=3.2cm, minimum height=0.85cm, align=center, font=\footnotesize, inner sep=1pt},
+  arr/.style={-{Stealth[scale=0.6]}, thick},
+  darr/.style={-{Stealth[scale=0.6]}, thick, dashed, teal},
+  rarr/.style={-{Stealth[scale=0.6]}, thick, red!55!black},
+  lbl/.style={font=\tiny, inner sep=0.5pt},
+]
+
+% ═══ 主脊柱（x=0） ═══
+\node[tnode, fill=blue!8]  (load)     at (0,0)     {load\_session\\加载/创建会话};
+\node[tnode, fill=blue!8]  (classify) at (0,-1.3)  {classify\_intent\\意图分类};
+\node[dnode, fill=yellow!10](route)   at (0,-3)    {\textbf{路由判断}};
+\node[tnode, fill=green!8] (analyze)  at (0,-4.7)  {analyze\_goal\\需求解析};
+\node[tnode, fill=green!8] (search)   at (0,-6.1)  {search\_candidates\\候选搜索};
+\node[dnode, fill=yellow!10](detect)  at (0,-7.8)  {\textbf{异常检测}};
+\node[tnode, fill=green!8] (compose)  at (0,-9.3)  {compose\_plan\\方案编排};
+\node[tnode, fill=green!8] (persist)  at (0,-10.7) {persist\_plan\\持久化方案};
+\node[dnode, fill=yellow!10](proute)  at (0,-12.3) {\textbf{模式判断}};
+\node[tnode, fill=green!8] (present)  at (-3.2,-14){present\_plan\\展示方案};
+\node[tnode, fill=green!8] (exec)     at (3.2,-14) {execute\_bookings\\执行预约};
+\node[tnode, fill=green!8] (finalize) at (3.2,-15.5){finalize\_executed\\执行总结};
+
+% ═══ 右侧分支（x=6.5） ═══
+\node[tnode, fill=orange!8] (direct)   at (6.5,-1.3) {direct\_reply\\直接回复};
+\node[tnode, fill=orange!8] (inquiry)  at (6.5,-3)   {search\_inquiry\\咨询搜索};
+\node[tnode, fill=orange!8] (pres_inq) at (6.5,-4.5) {present\_inquiry\\展示结果};
+\node[tnode, fill=purple!8] (feedback) at (6.5,-7.8) {analyze\_feedback\\反馈分析};
+
+% ═══ 主干直连 ═══
+\draw[arr] (load)     -- (classify);
+\draw[arr] (classify) -- (route);
+\draw[arr] (route)    -- node[lbl,right]{new\_plan} (analyze);
+\draw[arr] (analyze)  -- (search);
+\draw[arr] (search)   -- (detect);
+\draw[arr] (detect)   -- node[lbl,right]{ok} (compose);
+\draw[arr] (compose)  -- (persist);
+\draw[arr] (persist)  -- (proute);
+\draw[arr] (proute)   -| node[lbl,near start]{manual} (present);
+\draw[arr] (proute)   -| node[lbl,near start]{auto}   (exec);
+\draw[arr] (exec)     -- (finalize);
+
+% ═══ route → 右侧：casual（上）+ inquiry（下），不同 y ═══
+\draw[arr] ([yshift=0.2cm]route.east)  -- ++(1.2,0) |- node[lbl,pos=0.7]{casual / out\_of\_domain} (direct.west);
+\draw[arr] ([yshift=-0.2cm]route.east) -- ++(0.7,0) |- node[lbl,pos=0.82]{inquiry} (inquiry.west);
+\draw[arr] (direct)   -- (inquiry);
+\draw[arr] (inquiry)  -- (pres_inq);
+\draw[arr] (pres_inq.south) -- ++(0,-0.5) node[below,font=\tiny]{END};
+
+% ═══ route → feedback（走左侧出，深处） ═══
+\draw[arr] ([xshift=-0.35cm]route.south) -- ++(0,-0.5) -| node[lbl,pos=0.5]{feedback} (feedback.north);
+
+% ═══ 所有回退/自愈 → 共享左侧通道 x=-5.5 ═══
+\draw[darr] (detect.west)   -- ++(-5,0)  |- node[lbl,pos=0.4]{缺关键类别}  node[lbl,pos=0.55]{\& 重试$<$2} (search.west);
+\draw[darr] (exec.west)     -- ++(-4.5,0) |- node[lbl,pos=0.4]{有失败}       node[lbl,pos=0.55]{\& 重试$<$2} (compose.west);
+\draw[darr] (feedback.west) -- ++(-5.8,0)|- node[lbl,pos=0.55]{需重搜} (search.west);
+
+% ═══ confirm（右侧通道，浅处，直达 exec） ═══
+\draw[rarr] ([xshift=0.35cm]route.south) -- ++(0,-0.3) -- ++(8.5,0) |- (exec.east) node[lbl,pos=0.55]{confirm};
+
+% ═══ 终点 ═══
+\draw[arr] (present.south)  -- ++(0,-0.5) node[below,font=\tiny]{END};
+\draw[arr] (finalize.south) -- ++(0,-0.5) node[below,font=\tiny]{END};
+
+% ═══ 图例 ═══
+\node[font=\footnotesize,anchor=north west] at ([yshift=-0.3cm]present.south -| load.west) {\textbf{图例：} 黑色 = 主流程 \ \  青色虚线 = 自愈/回退 \ \  红色 = 确认直达};
+
+\end{tikzpicture}
+\caption{LangGraph Agent 核心业务流程图}
+\label{fig:flowchart}
+\end{figure}
+
+\newpage
+
+\subsubsection{UC-01 智能规划行程}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{10cm}}
+\toprule
+\textbf{项目} & \textbf{描述} \\
+\midrule
+用例编号   & UC-01 \\
+用例名称   & 智能规划行程 \\
+参与者     & 普通用户 \\
+前置条件   & 用户已打开 LeisureAgent 界面 \\
+后置条件   & 系统返回可执行方案（成功），或返回澄清反问/拒绝消息（失败） \\
+\bottomrule
+\end{tabular}
+\caption{UC-01 智能规划行程——概要}
+\label{tab:uc01}
+\end{table}
+
+\textbf{基本流程：}
+
+\begin{enumerate}[label=\textbf{步骤 \arabic*:}]
+  \item \textbf{用户输入消息}：用户在聊天框中输入自然语言，如"下午带老婆孩子出去玩"；
+  \item \textbf{加载/创建会话}：系统加载现有会话或创建新会话，执行输入安全过滤；
+  \item \textbf{意图分类}（classify\_intent）：系统判断用户意图类型——new\_plan（新规划）、feedback（反馈修订）、confirm（确认执行）、inquiry（查询浏览）、casual（寒暄）或 out\_of\_domain（超出范围）；
+  \item \textbf{需求解析}（analyze\_goal）：LLM 解析出行场景（family/friends/couple/solo/other）、时间偏好、同行人数、预算、特殊要求等结构化约束；
+  \item \textbf{候选搜索}（search\_candidates）：根据场景和约束检索五类场所数据库，标记各项可用性；
+  \item \textbf{异常检测}（detect\_exceptions）：检查关键类别缺失、预约容量已满等情况，必要时触发放宽距离重搜（最多 2 次）；
+  \item \textbf{方案编排}（compose\_plan）：LLM 综合约束与候选生成完整行程方案（活动 → 缓冲 → 用餐），包含每项的时间、预估费用、备注说明；
+  \item \textbf{方案持久化}（persist\_plan）：将方案存入数据库，关联至当前会话；
+  \item \textbf{展示方案}（present\_plan）：以自然语言形式展示方案，生成分享文案与链接，等待用户确认或反馈。
+\end{enumerate}
+
+\textbf{替代流程：}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3.5cm}p{9cm}}
+\toprule
+\textbf{场景} & \textbf{处理方式} \\
+\midrule
+工作日请求 & 直接回复"仅支持周末"，不进入规划流程 \\
+信息不足 & 通过 clarify 路径反问用户缩小范围（菜系、距离、预算） \\
+寒暄/闲聊 & 直接友好回复，不触发规划 \\
+关键类别无候选 & 告知用户缺口，引导调整需求，不给出凑合方案 \\
+预约容量不足 & 在方案中标注预警信息 \\
+\bottomrule
+\end{tabular}
+\caption{替代流程处理}
+\label{tab:alt-flows}
+\end{table}
+
+\textbf{验收标准：}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 用户输入"下午带老婆孩子出去玩"后，系统能在 30 秒内返回包含至少 2 项活动的可执行方案；
+  \item 生成的方案包含每项活动的名称、地址、到达/离开时间、备注说明、预估费用；
+  \item 多日输入（如"周六周日怎么玩"）应正确拆分为每天独立行程；
+  \item LLM 不可用时自动降级为规则编排，功能不中断。
+\end{enumerate}
+
+\newpage
+
+\subsection{意图分类模块}
+
+\subsubsection{功能描述}
+
+意图分类是 Agent 工作流的第一个决策节点。系统接收用户原始输入，结合会话上下文（是否有 pending 方案），将输入分为 7 种意图类型之一，决定后续路由路径。
+
+\subsubsection{意图类型定义}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{2.5cm}p{3cm}p{7cm}}
+\toprule
+\textbf{意图类型} & \textbf{路由目标} & \textbf{典型示例} \\
+\midrule
+new\_plan   & analyze\_goal & "周末带孩子去游乐场，晚上吃火锅" \\
+feedback   & analyze\_feedback & "火锅太贵了，换个便宜的"、"不想去游乐园" \\
+confirm    & execute\_bookings & "好的"、"确认"、"就这样" \\
+inquiry    & search\_inquiry & "附近有什么好吃的火锅店？" \\
+casual     & direct\_reply  & "你好"、"谢谢" \\
+out\_of\_domain & direct\_reply & "明天天气怎么样？" \\
+clarify    & direct\_reply  & "推荐一下好吃的"（信息不足，反问澄清） \\
+\bottomrule
+\end{tabular}
+\caption{意图类型定义}
+\label{tab:intent-types}
+\end{table}
+
+\subsubsection{处理策略}
+
+系统采用\textbf{规则优先 + LLM 增强}的混合策略：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{安全过滤}：输入安全检查在前，被拦截的内容直接进入 direct\_reply 并给出拒绝理由；
+  \item \textbf{规则快速匹配}：确认关键词（"好的"、"执行"等）+ 已有 pending 方案 → 直接判定为 confirm；反馈关键词（"换"、"改"等）+ 已有 pending 方案 → 直接判定为 feedback；工作日关键词 → 直接 rejection；
+  \item \textbf{LLM 分类}：规则未命中时调用轻量级 LLM 进行分类，同时生成 direct\_reply（用于 casual/out\_of\_domain 场景）；
+  \item \textbf{降级回退}：LLM 不可用时使用纯规则分类器。
+\end{enumerate}
+
+\subsection{候选搜索模块}
+
+\subsubsection{功能描述}
+
+根据场景（scenario）和约束（constraints），从本地数据库中检索符合条件的场所。
+
+\subsubsection{场所数据模型}
+
+系统管理五类场所数据，每类包含特定的字段：
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{2.5cm}p{4cm}p{6cm}}
+\toprule
+\textbf{表名} & \textbf{关键字段} & \textbf{特殊逻辑} \\
+\midrule
+restaurant    & cuisine\_type, dining\_style, queue\_time, booking\_hours & 三选一模式：仅预约 / 仅排队 / 无需排队 \\
+mall          & cinema\_has, supermarket\_has & 无需预约，仅作缓冲与购物 \\
+amusement\_park & park\_theme, ticket\_price, performance\_info & 需预约，按票价的 4 倍估算费用 \\
+scenic\_spot  & spot\_type, crowd\_density & 需预约，户外景点 \\
+exhibition\_hall & hall\_type, ticket\_type, exhibition\_theme & 需预约，区分免费/收费 \\
+\bottomrule
+\end{tabular}
+\caption{场所数据模型概览}
+\label{tab:venue-models}
+\end{table}
+
+\subsubsection{搜索约束}
+
+\begin{itemize}
+  \item \textbf{距离筛选}：基于曼哈顿距离 $d = |x_1 - x_2| + |y_1 - y_2|$，支持 \texttt{<200m}、\texttt{<500m}、\texttt{<1.0km}、\texttt{<2.0km}、\texttt{other} 五档筛选；
+  \item \textbf{可用性标记}：搜索后逐项检查预约时段、当前预约量、排队时间，标记 \texttt{available} 字段；
+  \item \textbf{用户指定优先}：用户输入中明确提及的地点名称，将强制纳入候选列表，即使不满足搜索约束。
+\end{itemize}
+
+\subsection{方案编排模块}
+
+\subsubsection{编排原则}
+
+方案编排遵循以下硬约束：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{活动时序}：活动 → 缓冲/额外活动 → 用餐，不可颠倒；
+  \item \textbf{用餐不重复}：一天内不推荐相同菜系的餐厅（用户明确指定则优先尊重用户选择）；
+  \item \textbf{时间不重叠}：同一方案内所有项目的时间段互不重叠；
+  \item \textbf{停留时长合理}：单项活动 5--360 分钟，默认 60--120 分钟；
+  \item \textbf{多日拆分}：多日行程每天至少 1 项活动，day\_num 正确标注。
+\end{enumerate}
+
+\subsubsection{LLM 输出校验}
+
+LLM 生成的方案需经过完整的业务校验器验证：
+
+\begin{itemize}
+  \item 所有 location\_id 必须来自提供的候选列表；
+  \item 不可用（available=false）的候选不可被选中；
+  \item 时间格式必须为 HH:MM，到达时间 < 离开时间；
+  \item 活动项数量 1--10 个；
+  \item 总费用与各项之和偏差不超过 50\%；
+  \item 跨天方案每天至少 1 项活动。
+\end{itemize}
+
+校验失败将触发 LLM 重新生成（含纠错指令），多次失败后由规则逻辑兜底。
+
+\subsection{异常检测与自愈模块}
+
+\subsubsection{搜索自愈（ReAct Search Loop）}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 搜索完成后检测关键类别缺失（如 family 场景缺少 amusement\_park 或 scenic\_spot）；
+  \item 若存在关键缺口且未曾重试（search\_attempt < 2），自动放宽距离约束 50\% 重新搜索；
+  \item 若重试耗尽仍有缺口，将告知用户而非给出凑合方案（gap\_report）。
+\end{enumerate}
+
+\subsubsection{执行自愈（ReAct Execute Loop）}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 预约执行完成后检测失败项；
+  \item 若存在失败项且未曾重试（exec\_attempt < 2），自动从候选池中寻找同类别替代地点；
+  \item 替换后重新持久化并执行预约，直至全部成功或重试耗尽。
+\end{enumerate}
+
+\subsection{预约管理模块}
+
+\subsubsection{UC-04 确认执行预约}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{10cm}}
+\toprule
+\textbf{项目} & \textbf{描述} \\
+\midrule
+用例编号   & UC-04 \\
+参与者     & 普通用户 \\
+前置条件   & 已有确认的方案，方案中包含可预约项目 \\
+后置条件   & 预约状态更新，场所预约计数递增 \\
+\bottomrule
+\end{tabular}
+\caption{UC-04 确认执行预约}
+\label{tab:uc04}
+\end{table}
+
+\textbf{基本流程：}
+
+\begin{enumerate}[label=\textbf{步骤 \arabic*:}]
+  \item 用户回复"确认"（或有 pending 方案时输入确认类关键词）；
+  \item 系统识别为 confirm 意图，进入 execute\_bookings 节点；
+  \item 遍历方案中的所有可预约项目，逐一检查预约名额；
+  \item 名额充足则 \texttt{current\_booking\_count + 1}，标记预约成功；
+  \item 返回逐项预约结果汇总；
+  \item 全部成功则标记会话为 completed。
+\end{enumerate}
+
+\textbf{业务规则：}
+
+\begin{itemize}
+  \item 商场（mall）无需预约，自动跳过；
+  \item 名额已满的项目返回失败，触发执行自愈循环；
+  \item 已预约项目不可重复预约（幂等性保护）；
+  \item 取消预约时恢复 \texttt{current\_booking\_count}。
+\end{itemize}
+
+\subsection{会话管理模块}
+
+\begin{itemize}
+  \item 支持创建新会话与加载已有会话；
+  \item 会话关联消息历史（user/assistant 交替存储）；
+  \item 会话关联当前方案（plan\_id），支持 pending 方案状态追踪；
+  \item 会话状态：0 = active（进行中）/ 1 = completed（已生成方案并确认）；
+  \item 支持会话列表查看与单个会话详情获取（含完整消息历史）。
+\end{itemize}
+
+\subsection{用户反馈与修订模块}
+
+\subsubsection{UC-05 反馈修订方案}
+
+当用户对已有方案不满意时，可通过自然语言反馈触发修订：
+
+\begin{itemize}
+  \item \textbf{置换类}：换餐厅（"换一家火锅店"）、换活动（"不去游乐场，换个博物馆"）→ 需重新搜索候选；
+  \item \textbf{约束调整类}：预算（"太贵了"）、距离（"远一点"）、时间（"早点出发"）、排队（"不想排队"）→ 更新约束后重新编排；
+  \item \textbf{增减类}：增加地点（"再加一个喝奶茶的地方"）、删除地点（"不去商场了"）→ 调整候选列表后重新编排。
+\end{itemize}
+
+修订采用 LLM 解析 + 规则兜底的混合策略，支持多达 3 轮迭代。
+
+\newpage
+
+% ============================================================
+%  第四章  非功能需求
+% ============================================================
+\section{非功能需求}
+
+\subsection{性能需求}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{3cm}p{7cm}}
+\toprule
+\textbf{指标} & \textbf{目标值} & \textbf{说明} \\
+\midrule
+端到端规划耗时 & $\leq 30$ 秒 & 从用户发送消息到方案展示完成（含 LLM 调用时间） \\
+SSE 首字节时间 & $\leq 2$ 秒 & 第一个 token 事件到达前端的时间 \\
+API 查询响应   & $\leq 200$ ms & 非 Agent 的 CRUD 接口响应时间 \\
+并发会话       & $\geq 50$     & 单实例同时支持的活跃会话数 \\
+\bottomrule
+\end{tabular}
+\caption{性能需求指标}
+\label{tab:performance}
+\end{table}
+
+\subsection{可用性需求}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{LLM 降级保活}：LLM 不可用时自动切换规则引擎，用户无感知，系统不中断；
+  \item \textbf{错误恢复}：单次操作失败不影响会话上下文，用户可重新尝试；
+  \item \textbf{流式中断处理}：SSE 连接断开时前端展示已接收的部分内容；
+  \item \textbf{中文友好}：所有提示词、回复、错误消息均使用中文。
+\end{enumerate}
+
+\subsection{可靠性需求}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 预约操作必须在事务中完成（状态更新 + 计数变更原子化）；
+  \item 方案持久化失败不应丢失 LLM 已生成的内容（客户端已通过 SSE 接收）；
+  \item 数据库写入失败应返回明确错误信息，不静默丢失数据。
+\end{enumerate}
+
+\subsection{安全性需求}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{输入过滤}：对用户输入执行安全审查，拦截恶意内容；
+  \item \textbf{LLM 输出校验}：所有 LLM 生成的 location\_id、constraint 字段必须通过业务校验器白名单验证；
+  \item \textbf{无身份认证}（当前阶段）：系统为单用户本地部署，暂不实现用户认证，预留接口扩展空间。
+\end{enumerate}
+
+\newpage
+
+% ============================================================
+%  第五章  外部接口需求
+% ============================================================
+\section{外部接口需求}
+
+\subsection{用户界面}
+
+系统通过 Web 浏览器提供对话式用户界面，核心交互组件包括：
+
+\begin{itemize}
+  \item \textbf{聊天面板}：支持消息输入、发送、SSE 流式回显；
+  \item \textbf{方案卡片}：以时间线形式展示方案详情，每项包含名称、时间、费用、备注；
+  \item \textbf{确认按钮}：方案展示后提供"确认执行"快捷操作；
+  \item \textbf{会话列表}：侧边栏展示历史会话，支持切换和新建。
+\end{itemize}
+
+\subsection{API 接口}
+
+系统提供以下 RESTful API 端点：
+
+\subsubsection{CRUD 接口（五类场所 + 方案 + 明细）}
+
+\begin{table}[ht]
+\centering
+\footnotesize
+\begin{tabular}{llp{4.5cm}}
+\toprule
+\textbf{路由前缀} & \textbf{方法} & \textbf{说明} \\
+\midrule
+/api/restaurants    & GET/POST & 餐厅列表与创建 \\
+/api/restaurants/\{id\} & GET/PUT/DELETE & 餐厅详情/更新/删除 \\
+/api/restaurants/get\_booking\_list & GET & 可预约餐厅 \\
+/api/parks          & GET/POST & 户外景点列表与创建 \\
+/api/parks/\{id\}   & GET/PUT/DELETE & 景点详情/更新/删除 \\
+/api/parks/get\_booking\_list & GET & 可预约景点 \\
+/api/malls          & GET/POST & 商场列表与创建 \\
+/api/malls/\{id\}   & GET/PUT/DELETE & 商场详情/更新/删除 \\
+/api/exhibition-halls & GET/POST & 展馆列表与创建 \\
+/api/exhibition-halls/\{id\} & GET/PUT/DELETE & 展馆详情/更新/删除 \\
+/api/amusement-parks & GET/POST & 游乐园列表与创建 \\
+/api/amusement-parks/\{id\} & GET/PUT/DELETE & 游乐园详情/更新/删除 \\
+/api/travel-plans   & GET/POST & 方案列表与创建 \\
+/api/travel-plans/\{id\} & GET/PUT/DELETE & 方案详情/更新/删除 \\
+/api/travel-plan-items & GET/POST & 方案明细列表与创建 \\
+/api/travel-plan-items/\{id\} & GET/PUT/DELETE & 明细详情/更新/删除 \\
+\bottomrule
+\end{tabular}
+\caption{CRUD 接口一览}
+\label{tab:crud-apis}
+\end{table}
+
+\subsubsection{统一响应格式}
+
+所有接口统一返回以下 JSON 结构：
+
+\begin{lstlisting}[language=json]
+{
+  "code": 0,
+  "data": { /* 业务数据 */ },
+  "msg": "success"
+}
+\end{lstlisting}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{cll}
+\toprule
+\textbf{code} & \textbf{含义} & \textbf{说明} \\
+\midrule
+0   & 成功   & 请求正常处理 \\
+400 & 参数错误 & 请求参数不合法 \\
+404 & 不存在 & 资源不存在 \\
+409 & 冲突   & 时间段冲突 / 重复预约 \\
+500 & 服务器错误 & 内部异常 \\
+\bottomrule
+\end{tabular}
+\caption{统一状态码}
+\label{tab:status-codes}
+\end{table}
+
+\subsection{SSE 通信协议}
+
+\subsubsection{端点}
+
+\texttt{POST /api/chat/stream} —— Agent 核心入口。
+
+\subsubsection{请求体}
+
+\begin{lstlisting}[language=json]
+{
+  "message": "下午带老婆孩子出去玩",
+  "session_id": 0
+}
+\end{lstlisting}
+
+\subsubsection{事件类型}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{3cm}p{7cm}}
+\toprule
+\textbf{事件类型} & \textbf{触发时机} & \textbf{数据内容} \\
+\midrule
+token       & 各节点执行中     & 当前节点名、步骤状态、进度消息 \\
+step        & 节点内部子步骤   & 子步骤描述标签 \\
+plan        & 方案生成完毕     & 完整 AgentPlan JSON \\
+tool\_result & 工具调用返回     & 搜索结果摘要、预约执行结果 \\
+done        & 流程结束         & 最终状态标记 \\
+error       & 流程异常         & 错误描述信息 \\
+\bottomrule
+\end{tabular}
+\caption{SSE 事件类型定义}
+\label{tab:sse-events}
+\end{table}
+
+\subsubsection{方案事件数据结构}
+
+\begin{lstlisting}[language=json]
+{
+  "id": 52,
+  "title": "家庭亲子半日可执行方案",
+  "description": "按亲子友好、离家不远来安排...",
+  "scenario": "family",
+  "travel_type": "亲子",
+  "total_cost": 1596.0,
+  "items": [
+    {
+      "step_order": 1,
+      "activity_type": "play",
+      "location_table_name": "amusement_park",
+      "location_id": 39,
+      "location_name": "童话峡谷",
+      "address": "石景山区...",
+      "arrive_time": "14:00",
+      "leave_time": "15:40",
+      "stay_minute": 100,
+      "remark": "亲子友好，适合5岁孩子...",
+      "estimated_cost": 1196.0
+    }
+  ],
+  "share_text": "搞定了，14:00出发...",
+  "share_url": "/api/agent/plans/52/share"
+}
+\end{lstlisting}
+
+\newpage
+
+% ============================================================
+%  附录
+% ============================================================
+\section*{附录 A：数据字典（核心表）}
+\addcontentsline{toc}{section}{附录 A：数据字典（核心表）}
+
+\subsection*{A.1 travel\_plans（方案主表）}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{2cm}p{8cm}}
+\toprule
+\textbf{字段名} & \textbf{类型} & \textbf{说明} \\
+\midrule
+id            & INTEGER  & 主键，自增 \\
+plan\_title   & TEXT     & 方案标题 \\
+plan\_desc    & TEXT     & 方案简介 \\
+travel\_days  & INTEGER  & 行程天数（1 或 2） \\
+travel\_type  & TEXT     & 游玩类型（亲子/美食/逛街/风景/人文 等） \\
+travel\_date  & TEXT     & 计划出行日期 \\
+total\_cost   & REAL     & 预估总花费 \\
+created\_at   & TEXT     & 创建时间 \\
+updated\_at   & TEXT     & 更新时间 \\
+\bottomrule
+\end{tabular}
+\caption{travel\_plans 表结构}
+\end{table}
+
+\subsection*{A.2 travel\_plan\_items（方案明细表）}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3.2cm}p{2.5cm}p{7.3cm}}
+\toprule
+\textbf{字段名} & \textbf{类型} & \textbf{说明} \\
+\midrule
+id                  & INTEGER  & 主键，自增 \\
+plan\_id            & INTEGER  & 关联方案 ID（外键） \\
+location\_table\_name & TEXT   & 关联场所表名（restaurants/malls/...） \\
+location\_id        & INTEGER  & 场所表中具体 ID \\
+day\_num            & INTEGER  & 第几天行程（1 或 2） \\
+is\_need\_booking   & INTEGER  & 是否需要预约（0/1） \\
+is\_had\_booking    & INTEGER  & 是否已预约（0/1） \\
+arrive\_time        & TEXT     & 预计到达时间（HH:MM） \\
+leave\_time         & TEXT     & 预计离开时间（HH:MM） \\
+stay\_minute        & INTEGER  & 停留时长（分钟） \\
+travel\_mode        & TEXT     & 交通方式（walking/biking/driving/subway） \\
+remark              & TEXT     & 备注 \\
+created\_at         & TEXT     & 创建时间 \\
+updated\_at         & TEXT     & 更新时间 \\
+\bottomrule
+\end{tabular}
+\caption{travel\_plan\_items 表结构}
+\end{table}
+
+\subsection*{A.3 sessions（会话表）}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{2cm}p{8cm}}
+\toprule
+\textbf{字段名} & \textbf{类型} & \textbf{说明} \\
+\midrule
+id            & INTEGER  & 主键，自增 \\
+title         & TEXT     & 会话标题（首条消息前 24 字） \\
+status        & INTEGER  & 状态：0=active, 1=completed \\
+travel\_plan\_id & INTEGER & 当前关联的方案 ID \\
+created\_at   & TEXT     & 创建时间 \\
+updated\_at   & TEXT     & 更新时间 \\
+\bottomrule
+\end{tabular}
+\caption{sessions 表结构}
+\end{table}
+
+\subsection*{A.4 messages（消息表）}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{3cm}p{2cm}p{8cm}}
+\toprule
+\textbf{字段名} & \textbf{类型} & \textbf{说明} \\
+\midrule
+id            & INTEGER  & 主键，自增 \\
+session\_id   & INTEGER  & 关联会话 ID（外键） \\
+role          & TEXT     & user / assistant \\
+content       & TEXT     & 消息正文 \\
+metadata      & TEXT     & JSON 元数据（plan\_id、share\_url、booking\_results 等） \\
+created\_at   & TEXT     & 创建时间 \\
+\bottomrule
+\end{tabular}
+\caption{messages 表结构}
+\end{table}
+
+\clearpage
+
+\section*{附录 B：LangGraph 节点职责对照表}
+\addcontentsline{toc}{section}{附录 B：LangGraph 节点职责对照表}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{3cm}p{3.5cm}p{6.5cm}}
+\toprule
+\textbf{节点名称} & \textbf{所属阶段} & \textbf{核心职责} \\
+\midrule
+load\_session       & 初始化    & 加载/创建会话，执行输入安全检查 \\
+classify\_intent    & ReAct 推理 & 判断用户意图类型（7 分类） \\
+direct\_reply       & ReAct 行动 & 输出 LLM 生成的直接回复 \\
+analyze\_goal       & ReAct 推理 & 解析出行需求为结构化约束 \\
+search\_candidates  & ReAct 行动 & 按约束搜索五类场所候选 \\
+search\_inquiry     & ReAct 行动 & 咨询模式下精确搜索 \\
+present\_inquiry    & ReAct 观察 & 展示查询结果 \\
+detect\_exceptions  & ReAct 观察 & 检测候选缺口与容量异常 \\
+adjust\_search      & ReAct 行动 & 放宽约束触发重搜（自愈） \\
+compose\_plan       & P\&E 计划   & LLM/规则编排行程方案 \\
+persist\_plan       & P\&E 计划   & 持久化方案至数据库 \\
+present\_plan       & P\&E 计划   & 展示方案，等待用户确认 \\
+analyze\_feedback   & ReAct 推理 & 解析用户反馈为修订指令 \\
+execute\_bookings   & P\&E 执行   & 遍历方案执行预约操作 \\
+replan\_execute     & ReAct 行动 & 替换失败项重新执行（自愈） \\
+finalize\_executed  & P\&E 执行   & 生成执行结果总结 \\
+finalize            & 结束      & 生成分享文案（同步端点用） \\
+gap\_report         & 异常处理  & 告知用户候选缺口并引导调整 \\
+\bottomrule
+\end{tabular}
+\caption{LangGraph 节点职责对照表}
+\label{tab:nodes}
+\end{table}
+
+\end{document}

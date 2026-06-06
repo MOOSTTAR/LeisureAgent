@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import AsyncGenerator
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -77,8 +80,11 @@ async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:
     final_session_id = request.session_id
     first_node = True
 
+    # Graph 配置：通过 thread_id 关联会话，启用 checkpointing
+    graph_config = {"configurable": {"thread_id": str(request.session_id)}}
+
     try:
-        async for stream_event in graph.astream(initial_state, stream_mode=["updates", "custom"]):
+        async for stream_event in graph.astream(initial_state, config=graph_config, stream_mode=["updates", "custom"]):
             if isinstance(stream_event, tuple) and len(stream_event) == 2:
                 mode, data = stream_event
                 if mode == "custom":
@@ -162,8 +168,8 @@ async def _stream_events(request: ChatRequest) -> AsyncGenerator[bytes, None]:
         if final_session_id and proc_steps:
             try:
                 memory.append_processing_log(final_session_id, json.dumps(proc_steps, ensure_ascii=False))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to persist processing log for session %s: %s", final_session_id, e)
 
         yield _sse("done", json.dumps({"message": "完成"}))
 
@@ -188,9 +194,14 @@ async def chat(request: ChatRequest):
         "auto_execute": request.auto_execute,
     }
 
-    result = await graph.ainvoke(initial_state)
+    graph_config = {"configurable": {"thread_id": str(request.session_id)}}
+    result = await graph.ainvoke(initial_state, config=graph_config)
     plan = result.get("plan")
-    plan_data = plan.model_dump() if hasattr(plan, "model_dump") else plan
+    stage = result.get("stage", "")
+    # 确认执行/执行后阶段不重复返回方案（已在上一个 turn 展示过）
+    plan_data = None
+    if stage not in ("executed",):
+        plan_data = plan.model_dump() if hasattr(plan, "model_dump") else plan
     return {
         "session_id": result.get("session_id", ""),
         "reply": result.get("share_text") or result.get("messages", [{}])[-1].get("content", ""),
@@ -198,7 +209,7 @@ async def chat(request: ChatRequest):
         "share_text": result.get("share_text", ""),
         "share_url": result.get("share_url", ""),
         "current_step": result.get("current_step"),
-        "stage": result.get("stage", ""),
+        "stage": stage,
     }
 
 
@@ -299,6 +310,24 @@ async def update_travel_modes(plan_id: int, modes: list[str | None]):
         if mode:
             travel_plan_item_service.update(item["id"], {"travel_mode": mode})
     return {"code": 0, "data": None, "msg": "success"}
+
+
+# ═══════════════════════════════════════════════════════════════
+# Agent 可观测性端点
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/agent/metrics")
+async def get_agent_metrics():
+    """返回 Agent 运行时指标：LLM 调用统计 + 安全网触发次数。"""
+    from app.agent.metrics import get_llm_stats, get_safety_net_stats
+    return {
+        "code": 0,
+        "data": {
+            "llm": get_llm_stats(),
+            "safety_net": get_safety_net_stats(),
+        },
+        "msg": "success",
+    }
 
 
 # ═══════════════════════════════════════════════════════════════

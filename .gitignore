@@ -35,6 +35,11 @@ Thumbs.db
 .claude/settings.local.json
 CLAUDE.local.md
 
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
 # Frontend Build
 frontend/.next/
 frontend/next-env.d.ts

@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-MAX_INPUT_LENGTH = 2000
+from app.agent.constants import MAX_INPUT_LENGTH
 
 # 明显的注入攻击模式（正则）
 _INJECTION_PATTERNS: list[tuple[str, str]] = [

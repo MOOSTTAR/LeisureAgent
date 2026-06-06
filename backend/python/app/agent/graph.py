@@ -19,10 +19,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.agent.planner import (
+from app.agent.constants import MAX_EXEC_RETRIES, MAX_SEARCH_RETRIES
+from app.agent.nodes import (
     adjust_search_node,
     analyze_feedback_node,
     analyze_goal_node,
@@ -45,7 +47,68 @@ from app.agent.planner import (
 from app.agent.state import AgentState
 
 
-def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
+# ═══════════════════════════════════════════════════════════════
+# 路由函数（必须在 build_graph 之前定义）
+# ═══════════════════════════════════════════════════════════════
+
+def _route_after_load(state: AgentState) -> str:
+    """load_session 后：拦截则直接回复，否则继续分类。"""
+    if state.get("blocked"):
+        return "blocked"
+    return "ok"
+
+
+def _route_by_intent(state: AgentState) -> str:
+    """根据 classify_intent 的结果路由。"""
+    intent_type = state.get("intent_type", "new_plan")
+    if intent_type in ("casual", "out_of_domain", "clarify"):
+        return "direct_reply"
+    return intent_type
+
+
+def _route_feedback(state: AgentState) -> str:
+    """根据反馈分析结果决定是否需要重新搜索。"""
+    if state.get("needs_research", False):
+        return "needs_search"
+    return "skip_search"
+
+
+def _route_after_detect(state: AgentState) -> str:
+    """ReAct 搜索自愈：关键类别缺失且未达重试上限 → 放宽重搜。"""
+    if state.get("critical_gaps", False):
+        if state.get("search_attempt", 0) < MAX_SEARCH_RETRIES:
+            return "retry_search"
+        return "gap_report"
+    return "compose"
+
+
+def _route_after_exec(state: AgentState) -> str:
+    """ReAct 执行自愈：有失败项且未达重试上限 → 替代重试。"""
+    results = state.get("booking_results", [])
+    has_failures = any(r["status"] != "success" for r in results)
+    if has_failures and state.get("exec_attempt", 0) < MAX_EXEC_RETRIES:
+        return "replan"
+    return "finalize"
+
+
+def _route_after_persist(state: AgentState) -> str:
+    """P&E 一键模式：auto_execute 或执行重试中 → 直接预约。"""
+    if state.get("auto_execute", False) or state.get("exec_attempt", 0) > 0:
+        return "auto_execute"
+    return "present"
+
+
+# ═══════════════════════════════════════════════════════════════
+# Graph 构建
+# ═══════════════════════════════════════════════════════════════
+
+def build_graph(checkpointer: Any = None) -> CompiledStateGraph[Any, Any, Any, Any]:
+    """构建并编译 LangGraph 工作流。
+
+    Args:
+        checkpointer: 可选的 LangGraph checkpointer 实例（如 MemorySaver、SqliteSaver）。
+                      传入后启用跨调用的状态持久化。
+    """
     workflow = StateGraph(AgentState)
 
     # ── 注册所有节点 ──
@@ -78,7 +141,7 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
         },
     )
 
-    # ── 条件路由: 根据 intent_type 分发 ──
+    # ── 条件路由：根据 intent_type 分发 ──
     workflow.add_conditional_edges(
         "classify_intent",
         _route_by_intent,
@@ -94,7 +157,6 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     # ── new_plan 路径 ──
     workflow.add_edge("analyze_goal", "search_candidates")
     workflow.add_edge("search_candidates", "detect_exceptions")
-    # ReAct 搜索自愈循环: detect → adjust_search → search → detect，或 → compose_plan
     workflow.add_conditional_edges(
         "detect_exceptions",
         _route_after_detect,
@@ -106,7 +168,6 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     )
     workflow.add_edge("adjust_search", "search_candidates")
     workflow.add_edge("compose_plan", "persist_plan")
-    # P&E 一键模式：auto_execute 或执行重试 → 直接进入预约执行
     workflow.add_conditional_edges(
         "persist_plan",
         _route_after_persist,
@@ -121,7 +182,7 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     workflow.add_edge("search_inquiry", "present_inquiry")
     workflow.add_edge("present_inquiry", END)
 
-    # ── feedback 路径: analyze_feedback → (search_candidates | compose_plan) ──
+    # ── feedback 路径 ──
     workflow.add_conditional_edges(
         "analyze_feedback",
         _route_feedback,
@@ -130,8 +191,6 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
             "skip_search": "compose_plan",
         },
     )
-    # search → detect → (adjust_search?) → compose → persist → present（复用 new_plan 后段）
-    # 注意：search_candidates / detect_exceptions / compose_plan / persist_plan 的边已定义
 
     # ── confirm 路径 + ReAct 执行自愈循环 ──
     workflow.add_conditional_edges(
@@ -145,64 +204,31 @@ def build_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     workflow.add_edge("replan_execute", "persist_plan")
     workflow.add_edge("finalize_executed", END)
 
-    # ── direct_reply 路径 ──
+    # ── 收尾 ──
     workflow.add_edge("direct_reply", END)
-
-    # ── finalize（同步端点兼容） ──
     workflow.add_edge("finalize", END)
     workflow.add_edge("gap_report", END)
 
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
 
 
-# ── 路由函数 ──
+# ═══════════════════════════════════════════════════════════════
+# Graph 工厂（带缓存 + 默认 checkpointer）
+# ═══════════════════════════════════════════════════════════════
 
-def _route_after_load(state: AgentState) -> str:
-    """load_session 后：拦截则直接回复，否则继续分类。"""
-    if state.get("blocked"):
-        return "blocked"
-    return "ok"
+_graph_instance: CompiledStateGraph | None = None
 
 
-def _route_by_intent(state: AgentState) -> str:
-    """根据 classify_intent 的结果路由。"""
-    intent_type = state.get("intent_type", "new_plan")
-    if intent_type in ("casual", "out_of_domain", "clarify"):
-        return "direct_reply"
-    return intent_type
+def get_graph() -> CompiledStateGraph:
+    """获取全局 graph 实例（单例，带 MemorySaver checkpointing）。
+
+    首次调用时构建并缓存。后续调用返回同一实例。
+    """
+    global _graph_instance
+    if _graph_instance is None:
+        _graph_instance = build_graph(checkpointer=MemorySaver())
+    return _graph_instance
 
 
-def _route_feedback(state: AgentState) -> str:
-    """根据反馈分析结果决定是否需要重新搜索。"""
-    if state.get("needs_research", False):
-        return "needs_search"
-    return "skip_search"
-
-
-def _route_after_detect(state: AgentState) -> str:
-    """ReAct 搜索自愈：关键类别缺失且未达重试上限 → 放宽重搜。若重试耗尽仍有缺口 → 告知用户。"""
-    if state.get("critical_gaps", False):
-        if state.get("search_attempt", 0) < 2:
-            return "retry_search"
-        return "gap_report"
-    return "compose"
-
-
-def _route_after_exec(state: AgentState) -> str:
-    """ReAct 执行自愈：有失败项且未达重试上限 → 替代重试。"""
-    results = state.get("booking_results", [])
-    has_failures = any(r["status"] != "success" for r in results)
-    if has_failures and state.get("exec_attempt", 0) < 2:
-        return "replan"
-    return "finalize"
-
-
-def _route_after_persist(state: AgentState) -> str:
-    """P&E 一键模式：auto_execute 或执行重试中 → 直接预约。"""
-    if state.get("auto_execute", False) or state.get("exec_attempt", 0) > 0:
-        return "auto_execute"
-    return "present"
-
-
-# 模块级实例，main.py 中 import
-graph = build_graph()
+# 模块级实例，向后兼容 `from app.agent.graph import graph`
+graph = get_graph()

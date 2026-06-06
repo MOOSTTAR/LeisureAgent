@@ -17,14 +17,13 @@ from typing import Type, TypeVar
 from pydantic import BaseModel, ValidationError
 from langchain_core.language_models.chat_models import BaseChatModel
 
+from app.agent.constants import MAX_STRUCTURED_RETRIES as MAX_RETRIES
 from app.llm.provider import get_chat_model
 
 T = TypeVar("T", bound=BaseModel)
 
 # validate 回调: 接收已解析的 Pydantic 对象，返回错误列表（空=通过）
 ValidatorFn = Callable[[T], list[str]]
-
-MAX_RETRIES = 3
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -89,7 +88,8 @@ def _repair_json(text: str) -> str | None:
         obj = ast.literal_eval(text.strip())
         return json.dumps(obj, ensure_ascii=False)
     except Exception:
-        pass
+        import logging
+        logging.getLogger(__name__).debug("ast.literal_eval fallback failed for JSON repair")
     return None
 
 
@@ -168,12 +168,16 @@ def invoke_structured(
     output_schema: Type[T],
     model: BaseChatModel | None = None,
     validate: ValidatorFn[T] | None = None,
+    node: str = "",
 ) -> T:
     """调用 LLM 并返回结构化 Pydantic 对象，带 JSON 清洗 + 业务校验 + 重试。
 
     validate: 可选的业务校验回调，接收已解析的对象，返回错误列表（空=通过）。
               校验失败时错误会回传给 LLM 重试。
+    node: 调用来源节点名（用于 metrics 追踪）。
     """
+    import time as _time
+
     llm = model or get_chat_model()
     schema_instruction = _build_schema_instruction(output_schema)
 
@@ -185,8 +189,13 @@ def invoke_structured(
     last_error: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
+            _start = _time.perf_counter()
             response = llm.invoke(messages)
+            llm_elapsed_ms = (_time.perf_counter() - _start) * 1000
             raw_text = _llm_response_text(response)
+
+            # 提取 token 用量（如果响应包含）
+            token_usage = _extract_token_usage(response)
 
             # 1. 提取 JSON
             json_text = _extract_json(raw_text)
@@ -205,6 +214,16 @@ def invoke_structured(
                 errors = validate(obj)
                 if errors:
                     raise _ValidationErrors(errors)
+
+            # 成功：记录 LLM 调用指标
+            if node:
+                try:
+                    from app.agent.metrics import log_llm_call
+                    model_name = getattr(llm, "model_name", "") or getattr(llm, "model", "") or ""
+                    log_llm_call(node, llm_elapsed_ms, True, model=str(model_name),
+                                 token_usage=token_usage)
+                except Exception:
+                    pass
 
             return obj
 
@@ -229,9 +248,27 @@ def invoke_structured(
                 )
             continue
 
+    # 全部重试失败：记录失败指标
+    if node:
+        try:
+            from app.agent.metrics import log_llm_call
+            log_llm_call(node, 0, False, model="")
+        except Exception:
+            pass
     raise ValueError(
         f"structured output failed after {MAX_RETRIES} retries. Last error: {last_error}"
     )
+
+
+def _extract_token_usage(response) -> dict | None:
+    """从 LLM 响应中提取 token 用量。"""
+    for attr in ("usage_metadata", "response_metadata", "llm_output"):
+        meta = getattr(response, attr, None)
+        if isinstance(meta, dict):
+            usage = meta.get("token_usage") or meta.get("usage")
+            if usage:
+                return dict(usage)
+    return None
 
 
 async def ainvoke_structured(
@@ -240,8 +277,14 @@ async def ainvoke_structured(
     output_schema: Type[T],
     model: BaseChatModel | None = None,
     validate: ValidatorFn[T] | None = None,
+    node: str = "",
 ) -> T:
-    """异步调用 LLM 并返回结构化 Pydantic 对象，带 JSON 清洗 + 业务校验 + 重试。"""
+    """异步调用 LLM 并返回结构化 Pydantic 对象，带 JSON 清洗 + 业务校验 + 重试。
+
+    node: 调用来源节点名（用于 metrics 追踪）。
+    """
+    import time as _time
+
     llm = model or get_chat_model()
     schema_instruction = _build_schema_instruction(output_schema)
 
@@ -253,8 +296,12 @@ async def ainvoke_structured(
     last_error: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
+            _start = _time.perf_counter()
             response = await llm.ainvoke(messages)
+            llm_elapsed_ms = (_time.perf_counter() - _start) * 1000
             raw_text = _llm_response_text(response)
+
+            token_usage = _extract_token_usage(response)
 
             # 1. 提取 JSON
             json_text = _extract_json(raw_text)
@@ -273,6 +320,16 @@ async def ainvoke_structured(
                 errors = validate(obj)
                 if errors:
                     raise _ValidationErrors(errors)
+
+            # 成功：记录 LLM 调用指标
+            if node:
+                try:
+                    from app.agent.metrics import log_llm_call
+                    model_name = getattr(llm, "model_name", "") or getattr(llm, "model", "") or ""
+                    log_llm_call(node, llm_elapsed_ms, True, model=str(model_name),
+                                 token_usage=token_usage)
+                except Exception:
+                    pass
 
             return obj
 
@@ -297,6 +354,13 @@ async def ainvoke_structured(
                 )
             continue
 
+    # 全部重试失败
+    if node:
+        try:
+            from app.agent.metrics import log_llm_call
+            log_llm_call(node, 0, False, model="")
+        except Exception:
+            pass
     raise ValueError(
         f"structured output failed after {MAX_RETRIES} retries. Last error: {last_error}"
     )

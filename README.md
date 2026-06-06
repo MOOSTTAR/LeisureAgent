@@ -28,7 +28,7 @@ Agent 会在几分钟内完成：
 
 **AI 一键规划页面**
 
-![](assets/6cf9ed6e-05fd-466f-bddd-4609bcd95fca.png)
+![](assets/a7ea5801-5605-4757-a282-eaf7877c7e12.png)
 
 **地图视图**
 

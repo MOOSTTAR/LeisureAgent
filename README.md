@@ -44,7 +44,7 @@ Agent 会在几分钟内完成：
 
 **分享详情页**
 
-![](assets/8deccecb-58eb-44bb-8f41-58759bbc7e4e.png)
+![](assets/ef6521c4-43e6-4089-a70d-a03567853c5b.png)
 
 ## 技术栈
 

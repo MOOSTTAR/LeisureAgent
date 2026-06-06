@@ -55,10 +55,16 @@ def _get_location(table_name: str, location_id: int) -> Optional[dict[str, Any]]
     return svc.get_by_id(location_id) if svc else None
 
 
-def _has_time_conflict(plan_id: int, new_start: str, new_end: str) -> bool:
-    # 时间冲突判断，看整个方案中具体的这个项和别的时间的有没有交集
+def _has_time_conflict(plan_id: int, new_start: str, new_end: str, day_num: int = 1) -> bool:
+    """时间冲突判断 — 仅检测同一天内的时段重叠。
+
+    不同天的活动即使时间重叠也不视为冲突（如周六14:00和周日14:00）。
+    """
     existing = travel_plan_item_repo.get_by_plan_id(plan_id)
     for item in existing:
+        # 不同天的活动不冲突
+        if item.get("day_num", 1) != day_num:
+            continue
         exist_start = item["arrive_time"]
         exist_end = item["leave_time"]
         if not (new_end <= exist_start or new_start >= exist_end):
@@ -104,8 +110,9 @@ def create(data: dict[str, Any]) -> tuple[Optional[int], Optional[str]]:
     # 自动推断 is_need_booking
     data["is_need_booking"] = _resolve_need_booking(venue)
 
-    # Rule 3: 时间段冲突检测
-    if adjusted_arrive and leave and _has_time_conflict(plan_id, adjusted_arrive, leave):
+    # Rule 3: 时间段冲突检测（仅同一天内）
+    day_num = data.get("day_num", 1)
+    if adjusted_arrive and leave and _has_time_conflict(plan_id, adjusted_arrive, leave, day_num):
         return None, Err.ITEM_TIME_CONFLICT[0]
 
     new_id = travel_plan_item_repo.create(data)

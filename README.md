@@ -24,7 +24,7 @@ Agent 会在几分钟内完成：
 
 **Agent 生成计划并预约**
 
-![](assets/9cbaf9b6-b9ac-4d52-a2ae-38927e7c117d.png)
+![](assets/9179580e-f83f-4fcd-b58c-34e906b7806e.png)
 
 **AI 一键规划页面**
 

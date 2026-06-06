@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { HashRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
+import { Sparkle } from '@phosphor-icons/react'
+import { ToastContainer } from './components/Toast'
 import { Lobby } from './components/lobby'
 import { ManualPlanPage } from './pages/ManualPlanPage'
 import { RestaurantPage } from './pages/RestaurantPage'
@@ -9,10 +13,9 @@ import { AmusementParkPage } from './pages/AmusementParkPage'
 import { TravelPlanPage } from './pages/TravelPlanPage'
 import { AIPlanPage } from './pages/AIPlanPage'
 import { SharedPlanPage } from './pages/SharedPlanPage'
-import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
-import { Sparkle } from '@phosphor-icons/react'
-import { ToastContainer } from './components/Toast'
 import './index.css'
+
+// ── CursorCircle ──────────────────────────────────────────────
 
 function CursorCircle() {
   const mouseX = useMotionValue(-100)
@@ -37,7 +40,8 @@ function CursorCircle() {
   )
 }
 
-type Page = 'lobby' | 'manual-plan' | 'restaurant' | 'park' | 'mall' | 'exhibition' | 'amusement' | 'travel-plans' | 'ai-plan' | 'shared-plan'
+// ── Types ─────────────────────────────────────────────────────
+
 type ExpandPhase = 'idle' | 'dimming' | 'expanding' | 'pausing'
 
 interface CardRect {
@@ -47,129 +51,40 @@ interface CardRect {
   height: number
 }
 
-function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('lobby')
-  const [sharedPlanCode, setSharedPlanCode] = useState('')
-  const prevHashRef = useRef('/')
+// ── Page wrapper with consistent motion ───────────────────────
+
+const pageMotion = {
+  initial: { opacity: 0, x: 50 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -50 },
+  transition: { duration: 0.3 },
+}
+
+function PageWrapper({ children, className = 'h-full' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <motion.div {...pageMotion} className={className}>
+      {children}
+    </motion.div>
+  )
+}
+
+// ── AppContent (lives inside HashRouter) ───────────────────────
+
+function AppContent() {
+  const navigate = useNavigate()
   const [cardRect, setCardRect] = useState<CardRect | null>(null)
   const [expandPhase, setExpandPhase] = useState<ExpandPhase>('idle')
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const expandingDoneRef = useRef(false)
 
-  const clearTimers = () => {
+  const clearTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
-  }
+  }, [])
 
   useEffect(() => {
     return () => clearTimers()
-  }, [])
-
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.slice(1) || '/'
-      if (hash !== '/travel-plans' && !hash.startsWith('/travel-plans/')) {
-        prevHashRef.current = hash
-      }
-      if (hash.startsWith('/travel-plans/')) {
-        const code = hash.slice('/travel-plans/'.length)
-        if (code) {
-          setSharedPlanCode(code)
-          setCurrentPage('shared-plan')
-          return
-        }
-      }
-      if (hash === '/manual-plan') {
-        setCurrentPage('manual-plan')
-      } else if (hash === '/manual-plan/restaurant') {
-        setCurrentPage('restaurant')
-      } else if (hash === '/manual-plan/park') {
-        setCurrentPage('park')
-      } else if (hash === '/manual-plan/mall') {
-        setCurrentPage('mall')
-      } else if (hash === '/manual-plan/exhibition') {
-        setCurrentPage('exhibition')
-      } else if (hash === '/manual-plan/amusement') {
-        setCurrentPage('amusement')
-      } else if (hash === '/ai-plan') {
-        setCurrentPage('ai-plan')
-      } else if (hash === '/travel-plans') {
-        setCurrentPage('travel-plans')
-      } else {
-        setCurrentPage('lobby')
-      }
-    }
-
-    handleHashChange()
-
-    window.addEventListener('hashchange', handleHashChange)
-    window.addEventListener('popstate', handleHashChange)
-
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange)
-      window.removeEventListener('popstate', handleHashChange)
-    }
-  }, [])
-
-  const backToLobby = () => {
-    clearTimers()
-    expandingDoneRef.current = false
-    setExpandPhase('idle')
-    setCardRect(null)
-    window.location.hash = ''
-    setCurrentPage('lobby')
-  }
-
-  const handleBack = () => backToLobby()
-  const handleRestaurantBack = () => {
-    window.location.hash = '/manual-plan'
-    setCurrentPage('manual-plan')
-  }
-  const handleParkBack = () => {
-    window.location.hash = '/manual-plan'
-    setCurrentPage('manual-plan')
-  }
-  const handleMallBack = () => {
-    window.location.hash = '/manual-plan'
-    setCurrentPage('manual-plan')
-  }
-  const handleExhibitionBack = () => {
-    window.location.hash = '/manual-plan'
-    setCurrentPage('manual-plan')
-  }
-  const handleAmusementBack = () => {
-    window.location.hash = '/manual-plan'
-    setCurrentPage('manual-plan')
-  }
-  const handleAIPlanBack = () => backToLobby()
-  const handleSharedPlanBack = () => backToLobby()
-
-  const handleTravelPlansBack = () => {
-    const prev = prevHashRef.current
-    window.location.hash = prev
-    if (prev === '/manual-plan') {
-      setCurrentPage('manual-plan')
-    } else if (prev === '/manual-plan/restaurant') {
-      setCurrentPage('restaurant')
-    } else if (prev === '/manual-plan/park') {
-      setCurrentPage('park')
-    } else if (prev === '/manual-plan/mall') {
-      setCurrentPage('mall')
-    } else if (prev === '/manual-plan/exhibition') {
-      setCurrentPage('exhibition')
-    } else if (prev === '/manual-plan/amusement') {
-      setCurrentPage('amusement')
-    } else {
-      setCurrentPage('lobby')
-    }
-  }
-
-  const handleNavigate = (page: string) => {
-    if (page === 'travel-plans') {
-      window.location.hash = '/travel-plans'
-      setCurrentPage('travel-plans')
-    }
-  }
+  }, [clearTimers])
 
   const handleAICardClick = useCallback((rect: DOMRect) => {
     clearTimers()
@@ -189,7 +104,7 @@ function App() {
 
         // 卡片放大到 ~65% 时切到 AI 页面
         const t2 = setTimeout(() => {
-          window.location.hash = '/ai-plan'
+          navigate('/ai-plan')
         }, 320)
 
         timersRef.current.push(t2)
@@ -197,19 +112,12 @@ function App() {
 
       timersRef.current.push(t1)
     })
-  }, [])
+  }, [navigate, clearTimers])
 
   const active = expandPhase !== 'idle'
 
   const overlayParams = cardRect
-    ? (() => {
-        return {
-          w: cardRect.width,
-          h: cardRect.height,
-          left: cardRect.left,
-          top: cardRect.top,
-        }
-      })()
+    ? { w: cardRect.width, h: cardRect.height, left: cardRect.left, top: cardRect.top }
     : null
 
   return (
@@ -221,7 +129,7 @@ function App() {
       <AnimatePresence>
         {active && cardRect && overlayParams && (
           <>
-            {/* 拦截全部点击 — 动画期间屏蔽所有交互 */}
+            {/* 拦截全部点击 */}
             <motion.div
               key="click-block"
               className="fixed inset-0 z-[101] pointer-events-auto"
@@ -230,7 +138,7 @@ function App() {
               exit={{ opacity: 0 }}
             />
 
-            {/* 暗色遮罩 — 让周围消失 */}
+            {/* 暗色遮罩 */}
             <motion.div
               key="dim-backdrop"
               className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm pointer-events-none"
@@ -239,7 +147,7 @@ function App() {
               exit={{ opacity: 0, transition: { duration: 0.25 } }}
             />
 
-            {/* 卡片外壳 — 用 width/height 膨胀，文字和图标不被拉伸 */}
+            {/* 卡片外壳 */}
             <motion.div
               key="card-shell"
               className="fixed z-[100] pointer-events-none bg-white shadow-[0_8px_30px_-6px_rgba(0,0,0,0.15)]"
@@ -287,7 +195,7 @@ function App() {
                 }
               }}
             >
-              {/* 卡片内部内容 — 膨胀中和停顿中保持透明，避免白屏上出现拉伸内容 */}
+              {/* 卡片内部内容 */}
               <motion.div
                 className="w-full h-full overflow-hidden"
                 animate={
@@ -327,122 +235,44 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* ====== 页面切换 ====== */}
+      {/* ====== 路由 ====== */}
       <AnimatePresence mode="wait">
-        {currentPage === 'lobby' ? (
-          <motion.div
-            key="lobby"
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={active
-              ? { opacity: 0, transition: { duration: 0.25 } }
-              : { opacity: 0, x: -50, transition: { duration: 0.3 } }
-            }
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <Lobby onAICardClick={handleAICardClick} />
-          </motion.div>
-        ) : currentPage === 'manual-plan' ? (
-          <motion.div
-            key="manual-plan"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <ManualPlanPage onBack={handleBack} onNavigate={handleNavigate} />
-          </motion.div>
-        ) : currentPage === 'restaurant' ? (
-          <motion.div
-            key="restaurant"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <RestaurantPage onBack={handleRestaurantBack} />
-          </motion.div>
-        ) : currentPage === 'park' ? (
-          <motion.div
-            key="park"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <ParkPage onBack={handleParkBack} />
-          </motion.div>
-        ) : currentPage === 'exhibition' ? (
-          <motion.div
-            key="exhibition"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <ExhibitionPage onBack={handleExhibitionBack} />
-          </motion.div>
-        ) : currentPage === 'amusement' ? (
-          <motion.div
-            key="amusement"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <AmusementParkPage onBack={handleAmusementBack} />
-          </motion.div>
-        ) : currentPage === 'mall' ? (
-          <motion.div
-            key="mall"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <MallPage onBack={handleMallBack} />
-          </motion.div>
-        ) : currentPage === 'ai-plan' ? (
-          <motion.div
-            key="ai-plan"
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.2 }}
-            className="h-full"
-          >
-            <AIPlanPage onBack={handleAIPlanBack} />
-          </motion.div>
-        ) : currentPage === 'travel-plans' ? (
-          <motion.div
-            key="travel-plans"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <TravelPlanPage onBack={handleTravelPlansBack} />
-          </motion.div>
-        ) : currentPage === 'shared-plan' ? (
-          <motion.div
-            key="shared-plan"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
-          >
-            <SharedPlanPage shareCode={sharedPlanCode} onBack={handleSharedPlanBack} />
-          </motion.div>
-        ) : null}
+        <Routes>
+          <Route path="/" element={
+            active
+              ? <PageWrapper><Lobby onAICardClick={handleAICardClick} /></PageWrapper>
+              : <PageWrapper><Lobby onAICardClick={handleAICardClick} /></PageWrapper>
+          } />
+          <Route path="/manual-plan" element={<PageWrapper><ManualPlanPage /></PageWrapper>} />
+          <Route path="/manual-plan/restaurant" element={<PageWrapper><RestaurantPage /></PageWrapper>} />
+          <Route path="/manual-plan/park" element={<PageWrapper><ParkPage /></PageWrapper>} />
+          <Route path="/manual-plan/mall" element={<PageWrapper><MallPage /></PageWrapper>} />
+          <Route path="/manual-plan/exhibition" element={<PageWrapper><ExhibitionPage /></PageWrapper>} />
+          <Route path="/manual-plan/amusement" element={<PageWrapper><AmusementParkPage /></PageWrapper>} />
+          <Route path="/ai-plan" element={<PageWrapper><AIPlanPage /></PageWrapper>} />
+          <Route path="/travel-plans" element={<PageWrapper><TravelPlanPage /></PageWrapper>} />
+          <Route path="/travel-plans/:shareCode" element={<PageWrapper><SharedPlanPageWrapper /></PageWrapper>} />
+        </Routes>
       </AnimatePresence>
     </div>
+  )
+}
+
+// ── SharedPlanPage wrapper (reads :shareCode from URL params) ──
+
+function SharedPlanPageWrapper() {
+  const { shareCode } = useParams<{ shareCode: string }>()
+  const navigate = useNavigate()
+  return <SharedPlanPage shareCode={shareCode || ''} onBack={() => navigate('/')} />
+}
+
+// ── App root ───────────────────────────────────────────────────
+
+function App() {
+  return (
+    <HashRouter>
+      <AppContent />
+    </HashRouter>
   )
 }
 

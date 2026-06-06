@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Clock, CalendarBlank, CaretDown } from '@phosphor-icons/react'
 import { getTravelPlans, getTravelPlanItems, addTravelPlanItem, resolveLocation, type TravelPlan, type TravelPlanItem } from '../api'
@@ -135,6 +136,7 @@ function PopSelect({ value, options, onChange, theme: t, placeholder }: PopSelec
 }
 
 export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme }: AddToPlanModalProps) {
+  const navigate = useNavigate()
   const c = THEME_COLORS[theme]
 
   const [plans, setPlans] = useState<TravelPlan[]>([])
@@ -324,7 +326,7 @@ export function AddToPlanModal({ isOpen, onClose, item, locationTableName, theme
       item,
       theme,
     }))
-    window.location.hash = '#/travel-plans'
+    navigate('/travel-plans')
     onClose()
   }
 

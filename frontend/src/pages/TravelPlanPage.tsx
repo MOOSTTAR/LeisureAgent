@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CalendarBlank, Clock, CaretLeft, CaretRight, Trash, MapPin, Plus, X, PencilSimple, Share, PersonSimpleWalk, Bicycle, Car, Train } from '@phosphor-icons/react'
 import { getTravelPlans, deleteTravelPlan, createTravelPlan, updateTravelPlan, getTravelPlanById, getTravelPlanItems, deleteTravelPlanItem, updateTravelPlanItem, confirmBooking, cancelBooking, resolveLocation, type TravelPlan, type TravelPlanItem, type ResolvedLocation } from '../api'
@@ -8,10 +9,6 @@ import { ShareModal } from '../components/ShareModal'
 import { PlanMapView } from '../components/PlanMapView'
 import { encodePlanId } from '../utils/shareCode'
 import { toast } from '../components/Toast'
-
-interface TravelPlanPageProps {
-  onBack: () => void
-}
 
 const TRAVEL_TYPE_COLORS: Record<string, string> = {
   '亲子': 'bg-pink-50 text-pink-600',
@@ -998,7 +995,8 @@ function PlanDetail({ plan, onBack }: PlanDetailProps) {
   )
 }
 
-export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
+export function TravelPlanPage() {
+  const navigate = useNavigate()
   const [plans, setPlans] = useState<TravelPlan[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -1076,7 +1074,7 @@ export function TravelPlanPage({ onBack }: TravelPlanPageProps) {
                       animate={{ opacity: 1, x: 0 }}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={onBack}
+                      onClick={() => navigate('/')}
                       className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
                     >
                       <ArrowLeft weight="bold" size={24} className="text-slate-600" />

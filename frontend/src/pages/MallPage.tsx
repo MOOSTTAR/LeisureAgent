@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CaretDown, Trash, Plus, PencilSimple, X } from '@phosphor-icons/react'
 import { getMalls, deleteMall, createMall, updateMall, type Mall } from '../api'
@@ -344,11 +345,8 @@ function FilterBar({ filters, onFilterChange, resultCount }: FilterBarProps) {
   )
 }
 
-interface MallPageProps {
-  onBack: () => void
-}
-
-export function MallPage({ onBack }: MallPageProps) {
+export function MallPage() {
+  const navigate = useNavigate()
   const [filters, setFilters] = useState<FilterOptions>({})
   const [displayCount, setDisplayCount] = useState(5)
   const [isLoading, setIsLoading] = useState(false)
@@ -450,7 +448,7 @@ export function MallPage({ onBack }: MallPageProps) {
                 animate={{ opacity: 1, x: 0 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={onBack}
+                onClick={() => navigate('/manual-plan')}
                 className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
               >
                 <ArrowLeft weight="bold" size={24} className="text-slate-600" />

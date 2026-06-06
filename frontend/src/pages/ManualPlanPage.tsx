@@ -1,37 +1,21 @@
 'use client'
 
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, User } from '@phosphor-icons/react'
 import { CategoryCard } from '../components/category/CategoryCard'
 
-interface ManualPlanPageProps {
-  onBack: () => void
-  onNavigate?: (page: string) => void
-}
-
 // 分类板块数据
 const CATEGORIES = [
-  { id: 'food', name: '美食', icon: '🍜', color: 'orange', description: '探索地道美食' },
-  { id: 'outdoor', name: '户外', icon: '🏕️', color: 'green', description: '亲近大自然' },
-  { id: 'exhibition', name: '观展', icon: '🎨', color: 'purple', description: '艺术与展览' },
-  { id: 'shopping', name: '购物', icon: '🛍️', color: 'pink', description: '逛街购物' },
-  { id: 'entertainment', name: '娱乐', icon: '🎪', color: 'yellow', description: '精彩娱乐项目' },
+  { id: 'food', name: '美食', icon: '🍜', color: 'orange', description: '探索地道美食', path: '/manual-plan/restaurant' },
+  { id: 'outdoor', name: '户外', icon: '🏕️', color: 'green', description: '亲近大自然', path: '/manual-plan/park' },
+  { id: 'exhibition', name: '观展', icon: '🎨', color: 'purple', description: '艺术与展览', path: '/manual-plan/exhibition' },
+  { id: 'shopping', name: '购物', icon: '🛍️', color: 'pink', description: '逛街购物', path: '/manual-plan/mall' },
+  { id: 'entertainment', name: '娱乐', icon: '🎪', color: 'yellow', description: '精彩娱乐项目', path: '/manual-plan/amusement' },
 ]
 
-export function ManualPlanPage({ onBack, onNavigate }: ManualPlanPageProps) {
-  const handleCategoryClick = (categoryId: string) => {
-    if (categoryId === 'food') {
-      window.location.hash = '/manual-plan/restaurant'
-    } else if (categoryId === 'outdoor') {
-      window.location.hash = '/manual-plan/park'
-    } else if (categoryId === 'shopping') {
-      window.location.hash = '/manual-plan/mall'
-    } else if (categoryId === 'exhibition') {
-      window.location.hash = '/manual-plan/exhibition'
-    } else if (categoryId === 'entertainment') {
-      window.location.hash = '/manual-plan/amusement'
-    }
-  }
+export function ManualPlanPage() {
+  const navigate = useNavigate()
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50/50">
@@ -45,7 +29,7 @@ export function ManualPlanPage({ onBack, onNavigate }: ManualPlanPageProps) {
                 animate={{ opacity: 1, x: 0 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={onBack}
+                onClick={() => navigate('/')}
                 className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
               >
                 <ArrowLeft weight="bold" size={24} className="text-slate-600" />
@@ -59,7 +43,7 @@ export function ManualPlanPage({ onBack, onNavigate }: ManualPlanPageProps) {
               animate={{ opacity: 1, x: 0 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate?.('travel-plans')}
+              onClick={() => navigate('/travel-plans')}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700"
             >
               <User weight="bold" size={20} />
@@ -100,7 +84,7 @@ export function ManualPlanPage({ onBack, onNavigate }: ManualPlanPageProps) {
                 stiffness: 100,
                 damping: 20,
               }}
-              onClick={() => handleCategoryClick(category.id)}
+              onClick={() => navigate(category.path)}
             >
               <CategoryCard
                 name={category.name}

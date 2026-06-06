@@ -1,16 +1,18 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { LobbyCard } from './LobbyCard'
 import { Sparkle, SlidersHorizontal } from '@phosphor-icons/react'
 
 export function Lobby({ onAICardClick }: { onAICardClick?: (rect: DOMRect) => void }) {
+  const navigate = useNavigate()
   const [isImgHovered, setIsImgHovered] = useState(false)
   const aiCardRef = useRef<HTMLDivElement>(null)
 
   const handleManualPlanClick = () => {
-    window.location.hash = '/manual-plan'
+    navigate('/manual-plan')
   }
 
   const handleAIPlanClick = () => {
@@ -18,7 +20,7 @@ export function Lobby({ onAICardClick }: { onAICardClick?: (rect: DOMRect) => vo
       const rect = aiCardRef.current.getBoundingClientRect()
       onAICardClick(rect)
     } else {
-      window.location.hash = '/ai-plan'
+      navigate('/ai-plan')
     }
   }
 

@@ -29,12 +29,15 @@ def finalize_executed_node(state: AgentState) -> dict[str, Any]:
         share_url = f"/api/agent/plans/{plan.id}/share" if plan.id else ""
 
     memory.mark_completed(state["session_id"])
-    return {
+    result: dict[str, Any] = {
         "current_step": "done",
         "share_text": share_text,
         "share_url": share_url,
         "messages": [{"role": "assistant", "content": closing}],
     }
+    if plan:
+        result["plan"] = plan.model_copy(update={"share_text": share_text, "share_url": share_url})
+    return result
 
 
 def finalize_node(state: AgentState) -> dict[str, Any]:

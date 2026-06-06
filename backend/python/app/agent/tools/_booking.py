@@ -8,7 +8,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from app.db.database import get_connection
+from app.db.database import get_connection, safe_commit
 from app.models.schemas import AgentPlan
 from app.service import travel_plan_item_service, travel_plan_service
 from app.agent.tools._utils import _to_int, _safe_str
@@ -141,23 +141,15 @@ def execute_plan_actions(plan_id: int) -> list[dict[str, Any]]:
             })
             continue
 
-        current = location.get("current_booking_count", -1)
         max_count = location.get("max_booking_count", -1)
 
-        if current >= 0 and max_count > 0 and current < max_count:
+        if max_count <= 0:
+            # 无预约上限，直接标记已预约
             conn.execute(
-                f"UPDATE {table_name} SET current_booking_count=? WHERE id=?",
-                (current + 1, location_id),
-            )
-            conn.execute(
-                """
-                UPDATE travel_plan_item
-                SET is_had_booking=1, updated_at=CURRENT_TIMESTAMP
-                WHERE id=?
-                """,
+                "UPDATE travel_plan_item SET is_had_booking=1, updated_at=CURRENT_TIMESTAMP WHERE id=?",
                 (item["id"],),
             )
-            conn.commit()
+            safe_commit(conn)
             results.append({
                 "location_table_name": table_name,
                 "location_id": location_id,
@@ -166,12 +158,35 @@ def execute_plan_actions(plan_id: int) -> list[dict[str, Any]]:
                 "message": "预约成功",
             })
         else:
-            results.append({
-                "location_table_name": table_name,
-                "location_id": location_id,
-                "location_name": location.get("name", ""),
-                "status": "failed",
-                "message": "已约满或不可预约",
-            })
+            # 原子预约：UPDATE ... WHERE current_booking_count < max_booking_count
+            # rowcount=0 表示名额已满，杜绝并发竞态
+            conn.execute("BEGIN IMMEDIATE")
+            cur = conn.execute(
+                f"UPDATE {table_name} SET current_booking_count = current_booking_count + 1 "
+                f"WHERE id=? AND current_booking_count < max_booking_count",
+                (location_id,),
+            )
+            if cur.rowcount > 0:
+                conn.execute(
+                    "UPDATE travel_plan_item SET is_had_booking=1, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                    (item["id"],),
+                )
+                safe_commit(conn)
+                results.append({
+                    "location_table_name": table_name,
+                    "location_id": location_id,
+                    "location_name": location["name"],
+                    "status": "success",
+                    "message": "预约成功",
+                })
+            else:
+                conn.rollback()
+                results.append({
+                    "location_table_name": table_name,
+                    "location_id": location_id,
+                    "location_name": location.get("name", ""),
+                    "status": "failed",
+                    "message": "已约满或不可预约",
+                })
 
     return results

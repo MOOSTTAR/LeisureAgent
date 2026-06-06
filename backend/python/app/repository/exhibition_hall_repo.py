@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from app.db.database import get_connection
+from app.db.database import get_connection, safe_commit
 
 TABLE = "exhibition_hall"
 
@@ -147,7 +147,7 @@ def create(data: dict[str, Any]) -> int:
     cur = conn.execute(
         f"INSERT INTO exhibition_hall ({','.join(keys)}) VALUES ({placeholders})", vals
     )
-    conn.commit()
+    safe_commit(conn)
     return cur.lastrowid  # type: ignore[return-value]
 
 
@@ -157,12 +157,12 @@ def update(id: int, data: dict[str, Any]) -> bool:
     cur = conn.execute(
         f"UPDATE exhibition_hall SET {sets} WHERE id=?", [*data.values(), id]
     )
-    conn.commit()
+    safe_commit(conn)
     return cur.rowcount > 0
 
 
 def delete(id: int) -> bool:
     conn = get_connection()
     cur = conn.execute("DELETE FROM exhibition_hall WHERE id=?", (id,))
-    conn.commit()
+    safe_commit(conn)
     return cur.rowcount > 0

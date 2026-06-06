@@ -2,6 +2,9 @@
 
 提供线程安全的连接管理、表结构初始化、种子数据加载和基础 CRUD 工具。
 所有工具函数和 Agent 节点通过本模块读写持久化数据。
+
+并发模型：单连接 + 写锁。SQLite WAL 模式支持并发读，
+写操作通过 _write_lock 序列化，避免 "database is locked" 错误。
 """
 
 from __future__ import annotations
@@ -16,28 +19,40 @@ from typing import Any, Optional
 _DB_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = str(_DB_DIR / "leisure_agent.db")
 
-# ── 线程本地连接 ──
-_local = threading.local()
+# ── 共享连接 + 写锁 ──
+_conn: sqlite3.Connection | None = None
+_conn_lock = threading.Lock()
+_write_lock = threading.Lock()
 
 
 def get_connection() -> sqlite3.Connection:
-    """获取当前线程的数据库连接（懒加载，自动创建）。"""
-    conn: Optional[sqlite3.Connection] = getattr(_local, "conn", None)
-    if conn is None:
-        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        _local.conn = conn
-    return conn
+    """获取共享数据库连接（懒加载，线程安全）。
+
+    使用单连接 + WAL 模式，读操作可并发，写操作由 _write_lock 保护。
+    """
+    global _conn
+    if _conn is None:
+        with _conn_lock:
+            if _conn is None:
+                _conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+                _conn.row_factory = sqlite3.Row
+                _conn.execute("PRAGMA journal_mode=WAL")
+                _conn.execute("PRAGMA foreign_keys=ON")
+    return _conn
+
+
+def safe_commit(conn: sqlite3.Connection) -> None:
+    """带写锁的 commit，序列化所有写操作。"""
+    with _write_lock:
+        conn.commit()
 
 
 def close_db() -> None:
-    """关闭当前线程的数据库连接。"""
-    conn: Optional[sqlite3.Connection] = getattr(_local, "conn", None)
-    if conn:
-        conn.close()
-        _local.conn = None
+    """关闭数据库连接。"""
+    global _conn
+    if _conn is not None:
+        _conn.close()
+        _conn = None
 
 
 # ── 表结构 ──
@@ -179,6 +194,14 @@ CREATE TABLE IF NOT EXISTS agent_message (
 
 CREATE INDEX IF NOT EXISTS idx_agent_message_session ON agent_message(agent_session_id);
 
+/* Agent 指标计数器（持久化，进程重启不丢失）*/
+CREATE TABLE IF NOT EXISTS metrics_counter (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL UNIQUE,          -- 如 "llm:classify_intent:calls" / "safety_net:compose_missing_critical"
+    value REAL NOT NULL DEFAULT 0,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 
 """
 
@@ -223,7 +246,7 @@ def insert(table: str, data: dict[str, Any]) -> int:
         f"INSERT INTO {table} ({','.join(keys)}) VALUES ({placeholders})",
         values,
     )
-    conn.commit()
+    safe_commit(conn)
     return cur.lastrowid  # type: ignore[return-value]
 
 
@@ -265,7 +288,7 @@ def _bulk_insert(conn: sqlite3.Connection, table: str, rows: list[dict]) -> None
             f"INSERT INTO {table} ({','.join(keys)}) VALUES ({placeholders})",
             values,
         )
-    conn.commit()
+    safe_commit(conn)
 
 
 # ── 初始化入口 ──
@@ -283,7 +306,19 @@ def init_db() -> None:
         conn.execute("ALTER TABLE agent_session ADD COLUMN processing_log TEXT DEFAULT NULL")
     except Exception:
         pass
-    conn.commit()
+    # Migration: 已有数据库加 metrics_counter 表
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS metrics_counter (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL UNIQUE,
+                value REAL NOT NULL DEFAULT 0,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    except Exception:
+        pass
+    safe_commit(conn)
     _seed_mock_data(conn)
 
 
@@ -296,5 +331,5 @@ def reset_db() -> None:
         "scenic_spot", "amusement_park", "mall", "restaurant",
     ):
         conn.execute(f"DROP TABLE IF EXISTS {table}")
-    conn.commit()
+    safe_commit(conn)
     init_db()

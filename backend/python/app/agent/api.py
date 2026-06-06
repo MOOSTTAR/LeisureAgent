@@ -197,11 +197,7 @@ async def chat(request: ChatRequest):
     graph_config = {"configurable": {"thread_id": str(request.session_id)}}
     result = await graph.ainvoke(initial_state, config=graph_config)
     plan = result.get("plan")
-    stage = result.get("stage", "")
-    # 确认执行/执行后阶段不重复返回方案（已在上一个 turn 展示过）
-    plan_data = None
-    if stage not in ("executed",):
-        plan_data = plan.model_dump() if hasattr(plan, "model_dump") else plan
+    plan_data = plan.model_dump() if hasattr(plan, "model_dump") else plan
     return {
         "session_id": result.get("session_id", ""),
         "reply": result.get("share_text") or result.get("messages", [{}])[-1].get("content", ""),
@@ -209,7 +205,7 @@ async def chat(request: ChatRequest):
         "share_text": result.get("share_text", ""),
         "share_url": result.get("share_url", ""),
         "current_step": result.get("current_step"),
-        "stage": stage,
+        "stage": result.get("stage", ""),
     }
 
 

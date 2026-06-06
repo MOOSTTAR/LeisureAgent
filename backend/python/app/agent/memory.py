@@ -8,7 +8,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from app.db.database import get_connection
+from app.db.database import get_connection, safe_commit
 
 
 # role 映射：对外字符串 <-> 数据库存储整数
@@ -33,7 +33,7 @@ def ensure_session(session_id: int | None, first_message: str) -> int:
                 """,
                 (sid,),
             )
-            conn.commit()
+            safe_commit(conn)
             return sid
 
     # 创建新会话（自增 ID）
@@ -44,7 +44,7 @@ def ensure_session(session_id: int | None, first_message: str) -> int:
         """,
         (title,),
     )
-    conn.commit()
+    safe_commit(conn)
     return int(cur.lastrowid)
 
 
@@ -77,7 +77,7 @@ def append_message(
         """,
         (agent_session_id,),
     )
-    conn.commit()
+    safe_commit(conn)
 
 
 def load_messages(agent_session_id: int, limit: int = 20) -> list[dict[str, Any]]:
@@ -159,7 +159,7 @@ def bind_plan(session_id: int, plan_id: int) -> None:
         """,
         (plan_id, session_id),
     )
-    conn.commit()
+    safe_commit(conn)
 
 
 def update_session_title(session_id: int, title: str) -> None:
@@ -169,13 +169,13 @@ def update_session_title(session_id: int, title: str) -> None:
         "UPDATE agent_session SET title=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (title[:48] or "新对话", session_id),
     )
-    conn.commit()
+    safe_commit(conn)
 
 
 def delete_session(session_id: int) -> bool:
     conn = get_connection()
     cur = conn.execute("DELETE FROM agent_session WHERE id=?", (session_id,))
-    conn.commit()
+    safe_commit(conn)
     return cur.rowcount > 0
 
 
@@ -186,7 +186,7 @@ def mark_completed(session_id: int) -> None:
         "UPDATE agent_session SET status=2, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (session_id,),
     )
-    conn.commit()
+    safe_commit(conn)
 
 
 def get_stage(session_id: int) -> str:
@@ -213,7 +213,7 @@ def save_processing_log(session_id: int, log_json: str) -> None:
         "UPDATE agent_session SET processing_log=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (log_json, session_id),
     )
-    conn.commit()
+    safe_commit(conn)
 
 
 def append_processing_log(session_id: int, new_steps_json: str) -> None:
@@ -242,7 +242,7 @@ def append_processing_log(session_id: int, new_steps_json: str) -> None:
         "UPDATE agent_session SET processing_log=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (_json.dumps(existing, ensure_ascii=False), session_id),
     )
-    conn.commit()
+    safe_commit(conn)
 
 
 def _make_title(text: str) -> str:

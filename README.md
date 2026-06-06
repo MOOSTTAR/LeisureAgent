@@ -14,13 +14,33 @@ Agent 会在几分钟内完成：
 
 ## 项目展示
 
-**项目展示**
+**首页**
 
 ![](assets/6a4929d9-a979-466a-91fb-a2fddcad3842.png)
 
 **分类板块**
 
 ![](assets/9a6ad124-7a76-4b8e-8697-49f954065e20.png)
+
+**Agent 生成计划并预约**
+
+![](assets/9cbaf9b6-b9ac-4d52-a2ae-38927e7c117d.png)
+
+**AI 一键规划页面**
+
+![](assets/6cf9ed6e-05fd-466f-bddd-4609bcd95fca.png)
+
+**地图视图**
+
+![](assets/dbbd4c71-8215-434f-8825-34bf5dddce91.png)
+
+**分享计划**
+
+![](assets/b50cb6d7-7f14-48fe-9bf2-7284ae590192.png)
+
+**分享详情页**
+
+![](assets/8deccecb-58eb-44bb-8f41-58759bbc7e4e.png)
 
 ## 技术栈
 

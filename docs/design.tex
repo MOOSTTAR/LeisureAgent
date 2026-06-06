@@ -46,7 +46,7 @@ LeisureAgent 由 18 个 LangGraph 节点按 ReAct（推理-行动-观察）与 P
 
 \textbf{场景驱动编排}：三种出行场景各有独立的候选优先级与编排参数：
 
-\begin{table}[ht]
+\begin{table}[ht!]
 \centering\small\setlength{\tabcolsep}{4pt}
 \begin{tabular}{p{2cm}p{3.5cm}p{3cm}p{4cm}}
 \toprule
@@ -68,7 +68,7 @@ LLM 生成方案后经\textbf{四层保障}确保质量：① JSON 严格校验�
 
 \subsection{四大核心链路}
 
-\begin{table}[ht]
+\begin{table}[ht!]
 \centering\footnotesize\setlength{\tabcolsep}{3pt}
 \begin{tabular}{p{1.8cm}p{3cm}p{3.8cm}p{3.2cm}}
 \toprule
@@ -107,7 +107,7 @@ LLM 生成方案后经\textbf{四层保障}确保质量：① JSON 严格校验�
 
 \section{异常处理机制}
 
-\begin{table}[ht]
+\begin{table}[ht!]
 \centering\footnotesize\setlength{\tabcolsep}{3pt}
 \begin{tabular}{p{2.2cm}p{3cm}p{7cm}}
 \toprule
@@ -121,6 +121,9 @@ ReAct\newline 搜索自愈 & detect →\newline adjust →\newline search &
 
 ReAct\newline 执行自愈 & execute →\newline replan →\newline persist →\newline execute &
 预约失败 $\to$ 从原始 candidates 找同类别替代地点（不调 LLM，纯规则匹配）$\to$ 重新持久化并执行。上限 2 次。 \\
+
+预约名额\newline 不足 & persist /\newline execute &
+持久化时检测 \texttt{current\_booking\_count $\ge$ max\_booking\_count} → 返回"预约名额已满"错误；执行时原子 \texttt{UPDATE WHERE current $<$ max}，\texttt{rowcount=0} 判定名额已满，触发执行自愈寻找替代。 \\
 
 结构安全网 & compose &
 LLM 产出缺少 dining（用餐）或 play（游玩）项 $\to$ 从候选池按场景优先级确定性补齐，每次触发记录 safety\_net 指标用于追踪 LLM 产出质量。 \\
@@ -138,7 +141,7 @@ JSON 提取 → 语法清洗（单引号/尾部逗号/中文标点）→ Pydanti
 JSON 结构化日志输出；LLM 调用追踪（节点名、耗时、成功/失败、token 用量）；安全网触发计数。数据持久化到 SQLite metrics\_counter 表，\texttt{GET /api/agent/metrics} 端点可查询。 \\
 \bottomrule
 \end{tabular}
-\caption{八层异常处理机制}
+\caption{九层异常处理机制}
 \end{table}
 
 \vspace{4pt}

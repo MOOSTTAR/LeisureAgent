@@ -103,16 +103,16 @@ def create(data: dict[str, Any]) -> tuple[Optional[int], Optional[str]]:
     if current >= 0 and maximum >= 0 and current >= maximum:
         return None, Err.ITEM_BOOKING_FULL[0]
 
-    # Rule 2: 排队时间调整（仅用于冲突检测），将到达时间提前
-    queue = _to_int(venue.get("queue_time", -1))
-    adjusted_arrive = add_minutes(arrive, -queue) if queue > 0 and arrive else arrive
-
     # 自动推断 is_need_booking
     data["is_need_booking"] = _resolve_need_booking(venue)
 
-    # Rule 3: 时间段冲突检测（仅同一天内）
+    # Rule 2: 时间段冲突检测（仅同一天内）
+    # 注意：不再因 queue_time 提前 arrive——排队在到达后发生，
+    # 提前调整会制造虚假冲突（如后一活动 11:36+30min 排队 → 11:06，
+    # 与前一活动 10:03-11:33 的 11:33 产生误判）。
+    # queue_time 仅作为信息展示，不影响冲突判断。
     day_num = data.get("day_num", 1)
-    if adjusted_arrive and leave and _has_time_conflict(plan_id, adjusted_arrive, leave, day_num):
+    if arrive and leave and _has_time_conflict(plan_id, arrive, leave, day_num):
         return None, Err.ITEM_TIME_CONFLICT[0]
 
     new_id = travel_plan_item_repo.create(data)

@@ -36,7 +36,7 @@ Agent 会在几分钟内完成：
 
 **分享计划**
 
-![](assets/b50cb6d7-7f14-48fe-9bf2-7284ae590192.png)
+![](assets/bf1b3cda-87c9-4a5e-94ce-00c5f26cb50f.png)
 
 **具体活动查询**
 

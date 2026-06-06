@@ -1,0 +1,117 @@
+% ============================================================
+%  LeisureAgent 设计文档 — 2 页
+% ============================================================
+\documentclass[9pt,a4paper]{ctexart}
+\usepackage[top=1.2cm, bottom=1cm, left=1.5cm, right=1.5cm]{geometry}
+\usepackage{fancyhdr}\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\scriptsize LeisureAgent 设计文档}\fancyhead[R]{\scriptsize v1.0}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0.4pt}
+\usepackage{xcolor}\definecolor{graybg}{HTML}{F3F4F6}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}\setlist{nosep, leftmargin=1.2em, itemsep=0pt, topsep=2pt}
+\usepackage{array, booktabs}
+\usepackage{caption}\captionsetup{font=scriptsize, labelfont=bf}
+\usepackage{setspace}\setstretch{0.92}
+\raggedbottom
+
+\begin{document}
+
+\section{Planning 策略 —— ReAct + Plan\&Execute 混合模式}
+
+LeisureAgent 由 18 个 LangGraph 节点组成，按 ReAct（推理-行动-观察）和 Plan\&Execute（计划-执行）混合运行。LLM 调用失败时自动降级规则逻辑。
+
+\subsection{工作流与路由}
+
+{\scriptsize
+\begin{verbatim}
+load_session → classify_intent ──[路由]──┐
+  ├─ casual/out_of_domain → direct_reply → END
+  ├─ inquiry → search_inquiry → present_inquiry → END
+  ├─ new_plan → analyze_goal → search_candidates → detect_exceptions
+  │   ⇢(critical_gap) adjust_search → search_candidates (loop, ≤2)
+  │   → compose_plan → persist_plan
+  │   ⇢(auto) execute_bookings → finalize_executed → END
+  │   ⇢(manual) present_plan → END
+  ├─ feedback → analyze_feedback → (search?) → compose → ... → END
+  └─ confirm → execute_bookings
+      ⇢(failure) replan_execute → persist → execute (loop, ≤2)
+      ⇢(ok) finalize_executed → END
+\end{verbatim}
+}
+
+\textbf{意图分类}采用三层优先级：① 快速规则（确认/反馈关键词 + pending 方案 → 直接路由，工作日关键词 → rejection）；② LLM 分类（轻量模型，temperature=0, max\_tokens=512）；③ TF-IDF 语义匹配降级（char n-gram + 余弦相似度，支持模糊匹配如"哈喽"→CASUAL、"推荐好吃的"→INQUIRY）。
+
+\textbf{场景驱动编排}：三种场景（family/friends/other）各有独立候选优先级。family 优先 amusement\_park $>$ scenic\_spot，偏好火锅/中餐；friends 优先 exhibition\_hall $>$ scenic\_spot。LLM 生成方案后经四层保障：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{JSON 严格校验}：LLM 输出 → 提取 → 清洗（单引号/尾部逗号/中文标点）→ Pydantic 校验，最多 3 次重试；
+  \item \textbf{多日校验}：day\_num 分布不满足 day\_count → LLM 重试 → 规则强制拆分；
+  \item \textbf{结构安全网}：LLM 产出缺失 dining/play → 从候选池按场景优先级自动补齐；
+  \item \textbf{LLM 降级}：调用失败 → 场景配置驱动的规则编排（\_SCENARIO\_CONFIG）。
+\end{enumerate}
+
+\textbf{编排硬约束}：活动时序固定（游玩→缓冲→用餐）；用餐不重复（用户指定优先）；停留 5--360 min；多日每天 ≥1 项。
+
+\vspace{2pt}
+\section{工具调用链路}
+
+\begin{table}[ht]
+\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{2cm}p{3.2cm}p{3.2cm}p{3.5cm}}
+\toprule
+\textbf{链路} & \textbf{输入} & \textbf{关键步骤} & \textbf{输出} \\
+\midrule
+搜索\newline(search) & constraints & 遍历 restaurant/scenic\_spot/amusement\_park/\newline exhibition\_hall/mall 五类表筛选；\newline \texttt{\_extract\_named\_locations()} 强制纳入用户提及地点 & candidates:\newline dict[category,\newline list[item]] \\
+
+异常检测\newline(detect) & candidates & \texttt{\_check\_availability()} 检查容量；\newline 判断 critical\_gaps → 触发搜索自愈（$\leq$2次） & exceptions\newline+ warnings \\
+
+持久化\newline(persist) & AgentPlan & 创建 travel\_plan 主记录；\newline for each item: 场馆存在→名额→时段冲突检测\newline（仅同 day\_num 内）→ INSERT；\newline 失败项保留在内存方案，WARNING 日志 & persisted plan\newline（DB + 内存） \\
+
+执行预约\newline(execute) & plan\_id & 无需预约→skip；无容量→直接标记；\newline 有容量→\texttt{BEGIN IMMEDIATE} + 原子 \texttt{UPDATE\newline WHERE current<max}（rowcount=0 判满）；\newline 失败→同类替代重试（$\leq$2次，不调 LLM） & booking\_results\newline逐项状态 \\
+\bottomrule
+\end{tabular}
+\caption{核心工具调用链路}
+\end{table}
+
+\textbf{咨询模式}：用户输入含领域关键词但非规划意图 → search\_inquiry → present\_inquiry（返回 InquiryEvent，前端展示 Yes/No/Other 弹窗）。
+
+\textbf{并发安全}：SQLite 单连接 + \texttt{threading.Lock()} 写锁 + WAL 模式（并发读、串行写）。预约使用 \texttt{BEGIN IMMEDIATE} + 原子 SQL，杜绝 TOCTOU 竞态。
+
+\vspace{2pt}
+\section{异常处理机制}
+
+\begin{table}[ht]
+\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{2cm}p{3cm}p{7.2cm}}
+\toprule
+\textbf{机制} & \textbf{覆盖节点} & \textbf{处理策略} \\
+\midrule
+LLM 降级 & classify / analyze / compose &
+LLM 失败 $\to$ 规则兜底：TF-IDF 语义匹配（classify）、默认约束（analyze）、场景配置驱动（compose）。关键路径不依赖 LLM 可用性。 \\
+
+ReAct 搜索自愈 & detect $\to$ adjust $\to$ search &
+关键类别无可用候选 $\to$ 放宽距离约束 50\% $\to$ 重新搜索。上限 2 次，耗尽后 gap\_report 告知用户缺口。 \\
+
+ReAct 执行自愈 & execute $\to$ replan $\to$ persist $\to$ execute &
+预约失败 $\to$ 从原始 candidates 找同类替代（不调 LLM）$\to$ 重新持久化执行。上限 2 次。 \\
+
+结构安全网 & compose &
+LLM 产出缺少 dining/play $\to$ 从候选池按场景优先级确定性补齐，每次触发记录 safety\_net 指标。 \\
+
+输入安全 & load\_session &
+22 个正则（中英文）检测：指令覆盖/角色劫持/提示词提取/SQL注入标记。控制字符+零宽字符清洗。2000 字符上限。拦截后返回 guard\_reject 事件。 \\
+
+结构化输出 & invoke\_structured &
+JSON 提取 → 语法清洗 → Pydantic 校验 → 业务校验 → 错误回传 LLM 重试。最多 3 次。 \\
+
+配置校验 & 启动时 &
+\texttt{validate\_config()} 检查 API key 等必需配置，缺失提前 WARNING。 \\
+
+可观测性 & 全局 &
+JSON 结构化日志 + LLM 调用追踪（节点/耗时/token）+ 安全网计数。持久化到 SQLite metrics\_counter 表，\texttt{GET /api/agent/metrics} 端点。 \\
+\bottomrule
+\end{tabular}
+\caption{八层异常处理机制}
+\end{table}
+
+\textbf{架构总览：}\ \texttt{React (HashRouter + SSE)} $\to$ \texttt{FastAPI (/api/*)} $\to$ \texttt{LangGraph (18 nodes)} $\to$ \texttt{Tools (search/booking/location)} $\to$ \texttt{Service/Repository} $\to$ \texttt{SQLite (WAL+写锁)}
+
+\end{document}

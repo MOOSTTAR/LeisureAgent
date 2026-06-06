@@ -54,6 +54,8 @@ LeisureAgent 后端 API 接口定义。所有接口已通过 FastAPI 实现，�
 | `/api/agent/sessions/{session_id}` | DELETE | 删除会话 |
 | `/api/agent/plans/{plan_id}/share` | GET | 获取方案分享数据 |
 | `/api/agent/plans/{plan_id}/execute` | POST | 用户确认后执行预约 |
+| `/api/agent/plans/{plan_id}/travel-modes` | PUT | 更新方案出行方式 |
+| `/api/agent/metrics` | GET | Agent 运行时指标 |
 
 ---
 
@@ -924,21 +926,44 @@ streamChat('下午带老婆孩子出去玩');
 | 状态 | 说明 |
 |------|------|
 | `0` | 会话进行中（active） |
-| `1` | 已生成方案（completed） |
+| `1` | 已生成方案（completed / reviewing） |
+| `2` | 已执行预约（executed） |
 
 ### LangGraph 节点流程
 
 ```
-load_session → analyze_goal → search_candidates → compose_plan → persist_plan → finalize
+load_session → classify_intent → [路由分发]
+  ├─ casual/out_of_domain → direct_reply → END
+  ├─ inquiry   → search_inquiry → present_inquiry → END
+  ├─ new_plan  → analyze_goal → search_candidates → detect_exceptions
+  │            ⇢ (critical_gap) adjust_search → search_candidates (loop, max 2)
+  │            → compose_plan → persist_plan
+  │            ⇢ (auto_execute) execute_bookings → finalize_executed → END
+  │            ⇢ (manual) present_plan → END
+  ├─ feedback  → analyze_feedback → (search?) → compose_plan → ... → END
+  └─ confirm   → execute_bookings
+               ⇢ (failure) replan_execute → persist_plan → execute_bookings (loop, max 2)
+               ⇢ (ok) finalize_executed → END
 ```
 
 | 节点 | 说明 |
 |------|------|
 | `load_session` | 加载/创建会话，保存用户消息 |
-| `analyze_goal` | 解析用户意图（LLM 或规则） |
+| `classify_intent` | 意图分类（LLM 或规则降级） |
+| `direct_reply` | 直接回复（寒暄/越界/工作日拒绝） |
+| `analyze_goal` | 解析用户意图与约束 |
 | `search_candidates` | 搜索本地候选地点 |
-| `compose_plan` | 生成方案（LLM 或规则） |
+| `search_inquiry` | 咨询/浏览模式搜索 |
+| `present_inquiry` | 展示咨询结果 |
+| `detect_exceptions` | 异常检测（不可用/满额） |
+| `adjust_search` | 放宽约束重新搜索 |
+| `compose_plan` | 生成方案（LLM 或规则降级） |
 | `persist_plan` | 持久化方案到数据库 |
+| `present_plan` | 展示方案给用户 |
+| `analyze_feedback` | 分析用户修改意见 |
+| `execute_bookings` | 执行预约（原子 UPDATE WHERE） |
+| `replan_execute` | 替代地点重规划 |
+| `finalize_executed` | 预约完成收尾 |
 | `finalize` | 生成分享文本，保存 assistant 消息 |
 
 ### LLM 配置
@@ -946,19 +971,39 @@ load_session → analyze_goal → search_candidates → compose_plan → persist
 通过环境变量 `.env` 配置：
 
 ```bash
-# Provider 选择
-LLM_PROVIDER=openai
+# Provider 选择（deepseek/openai/anthropic/ollama/openai_compatible）
+LLM_PROVIDER=deepseek
 
-# OpenAI
-OPENAI_API_KEY=sk-xxx
-OPENAI_MODEL=gpt-4o-mini
+# DeepSeek
+DEEPSEEK_API_KEY=sk-xxx
+DEEPSEEK_MODEL=deepseek-v4-pro
 
 # 功能开关
 USE_LLM_FOR_INTENT=true
 USE_LLM_FOR_PLAN=true
 ```
 
-当未配置 API key 或 LLM 调用失败时，自动降级到规则逻辑，不影响流程。
+当未配置 API key 或 LLM 调用失败时，自动降级到规则逻辑，不影响流程。启动时 `validate_config()` 会校验必需配置。
+
+### Agent 可观测性
+
+`GET /api/agent/metrics` 返回运行时指标：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "llm": {
+      "classify_intent": { "calls": 15, "total_ms": 56789.2, "avg_ms": 3786.0 }
+    },
+    "safety_net": {
+      "compose_missing_critical": 2
+    }
+  }
+}
+```
+
+数据持久化到 `metrics_counter` 表，进程重启不丢失。
 
 ---
 
@@ -968,7 +1013,9 @@ USE_LLM_FOR_PLAN=true
 /api/* (FastAPI Router) → app/service/* (业务层) → app/repository/* (数据层) → SQLite
 
 Agent 层：
-/api/chat/stream → app/agent/graph.py (LangGraph) → app/agent/planner.py (节点)
+/api/chat/stream → app/agent/graph.py (LangGraph) → app/agent/nodes/* (节点)
                                       ↓
                          app/llm/provider.py (LLM 封装)
+                                      ↓
+                         app/agent/tools/* (工具调用)
 ```

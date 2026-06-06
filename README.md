@@ -38,6 +38,10 @@ Agent 会在几分钟内完成：
 
 ![](assets/b50cb6d7-7f14-48fe-9bf2-7284ae590192.png)
 
+**具体活动查询**
+
+![](assets/3c3917a2-a8ae-4518-be07-c3f3fb24235d.png)
+
 **分享详情页**
 
 ![](assets/8deccecb-58eb-44bb-8f41-58759bbc7e4e.png)

@@ -45,7 +45,7 @@ frontend/.next/
 frontend/next-env.d.ts
 
 # LaTeX 编译产物
-*.aux
-*.out
-*.toc
-*.log
+**/*.aux
+**/*.out
+**/*.toc
+**/*.log

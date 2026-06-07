@@ -116,20 +116,114 @@ Agent 全自动完成从理解需求到预约执行的完整闭环。**端到端
 └── .claude/                     # Claude Code 配置
 ```
 
-## 快速开始
+## 使用说明
 
-### 前端
+### 1. 环境准备
+
+- **Python** ≥ 3.12
+- **Node.js** ≥ 18
+- **DeepSeek API Key**（或其他兼容 OpenAI 接口的 API Key）
+
+### 2. 配置 LLM
+
+后端启动时会自动加载 `backend/python/.env` 文件。在项目根目录创建：
+
 ```bash
+# backend/python/.env
+LLM_PROVIDER=deepseek              # 默认，可选 openai / anthropic / ollama / openai_compatible
+DEEPSEEK_API_KEY=sk-xxxxxxxxxxxx   # 必填，替换为你的 API Key
+DEEPSEEK_MODEL=deepseek-v4-pro     # 可选，默认 deepseek-v4-pro
+```
+
+> **LLM 未配置也能跑**：启动时会自动校验配置，如果 API Key 未设置，Agent 会降级为纯规则引擎运行，核心功能不中断，但方案质量和灵活性会下降。
+
+#### 切换到其他 Provider
+
+<details>
+<summary>使用 OpenAI</summary>
+
+```bash
+# backend/python/.env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-xxxxxxxxxxxx
+OPENAI_MODEL=gpt-4o-mini
+```
+</details>
+
+<details>
+<summary>使用 Anthropic Claude</summary>
+
+```bash
+# backend/python/.env
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+```
+</details>
+
+<details>
+<summary>使用本地 Ollama</summary>
+
+```bash
+# backend/python/.env
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5:14b
+# 无需 API Key，确保 Ollama 服务已启动
+```
+</details>
+
+#### 关闭 LLM 意图分类 / 方案编排（纯规则引擎）
+
+```bash
+# backend/python/.env
+USE_LLM_FOR_INTENT=false
+USE_LLM_FOR_PLAN=false
+```
+
+### 3. 安装依赖
+
+```bash
+# 后端
+cd backend/python
+pip install -r requirements.txt
+
+# 前端
 cd frontend
 npm install
+```
+
+### 4. 初始化数据库
+
+首次启动时后端会自动建表并填充 Mock 数据（50 家餐厅、50 家商场、50 家游乐园、50 家景点、50 家展馆），无需手动操作。
+
+如需重置数据：
+
+```bash
+cd backend/python
+python -c "from app.db.database import reset_db; reset_db()"
+```
+
+### 5. 启动服务
+
+确保先启动后端（端口 8000），再启动前端（端口 5173）。前端已配置 Vite proxy 将 `/api` 请求自动转发到后端，无需额外配置跨域。
+
+```bash
+# 终端 1 — 后端
+cd backend/python
+uvicorn app.main:app --reload --port 8000
+
+# 终端 2 — 前端
+cd frontend
 npm run dev
 ```
 
-### 后端
+打开浏览器访问 `http://localhost:5173`，进入「AI 一键规划」页面即可开始使用。
+
+### 6. 运行测试
+
 ```bash
 cd backend/python
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+python -m pytest tests/ -v
 ```
 
 ## 交付目标

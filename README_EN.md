@@ -72,7 +72,7 @@ User: "Plan an afternoon out with my wife and kid"
 
 ---
 
-## Screenshots
+## Screenshots (Click arrow to expand)
 
 <details open>
 <summary><b>Homepage</b></summary>

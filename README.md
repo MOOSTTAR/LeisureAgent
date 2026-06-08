@@ -74,7 +74,7 @@ LeisureAgent 是一个**本地场景短时活动规划与执行 Agent**。用自
 
 ---
 
-## 项目截图
+## 项目截图（点击箭头展开图片）
 
 <details open>
 <summary><b>首页</b></summary>

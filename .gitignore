@@ -32,7 +32,8 @@ build/
 Thumbs.db
 
 # Claude
-.claude/settings.local.json
+.claude/
+CLAUDE.md
 CLAUDE.local.md
 
 # SQLite

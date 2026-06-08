@@ -12,6 +12,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1C3C3C?logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
 [![GitHub stars](https://img.shields.io/github/stars/MOOSTTAR/LeisureAgent?style=social)](https://github.com/MOOSTTAR/LeisureAgent/stargazers)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Visitors](https://api.visitorbadge.io/api/visitors?path=MOOSTTAR%2FLeisureAgent&countColor=%23263759)](https://visitorbadge.io/status?path=MOOSTTAR%2FLeisureAgent)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/MOOSTTAR/LeisureAgent/pulls)
 
 [中文文档](README.md) •

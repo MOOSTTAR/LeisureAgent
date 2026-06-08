@@ -15,7 +15,7 @@
 
 [中文文档](README.md) •
 [Features](#features) •
-[Quick Start](#quick-start) •
+[Getting Started](#getting-started) •
 [Screenshots](#screenshots) •
 [Architecture](#architecture)
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/LeisureAgentI.png" alt="LeisureAgent Banner" width="600" />
+<img src="assets/LeisureAgentI.png" alt="LeisureAgent Banner" width="120" />
 
 # LeisureAgent
 

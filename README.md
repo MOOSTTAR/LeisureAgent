@@ -83,15 +83,15 @@ LeisureAgent 是一个**本地场景短时活动规划与执行 Agent**。用自
 </details>
 
 <details open>
-<summary><b>Agent 生成计划并预约</b></summary>
-<br/>
-<img src="assets/9179580e-f83f-4fcd-b58c-34e906b7806e.png" alt="预约" width="800" />
-</details>
-
-<details open>
 <summary><b>AI 一键规划页面</b></summary>
 <br/>
 <img src="assets/a7ea5801-5605-4757-a282-eaf7877c7e12.png" alt="AI 规划" width="800" />
+</details>
+
+<details open>
+<summary><b>Agent 生成计划并预约</b></summary>
+<br/>
+<img src="assets/9179580e-f83f-4fcd-b58c-34e906b7806e.png" alt="预约" width="800" />
 </details>
 
 <details open>
@@ -147,11 +147,108 @@ LeisureAgent 是一个**本地场景短时活动规划与执行 Agent**。用自
 ## 项目结构
 
 ```
-├── backend/
-│   └── python/                  # Python + LangGraph + FastAPI
-├── frontend/                    # React + Vite 前端
-├── design/                      # 设计文档
-└── .claude/                     # Claude Code 配置
+LeisureAgent/
+├── .env.example                     # 环境变量模板
+├── .gitignore
+├── LICENSE                          # MIT 开源协议
+├── README.md                        # 中文文档（默认）
+├── README_EN.md                     # 英文文档
+├── requirements.txt                 # 前端依赖声明
+│
+├── assets/                          # 项目截图 & Logo
+│   ├── LeisureAgentI.png            # Logo
+│   └── *.png                        # 功能截图
+│
+├── docs/                            # 设计文档
+│   ├── architecture.md              # 架构设计
+│   ├── api.md                       # API 文档
+│   ├── design.tex / design.pdf      # LaTeX 设计文档
+│   └── requirements-spec.tex / .pdf # 需求规格说明
+│
+├── backend/python/
+│   ├── requirements.txt
+│   ├── app/
+│   │   ├── main.py                  # FastAPI 入口，路由注册 & 启动校验
+│   │   │
+│   │   ├── agent/                   # 🧠 LangGraph Agent 核心
+│   │   │   ├── graph.py             # StateGraph 图定义 & 路由函数
+│   │   │   ├── state.py             # AgentState 全局状态定义
+│   │   │   ├── api.py               # SSE 流式聊天 & 会话管理 API
+│   │   │   ├── planner.py           # 兼容重导出层（→ nodes/）
+│   │   │   ├── memory.py            # SQLite 会话存储 & 清理
+│   │   │   ├── input_guard.py       # 输入安全过滤（prompt injection）
+│   │   │   ├── constants.py         # 魔法数字 & 关键词常量
+│   │   │   ├── metrics.py           # LLM 调用指标统计
+│   │   │   ├── semantic.py          # TF-IDF 语义匹配
+│   │   │   ├── nodes/               # 图节点（按职责拆分）
+│   │   │   │   ├── session.py       # 会话加载
+│   │   │   │   ├── classify.py      # 意图分类
+│   │   │   │   ├── analyze.py       # 需求解析
+│   │   │   │   ├── search.py        # 候选搜索 & 咨询展示
+│   │   │   │   ├── detect.py        # 异常检测 & 搜索自愈
+│   │   │   │   ├── compose.py       # 方案编排（LLM + 规则降级）
+│   │   │   │   ├── execute.py       # 预约执行 & 执行自愈
+│   │   │   │   ├── feedback.py      # 反馈解析
+│   │   │   │   ├── present.py       # 方案展示 & 持久化
+│   │   │   │   ├── finalize.py      # 直接回复 & 执行后总结
+│   │   │   │   └── helpers.py       # 公共辅助函数
+│   │   │   └── tools/               # Agent 工具集
+│   │   │       ├── _search.py       # 候选搜索 & 咨询搜索
+│   │   │       ├── _booking.py      # 预约执行 & 持久化
+│   │   │       ├── _location.py     # 地点查询 & 共享文案
+│   │   │       └── _utils.py        # 距离计算 & 时间工具
+│   │   │
+│   │   ├── llm/                     # LLM 抽象层
+│   │   │   ├── provider.py          # 多 Provider 统一封装（5 种）
+│   │   │   ├── prompts.py           # 所有 Prompt 模板集中管理
+│   │   │   ├── schemas.py           # LLM 输出 Pydantic Schema
+│   │   │   └── structured.py        # 结构化输出 + JSON 修复 + 校验重试
+│   │   │
+│   │   ├── config/
+│   │   │   └── llm_config.py        # LLM 配置 & 启动校验
+│   │   │
+│   │   ├── api/                     # REST API 路由（8 类场所 CRUD）
+│   │   ├── models/                  # Pydantic 数据模型 & 请求/响应 Schema
+│   │   ├── service/                 # 业务逻辑层
+│   │   ├── repository/              # 数据访问层（SQLite）
+│   │   ├── mock/                    # Mock 数据生成（250+ 场所）
+│   │   └── db/
+│   │       └── database.py          # SQLite 初始化 & 连接管理
+│   │
+│   └── tests/                       # 测试（55+ 用例）
+│       ├── test_agent_layer.py      # Agent 集成测试
+│       ├── test_classify.py         # 意图分类测试
+│       ├── test_compose.py          # 方案编排测试
+│       ├── test_constraints.py      # 约束解析测试
+│       ├── test_input_guard.py      # 输入安全测试
+│       ├── test_integration.py      # 端到端集成测试
+│       ├── test_json_repair.py      # JSON 修复测试
+│       ├── test_routes.py           # API 路由测试
+│       ├── test_rule_compose.py     # 规则编排测试
+│       ├── test_semantic.py         # 语义匹配测试
+│       └── test_validators.py       # 校验器测试
+│
+└── frontend/                        # React 19 + Vite + Tailwind CSS 4
+    ├── package.json
+    ├── index.html
+    └── src/
+        ├── App.tsx                  # 路由 & 页面切换
+        ├── main.tsx                 # React 入口
+        ├── api/                     # API 客户端 & SSE 流式通信
+        ├── pages/                   # 页面组件（8 个）
+        ├── components/
+        │   ├── lobby/               # 首页大厅
+        │   ├── category/            # 分类卡片
+        │   └── ai-plan/             # AI 规划核心 UI
+        │       ├── ChatArea.tsx     # 对话区域
+        │       ├── ChatInput.tsx    # 输入框
+        │       ├── PlanView.tsx     # 方案时间线
+        │       ├── MessageBubble.tsx# 消息气泡
+        │       ├── InquiryModal.tsx # 咨询结果弹窗
+        │       ├── ProcessingRecord.tsx # 处理步骤进度
+        │       └── ConversationSidebar.tsx # 会话侧边栏
+        ├── components/              # 公共组件（Toast、地图、分享等）
+        └── utils/                   # 工具函数
 ```
 
 ---

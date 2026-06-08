@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/6a4929d9-a979-466a-91fb-a2fddcad3842.png" alt="LeisureAgent" width="600" />
+<img src="assets/LeisureAgentI.png" alt="LeisureAgent" width="600" />
 
 # LeisureAgent
 
@@ -73,6 +73,12 @@ LeisureAgent 是一个**本地场景短时活动规划与执行 Agent**。用自
 ---
 
 ## 项目截图
+
+<details open>
+<summary><b>首页</b></summary>
+<br/>
+<img src="assets/6a4929d9-a979-466a-91fb-a2fddcad3842.png" alt="首页" width="800" />
+</details>
 
 <details open>
 <summary><b>Agent 生成计划并预约</b></summary>

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/6a4929d9-a979-466a-91fb-a2fddcad3842.png" alt="LeisureAgent Banner" width="600" />
+<img src="assets/LeisureAgentI.png" alt="LeisureAgent Banner" width="600" />
 
 # LeisureAgent
 
@@ -71,6 +71,12 @@ User: "Plan an afternoon out with my wife and kid"
 ---
 
 ## Screenshots
+
+<details open>
+<summary><b>Homepage</b></summary>
+<br/>
+<img src="assets/6a4929d9-a979-466a-91fb-a2fddcad3842.png" alt="Homepage" width="800" />
+</details>
 
 <details open>
 <summary><b>AI Planning & Booking</b></summary>

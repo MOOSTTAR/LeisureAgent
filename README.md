@@ -80,19 +80,19 @@ LeisureAgent 是一个**本地场景短时活动规划与执行 Agent**。用自
 <img src="assets/9179580e-f83f-4fcd-b58c-34e906b7806e.png" alt="预约" width="800" />
 </details>
 
-<details>
+<details open>
 <summary><b>AI 一键规划页面</b></summary>
 <br/>
 <img src="assets/a7ea5801-5605-4757-a282-eaf7877c7e12.png" alt="AI 规划" width="800" />
 </details>
 
-<details>
+<details open>
 <summary><b>意图分类——超出领域拒绝</b></summary>
 <br/>
 <img src="assets/28be72d4-797d-4cd1-888e-bcf704aab916.png" alt="拒绝" width="800" />
 </details>
 
-<details>
+<details open>
 <summary><b>地图视图 & 分享</b></summary>
 <br/>
 <img src="assets/94e5a607-6444-47e3-b91d-22d6d69b2423.png" alt="地图" width="400" />

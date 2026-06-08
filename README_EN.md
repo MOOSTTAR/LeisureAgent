@@ -78,19 +78,19 @@ User: "Plan an afternoon out with my wife and kid"
 <img src="assets/9179580e-f83f-4fcd-b58c-34e906b7806e.png" alt="Plan & Book" width="800" />
 </details>
 
-<details>
+<details open>
 <summary><b>Chat Interface</b></summary>
 <br/>
 <img src="assets/a7ea5801-5605-4757-a282-eaf7877c7e12.png" alt="Chat" width="800" />
 </details>
 
-<details>
+<details open>
 <summary><b>Out-of-Domain Guard</b></summary>
 <br/>
 <img src="assets/28be72d4-797d-4cd1-888e-bcf704aab916.png" alt="Guard" width="800" />
 </details>
 
-<details>
+<details open>
 <summary><b>Map & Share</b></summary>
 <br/>
 <img src="assets/94e5a607-6444-47e3-b91d-22d6d69b2423.png" alt="Map" width="400" />

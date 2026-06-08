@@ -84,7 +84,7 @@ export function PlanView({
             >
               <MapPin size={18} weight="fill" />
             </motion.button>
-            {plan.id != null && hasExecuted && (
+            {plan.id != null && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

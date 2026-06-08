@@ -51,11 +51,10 @@ app.include_router(booking_router)
 
 @app.on_event("startup")
 async def startup():
-    """应用启动时初始化数据库并校验 LLM 配置。"""
+    """应用启动时初始化数据库并校验 LLM 配置——缺少 API Key 直接退出。"""
     init_db()
-    # 启动时校验 LLM 配置，缺少 API key 时 WARNING 提前暴露
-    from app.config.llm_config import validate_config
-    validate_config()
+    from app.config.llm_config import validate_config_or_die
+    validate_config_or_die()
 
 
 @app.get("/health")

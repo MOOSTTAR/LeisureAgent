@@ -126,16 +126,29 @@ Agent 全自动完成从理解需求到预约执行的完整闭环。**端到端
 
 ### 2. 配置 LLM
 
-后端启动时会自动加载 `backend/python/.env` 文件。在项目根目录创建：
+项目根目录提供了 `.env.example` 模板文件，**将其复制为 `backend/python/.env`** 并配置 API Key：
+
+```bash
+cp .env.example backend/python/.env
+```
+
+#### 方式一：系统环境变量（推荐）
+
+在系统环境变量中设置 `DEEPSEEK_API_KEY`，`.env` 中引用即可：
 
 ```bash
 # backend/python/.env
-LLM_PROVIDER=deepseek              # 默认，可选 openai / anthropic / ollama / openai_compatible
-DEEPSEEK_API_KEY=sk-xxxxxxxxxxxx   # 必填，替换为你的 API Key
-DEEPSEEK_MODEL=deepseek-v4-pro     # 可选，默认 deepseek-v4-pro
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}   # 从系统环境变量读取，无需硬编码
 ```
 
-> **LLM 未配置也能跑**：启动时会自动校验配置，如果 API Key 未设置，Agent 会降级为纯规则引擎运行，核心功能不中断，但方案质量和灵活性会下降。
+#### 方式二：直接写入
+
+```bash
+# backend/python/.env
+DEEPSEEK_API_KEY=sk-xxxxxxxxxxxx       # 直接填写你的 API Key
+```
+
+> **注意**：`.env` 已在 `.gitignore` 中，不会被提交到 Git。API Key 未配置时程序将**拒绝启动**并打印配置指引。
 
 #### 切换到其他 Provider
 

@@ -77,50 +77,42 @@ _API_KEY_MAP: dict[LLMProvider, tuple[str, str]] = {
 }
 
 
-def validate_config() -> list[str]:
-    """启动时校验 LLM 配置，返回告警列表（空列表 = 一切正常）。
+def validate_config_or_die() -> None:
+    """启动时校验 LLM 配置——未配置 API Key 则直接退出并打印配置指引。"""
+    import sys
 
-    - 如果启用 LLM 功能但未配置对应 API key → WARNING
-    - 如果仅使用规则降级 → INFO 提示
-    """
     settings = get_llm_settings()
-    warnings: list[str] = []
     provider = settings.llm_provider
 
-    # 检查是否需要 LLM
     needs_llm = settings.use_llm_for_intent or settings.use_llm_for_plan
-
     if not needs_llm:
-        logger.info("LLM features disabled, all operations will use rule-based fallback")
-        return warnings
+        logger.info("LLM features disabled via config, all operations will use rule-based fallback")
+        return
 
-    # 检查 API key
+    if provider == LLMProvider.OLLAMA:
+        return
+
     field_name, env_var = _API_KEY_MAP.get(provider, ("", ""))
     if field_name and env_var:
         api_key = getattr(settings, field_name, "")
         if not api_key:
             msg = (
-                f"LLM provider '{provider.value}' enabled but {env_var} is not set. "
-                f"LLM calls will fail and fall back to rule-based logic. "
-                f"Set {env_var} in .env or environment to enable LLM features."
+                f"\n{'=' * 60}\n"
+                f"  LLM 配置错误：Provider = '{provider.value}'，但 {env_var} 未设置。\n"
+                f"\n"
+                f"  请按以下步骤配置：\n"
+                f"    1. 复制 .env.example → backend/python/.env\n"
+                f"       cp .env.example backend/python/.env\n"
+                f"    2. 编辑 backend/python/.env，设置 {env_var}=你的API密钥\n"
+                f"       方式一（推荐）：系统环境变量 + .env 中写 ${{{env_var}}}\n"
+                f"       方式二：.env 中直接填写 {env_var}=sk-xxx\n"
+                f"{'=' * 60}\n"
             )
-            logger.warning(msg)
-            warnings.append(msg)
+            logger.critical(msg)
+            sys.exit(1)
 
-    # 检查 OPENAI_COMPATIBLE 的特殊配置
-    if provider == LLMProvider.OPENAI_COMPATIBLE:
-        if not settings.compatible_base_url:
-            msg = "COMPATIBLE_BASE_URL is required when using openai_compatible provider"
-            logger.warning(msg)
-            warnings.append(msg)
-
-    if warnings:
-        logger.warning("Config validation found %d issue(s) — LLM will fall back to rules", len(warnings))
-    else:
-        logger.info("LLM config validated: provider=%s, model=%s", provider.value,
-                    _get_model_name(settings, provider))
-
-    return warnings
+    logger.info("LLM config validated: provider=%s, model=%s", provider.value,
+                _get_model_name(settings, provider))
 
 
 def _get_model_name(settings: LLMSettings, provider: LLMProvider) -> str:
